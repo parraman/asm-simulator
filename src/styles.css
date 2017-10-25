@@ -1,0 +1,171 @@
+.navbar.navbar-inverse {
+  background-color:#428BCA;
+  background-image:none;
+  border-radius:0px;
+  border:none;
+}
+
+.navbar > .container .navbar-brand, .navbar > .container-fluid .navbar-brand {
+  color:white;
+}
+
+.source-code {
+  font-family:'Source Code Pro', monospace;
+}
+
+.input-btn {
+  float:left;
+  clear:none;
+  background-image:none;
+  display:inline-block;
+  padding-bottom:4px;
+  padding-top:4px;
+  width:34px;
+}
+
+.input-btn-row {
+  text-align:center;
+}
+
+.visual-output {
+  border-color:rgb(221, 221, 221);
+  border-width:1px;
+  border-style:solid;
+  width:98px;
+  height:98px;
+  margin:auto;
+  margin-bottom:15px;
+}
+
+.memory-index-lsb {
+  width:24px;
+  display:inline-block;
+  float:left;
+}
+
+.memory-index-lsb-bar {
+  text-align:center;
+  padding-left:25px;
+  display:block;
+  height:20px;
+  margin:auto;
+}
+
+.memory-map {
+  width:425px;
+}
+
+.memory-content {
+  float:left;
+  width:384px;
+}
+
+.memory-block {
+  width:24px;
+  display:inline-block;
+  text-align:center;
+  float:left;
+}
+
+.memory-index-msb-bar {
+  float:left;
+  text-align:center;
+}
+
+.memory-area {
+  height:320px;
+  overflow-y:scroll;
+}
+
+.memory-index-msb {
+  width:24px;
+  height:20px;
+  line-height:20px;
+}
+
+.register-name {
+  background-color:white;
+  font-weight:700;
+  display:inline-block;
+  float:left;
+  font-size:14px;
+  margin-right:8px;
+  padding-right:6px;
+  padding-left:5px;
+  line-height:22px;
+  width:24px;
+  border-right-style:solid;
+  border-right-width:2px;
+  border-right-color:rgb(221, 221, 221);
+}
+
+.very-small {
+  font-size:65%;
+}
+
+.register {
+  width:74px;
+  background-color:rgb(249, 249, 249);
+  float:left;
+  margin-right:10px;
+}
+
+.register-value-byte {
+  float:left;
+  text-align:center;
+  line-height:20px;
+  font-size:14px;
+}
+
+.register-value-bitmap, .status-register-bit-label {
+  line-height:14px;
+}
+
+.register-line {
+  height:22px;
+  margin-bottom:8px;
+}
+
+.status-register {
+  width:245px;
+  height:38px;
+  background-color:rgb(249, 249, 249);
+  float:left;
+}
+
+.status-register-bit {
+  float:left;
+  width:12px;
+  text-align:center;
+}
+
+.status-register-bit-value {
+  line-height:20px;
+  padding-bottom:8px;
+}
+
+.output-char {
+  background-color:#DFDFDF;
+  width:14px;
+  display:inline-block;
+  text-align:center;
+  margin-right:1px;
+  float:left;
+}
+
+.panel {
+  margin-bottom:14px;
+}
+
+.panel-default > .panel-heading {
+  display:none;
+}
+
+.panel-body {
+  padding-top:5px;
+}
+
+body {
+  padding-top:70px;
+}
+
