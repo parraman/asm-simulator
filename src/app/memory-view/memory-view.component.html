@@ -1,3 +1,19 @@
-<p>
-  memory-view works!
-</p>
+<h5>RAM </h5>
+<div class="memory-map">
+  <div class="text-muted memory-index-lsb-bar">
+    <div *ngFor="let i of memoryColsIndexes" class="memory-index-lsb"><small>{{i}}</small></div>
+  </div>
+  <div class="memory-area">
+    <div class="text-muted memory-index-msb-bar">
+      <div class="memory-index-msb" *ngFor="let i of memoryRowsIndexes"><small>{{i}}</small></div>
+    </div>
+    <div class="source-code memory-content">
+      <div *ngFor="let i of memoryService.data; let j = index" (click)="editingCell = j; newCellValue = pad(i.dataValue, 16, 2)">
+        <div class="memory-block" *ngIf="editingCell !== j">
+          <small>{{pad(i.dataValue, 16, 2)}}</small>
+        </div>
+        <input class="memory-block memory-cell-input" *ngIf="editingCell === j" appAutofocus [(ngModel)]="newCellValue" (keyup.escape)="editingCell = -1" (keyup.enter)="setCellValue(j)" (blur)="editingCell = -1" title="New cell value">
+      </div>
+    </div>
+  </div>
+</div>

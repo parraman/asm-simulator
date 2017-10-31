@@ -3,22 +3,29 @@ import { NgModule } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 
 import { AppComponent } from './app.component';
-import { MemoryViewComponent } from './memory-view/memory-view.component';
-import { DisplayComponent } from './display/display.component';
+import { MemoryViewComponent, MemoryCellAutofocusDirective } from './memory-view/memory-view.component';
 import { KeypadComponent } from './keypad/keypad.component';
+import { VisualDisplayComponent } from './visual-display/visual-display.component';
+import { TextualDisplayComponent } from './textual-display/textual-display.component';
+import { RegistersViewComponent } from './registers-view/registers-view.component';
+
+import { MemoryService } from './memory.service';
 
 @NgModule({
-  declarations: [
-    AppComponent,
-    MemoryViewComponent,
-    DisplayComponent,
-    KeypadComponent
-  ],
-  imports: [
-    BrowserModule,
-    FormsModule
-  ],
-  providers: [],
-  bootstrap: [AppComponent]
+    declarations: [
+        AppComponent,
+        MemoryViewComponent,
+        KeypadComponent,
+        VisualDisplayComponent,
+        TextualDisplayComponent,
+        RegistersViewComponent,
+        MemoryCellAutofocusDirective
+    ],
+    imports: [
+        BrowserModule,
+        FormsModule
+    ],
+    providers: [MemoryService],
+    bootstrap: [AppComponent]
 })
 export class AppModule { }
