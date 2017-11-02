@@ -1,13 +1,13 @@
-import {EventEmitter, Injectable} from '@angular/core';
+import { EventEmitter, Injectable } from '@angular/core';
 
-export enum CellType {
+export enum MemoryCellType {
 
     READ_WRITE = 1,
     READ_ONLY = 2
 
 }
 
-export enum OperationType {
+export enum MemoryOperationType {
 
     READ = 1,
     WRITE = 2
@@ -16,15 +16,18 @@ export enum OperationType {
 
 export class MemoryCell {
 
-    public cellType: CellType;
+    public address: number;
+    public cellType: MemoryCellType;
     public dataValue: number;
     public memoryRegion: MemoryRegion;
 
-    constructor() {
+    constructor(address: number, cellType: MemoryCellType = MemoryCellType.READ_WRITE,
+                initialValue: number = 0, memoryRegion: MemoryRegion = null) {
 
-        this.cellType = CellType.READ_WRITE;
-        this.dataValue = 0;
-        this.memoryRegion = null;
+        this.address = address;
+        this.cellType = cellType;
+        this.dataValue = initialValue;
+        this.memoryRegion = memoryRegion;
 
     }
 
@@ -32,10 +35,10 @@ export class MemoryCell {
 
 export class MemoryOperation {
 
-    public operationType: OperationType;
+    public operationType: MemoryOperationType;
     public memoryCell: MemoryCell;
 
-    constructor(operationType: OperationType, memoryCell: MemoryCell) {
+    constructor(operationType: MemoryOperationType, memoryCell: MemoryCell) {
 
         this.operationType = operationType;
         this.memoryCell = memoryCell;
@@ -62,7 +65,7 @@ export class MemoryRegion {
     /**
      * Type of memory cells within the region (Read/write or Read-only).
      */
-    public cellType: CellType;
+    public cellType: MemoryCellType;
 
     /**
      * Size in bytes of the memory region.
@@ -78,17 +81,18 @@ export class MemoryRegion {
      * Event emitter throw which the operations done to a cell within the region will be broadcasted.
      */
     public operationEventEmitter: EventEmitter<MemoryOperation>;
-    public lastAccess: number;
+
+    public lastAccess = -1;
 
     constructor(regionID: string, startAddress: number, endAddress: number,
-                cellType: CellType, operationEventEmitter: EventEmitter<MemoryOperation>) {
+                operationEventEmitter: EventEmitter<MemoryOperation> = null,
+                cellType: MemoryCellType = MemoryCellType.READ_WRITE) {
 
         this.regionID = regionID;
         this.startAddress = startAddress;
         this.endAddress = endAddress;
         this.cellType = cellType;
         this.operationEventEmitter = operationEventEmitter;
-        this.lastAccess = -1;
         this.size = endAddress - startAddress + 1;
 
     }
@@ -110,13 +114,14 @@ export class MemoryService {
 
         this.data = Array<MemoryCell>(this.size);
         for (let i = 0; i < this.size; i++) {
-            this.data[i] = new MemoryCell();
+            this.data[i] = new MemoryCell(i);
         }
 
     }
 
     public addMemoryRegion(startAddress: number, endAddress: number,
-                           cellType: CellType, operationEventEmitter: EventEmitter<MemoryOperation> ): MemoryRegion {
+                           operationEventEmitter: EventEmitter<MemoryOperation> = null,
+                           cellType: MemoryCellType = MemoryCellType.READ_WRITE): MemoryRegion {
 
         /* We need to first check that startAddress and endAddress are valid, i.e.:
            - startAddress >= 0 AND endAddress < size AND
@@ -183,7 +188,7 @@ export class MemoryService {
         }
 
         /* Now we can insert the new memory region */
-        const newMemoryRegion = new MemoryRegion(newID, startAddress, endAddress, cellType, operationEventEmitter);
+        const newMemoryRegion = new MemoryRegion(newID, startAddress, endAddress, operationEventEmitter, cellType);
         this.memoryRegions.push(newMemoryRegion);
 
         for (let i = startAddress; i <= endAddress; i++) {
@@ -212,13 +217,17 @@ export class MemoryService {
         this.size = size;
         this.data = new Array(this.size);
 
+        for (let i = 0; i < this.size; i++) {
+            this.data[i] = new MemoryCell(i);
+        }
+
         this.memoryRegions = [];
 
         return this.data;
 
     }
 
-    public load(address: number): MemoryCell {
+    public load(address: number): number {
 
         if (address < 0 || address > this.size) {
             throw Error('Memory access violation at ' + address);
@@ -228,11 +237,18 @@ export class MemoryService {
 
         if (this.data[address].memoryRegion != null) {
 
-            this.data[address].memoryRegion.operationEventEmitter.emit(new MemoryOperation(OperationType.READ, this.data[address]));
+            this.data[address].memoryRegion.lastAccess = address;
+
+            if (this.data[address].memoryRegion.operationEventEmitter !== null) {
+
+                this.data[address].memoryRegion.operationEventEmitter.emit(
+                    new MemoryOperation(MemoryOperationType.READ, this.data[address]));
+
+            }
 
         }
 
-        return this.data[address];
+        return this.data[address].dataValue;
 
     }
 
@@ -246,7 +262,7 @@ export class MemoryService {
             throw Error('Invalid data value ' + value);
         }
 
-        if (this.data[address].cellType === CellType.READ_ONLY) {
+        if (this.data[address].cellType === MemoryCellType.READ_ONLY) {
             throw Error(`Invalid storage into read-only cell ${address}`);
         }
 
@@ -255,8 +271,14 @@ export class MemoryService {
 
         if (this.data[address].memoryRegion != null) {
 
-            this.data[address].memoryRegion.operationEventEmitter.emit(new MemoryOperation(OperationType.WRITE, this.data[address]));
+            this.data[address].memoryRegion.lastAccess = address;
 
+            if (this.data[address].memoryRegion.operationEventEmitter !== null) {
+
+                this.data[address].memoryRegion.operationEventEmitter.emit(
+                    new MemoryOperation(MemoryOperationType.WRITE, this.data[address]));
+
+            }
         }
 
     }
@@ -268,7 +290,7 @@ export class MemoryService {
         for (let i = 0; i < this.data.length; i++) {
 
             this.data[i].memoryRegion = null;
-            this.data[i].cellType = CellType.READ_WRITE;
+            this.data[i].cellType = MemoryCellType.READ_WRITE;
             this.data[i].dataValue = 0;
 
         }

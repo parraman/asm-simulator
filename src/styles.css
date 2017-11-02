@@ -75,7 +75,8 @@
   padding: 0px;
   border: 1px;
   border-style: solid;
-  border-color: deepskyblue;
+  border-color: #66AFE9;
+  border-radius: 2px;
 }
 
 .memory-cell-input:focus {
@@ -170,10 +171,6 @@
 
 .panel {
   margin-bottom:14px;
-}
-
-.panel-default > .panel-heading {
-  display:none;
 }
 
 .panel-body {

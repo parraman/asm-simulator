@@ -7,21 +7,17 @@
   <div class="row">
     <div class="col-md-6">
       <div class="panel panel-default">
-        <div class="panel-heading">
-          <h3 class="panel-title">Code</h3></div>
         <div class="panel-body">
           <h4>Code</h4>
           <form>
             <textarea name="code" [(ngModel)]="code" class="form-control source-code" rows="35" style="margin-bottom:10px;resize:none;"></textarea>
-            <button class="btn btn-default btn-secondary" type="button" style="background-image:none;">Assemble </button>
+            <button class="btn btn-default btn-secondary" type="button" style="background-image:none;" (click)="assemble()">Assemble </button>
           </form>
         </div>
       </div>
     </div>
     <div class="col-md-6">
       <div class="panel panel-default">
-        <div class="panel-heading">
-          <h3 class="panel-title">Input / Output </h3></div>
         <div class="panel-body">
           <div style="width:60%;display:inline-block;float:left;text-align:center;">
             <app-visual-display></app-visual-display>
@@ -33,8 +29,6 @@
         </div>
       </div>
       <div class="panel panel-default">
-        <div class="panel-heading">
-          <h3 class="panel-title">CPU &amp; Memory</h3></div>
         <div class="panel-body">
           <app-registers-view></app-registers-view>
           <app-memory-view></app-memory-view>
@@ -45,18 +39,12 @@
                 <option value="13" selected="">4 HZ</option>
                 <option value="14">8 HZ</option>
               </optgroup>
-            </select><span style="margin-left:5px;">Instructions: </span><a href="#">Hide </a><span style="margin-left:5px;">View </span><a href="#">Decimal </a></div>
-          <div class="small"><span>Register addressing: </span><span style="margin-left:5px;">A: </span><a href="#">Show </a><span style="margin-left:5px;">B: </span><a href="#">Show </a><span style="margin-left:5px;">C: </span><a href="#">Show </a><span style="margin-left:5px;">D: </span>
+            </select><span style="margin-left:5px;">Instructions: </span><a href="#">Hide </a></div>
+          <div class="small" style="margin-bottom: 20px;"><span>Register addressing: </span><span style="margin-left:5px;">A: </span><a href="#">Show </a><span style="margin-left:5px;">B: </span><a href="#">Show </a><span style="margin-left:5px;">C: </span><a href="#">Show </a><span style="margin-left:5px;">D: </span>
             <a
               href="#">Show </a>
           </div>
-        </div>
-      </div>
-      <div class="panel panel-default">
-        <div class="panel-heading">
-          <h3 class="panel-title">Labels</h3></div>
-        <div class="panel-body">
-          <h4>Labels </h4>
+          <h5>Input / Output Registers</h5>
           <div>
             <table class="table table-striped table-condensed codelabel">
               <thead>

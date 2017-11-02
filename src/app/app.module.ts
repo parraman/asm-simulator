@@ -8,8 +8,11 @@ import { KeypadComponent } from './keypad/keypad.component';
 import { VisualDisplayComponent } from './visual-display/visual-display.component';
 import { TextualDisplayComponent } from './textual-display/textual-display.component';
 import { RegistersViewComponent } from './registers-view/registers-view.component';
+import { IoregistersViewComponent } from './ioregisters-view/ioregisters-view.component';
 
 import { MemoryService } from './memory.service';
+import { IORegMapService} from './ioregmap.service';
+import { AssemblerService } from './assembler.service';
 
 @NgModule({
     declarations: [
@@ -19,13 +22,18 @@ import { MemoryService } from './memory.service';
         VisualDisplayComponent,
         TextualDisplayComponent,
         RegistersViewComponent,
-        MemoryCellAutofocusDirective
+        MemoryCellAutofocusDirective,
+        IoregistersViewComponent
     ],
     imports: [
         BrowserModule,
         FormsModule
     ],
-    providers: [MemoryService],
+    providers: [
+        MemoryService,
+        IORegMapService,
+        AssemblerService
+    ],
     bootstrap: [AppComponent]
 })
 export class AppModule { }
