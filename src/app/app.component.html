@@ -10,7 +10,7 @@
         <div class="panel-body">
           <h4>Code</h4>
           <form>
-            <textarea name="code" [(ngModel)]="code" class="form-control source-code" rows="35" style="margin-bottom:10px;resize:none;"></textarea>
+            <textarea #codeTextArea name="code" [(ngModel)]="codeText" class="form-control source-code" rows="35" style="margin-bottom:10px;resize:none;"></textarea>
             <button class="btn btn-default btn-secondary" type="button" style="background-image:none;" (click)="assemble()">Assemble </button>
           </form>
         </div>
@@ -31,7 +31,7 @@
       <div class="panel panel-default">
         <div class="panel-body">
           <app-registers-view></app-registers-view>
-          <app-memory-view></app-memory-view>
+          <app-memory-view [mapping]="mapping" (onMemoryCellClick)="memoryCellClick($event)"></app-memory-view>
           <div class="small" style="margin-top:10px;"><span>Clock speed: </span>
             <select>
               <optgroup label="This is a group">
@@ -73,3 +73,4 @@
     </div>
   </div>
 </div>
+<app-error-bar></app-error-bar>

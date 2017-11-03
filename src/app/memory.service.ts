@@ -1,4 +1,7 @@
-import { EventEmitter, Injectable } from '@angular/core';
+import { Injectable } from '@angular/core';
+
+import { Subject } from 'rxjs/Subject';
+import { Observable } from 'rxjs/Observable';
 
 export enum MemoryCellType {
 
@@ -9,12 +12,17 @@ export enum MemoryCellType {
 
 export enum MemoryOperationType {
 
-    READ = 1,
-    WRITE = 2
+    RESET = 0,
+    SIZE_CHANGE = 1,
+    READ_CELL = 2,
+    WRITE_CELL = 3,
+    WRITE_CELLS = 4,
+    ADD_REGION = 5,
+    REMOVE_REGION = 6
 
 }
 
-export class MemoryCell {
+class MemoryCell {
 
     public address: number;
     public cellType: MemoryCellType;
@@ -22,7 +30,7 @@ export class MemoryCell {
     public memoryRegion: MemoryRegion;
 
     constructor(address: number, cellType: MemoryCellType = MemoryCellType.READ_WRITE,
-                initialValue: number = 0, memoryRegion: MemoryRegion = null) {
+                initialValue: number = 0, memoryRegion?: MemoryRegion) {
 
         this.address = address;
         this.cellType = cellType;
@@ -36,12 +44,12 @@ export class MemoryCell {
 export class MemoryOperation {
 
     public operationType: MemoryOperationType;
-    public memoryCell: MemoryCell;
+    public data: Map<string, any>;
 
-    constructor(operationType: MemoryOperationType, memoryCell: MemoryCell) {
+    constructor(operationType: MemoryOperationType, data: Map<string, any>) {
 
         this.operationType = operationType;
-        this.memoryCell = memoryCell;
+        this.data = data;
 
     }
 
@@ -51,6 +59,8 @@ export class MemoryOperation {
  * Memory region class.
  */
 export class MemoryRegion {
+
+    public name: string;
 
     /**
      * Initial address of the memory region.
@@ -80,19 +90,20 @@ export class MemoryRegion {
     /**
      * Event emitter throw which the operations done to a cell within the region will be broadcasted.
      */
-    public operationEventEmitter: EventEmitter<MemoryOperation>;
+    public operationSource: Subject<MemoryOperation>;
 
     public lastAccess = -1;
 
-    constructor(regionID: string, startAddress: number, endAddress: number,
-                operationEventEmitter: EventEmitter<MemoryOperation> = null,
-                cellType: MemoryCellType = MemoryCellType.READ_WRITE) {
+    constructor(regionID: string, name: string, startAddress: number, endAddress: number,
+                cellType: MemoryCellType = MemoryCellType.READ_WRITE,
+                operationSource?: Subject<MemoryOperation>) {
 
         this.regionID = regionID;
+        this.name = name;
         this.startAddress = startAddress;
         this.endAddress = endAddress;
         this.cellType = cellType;
-        this.operationEventEmitter = operationEventEmitter;
+        this.operationSource = operationSource;
         this.size = endAddress - startAddress + 1;
 
     }
@@ -102,26 +113,38 @@ export class MemoryRegion {
 @Injectable()
 export class MemoryService {
 
-    public data: Array<MemoryCell>;
+    private memoryCells: Array<MemoryCell>;
 
-    public size = 1024;
+    private size = 1024;
 
-    public lastAccess = -1;
+    private lastAccess = -1;
 
-    private memoryRegions: Array<MemoryRegion> = [];
+    private memoryRegions: Map<string, MemoryRegion> = new Map<string, MemoryRegion>();
+
+    private memoryOperationSource = new Subject<MemoryOperation>();
+
+    public memoryOperation$: Observable<MemoryOperation>;
 
     constructor() {
 
-        this.data = Array<MemoryCell>(this.size);
+        this.memoryCells = Array<MemoryCell>(this.size);
         for (let i = 0; i < this.size; i++) {
-            this.data[i] = new MemoryCell(i);
+            this.memoryCells[i] = new MemoryCell(i);
         }
+
+        this.memoryOperation$ = this.memoryOperationSource.asObservable();
 
     }
 
-    public addMemoryRegion(startAddress: number, endAddress: number,
-                           operationEventEmitter: EventEmitter<MemoryOperation> = null,
-                           cellType: MemoryCellType = MemoryCellType.READ_WRITE): MemoryRegion {
+    public getSize(): number {
+
+        return this.size;
+
+    }
+
+    public addMemoryRegion(name: string, startAddress: number, endAddress: number,
+                           cellType: MemoryCellType = MemoryCellType.READ_WRITE,
+                           initialValue: number = 0, operationSource?: Subject<MemoryOperation>): string {
 
         /* We need to first check that startAddress and endAddress are valid, i.e.:
            - startAddress >= 0 AND endAddress < size AND
@@ -146,17 +169,17 @@ export class MemoryService {
                (new startAddress <= any previously existing region's endAddress))
          */
 
-        for (let i = 0; i < this.memoryRegions.length; i++) {
+        for (const memoryRegion of Array.from(this.memoryRegions.values())) {
 
-            if ((startAddress === this.memoryRegions[i].startAddress) ||
-                (endAddress === this.memoryRegions[i].endAddress) ||
-                ((startAddress < this.memoryRegions[i].startAddress) &&
-                    (endAddress >= this.memoryRegions[i].startAddress)) ||
-                ((startAddress > this.memoryRegions[i].startAddress) &&
-                    (startAddress <= this.memoryRegions[i].endAddress))) {
+            if ((startAddress === memoryRegion.startAddress) ||
+                (endAddress === memoryRegion.endAddress) ||
+                ((startAddress < memoryRegion.startAddress) &&
+                    (endAddress >= memoryRegion.startAddress)) ||
+                ((startAddress > memoryRegion.startAddress) &&
+                    (startAddress <= memoryRegion.endAddress))) {
 
                 throw Error(`New region (${startAddress}, ${endAddress}) overlaps with ` +
-                    `a existing one (${this.memoryRegions[i].startAddress}, ${this.memoryRegions[i].endAddress})`);
+                    `a existing one (${memoryRegion.startAddress}, ${memoryRegion.endAddress})`);
 
             }
 
@@ -169,17 +192,7 @@ export class MemoryService {
         for (;;) {
 
             newID = Math.random().toString(36).substring(8);
-            let found = false;
-
-            for (let i = 0; i < this.memoryRegions.length; i++) {
-
-                if (this.memoryRegions[i].regionID === newID) {
-                    found = true;
-                    break;
-                }
-
-            }
-            if (found === false) {
+            if (this.memoryRegions.has(newID) === false) {
 
                 break;
 
@@ -188,25 +201,51 @@ export class MemoryService {
         }
 
         /* Now we can insert the new memory region */
-        const newMemoryRegion = new MemoryRegion(newID, startAddress, endAddress, operationEventEmitter, cellType);
-        this.memoryRegions.push(newMemoryRegion);
+        const newMemoryRegion = new MemoryRegion(newID, name, startAddress, endAddress,
+            cellType, operationSource);
+        this.memoryRegions.set(newID, newMemoryRegion);
 
         for (let i = startAddress; i <= endAddress; i++) {
-            this.data[i].cellType = cellType;
-            this.data[i].dataValue = 0;
-            this.data[i].memoryRegion = newMemoryRegion;
+            this.memoryCells[i].cellType = cellType;
+            this.memoryCells[i].dataValue = initialValue;
+            this.memoryCells[i].memoryRegion = newMemoryRegion;
         }
 
-        return newMemoryRegion;
+        const parameters: Map<string, any> = new Map<string, any>();
+        parameters.set('regionID', newID);
+        parameters.set('name', name);
+        parameters.set('startAddress', startAddress);
+        parameters.set('endAddress', endAddress);
+        parameters.set('cellType', cellType);
+        parameters.set('initialValue', initialValue);
+
+        this.memoryOperationSource.next(new MemoryOperation(MemoryOperationType.ADD_REGION, parameters));
+
+        return newID;
 
     }
 
-    public removeMemoryRegion(memoryRegion: MemoryRegion) {
+    public removeMemoryRegion(regionID: string) {
 
-        const index = this.memoryRegions.indexOf(memoryRegion);
+        const memoryRegion = this.memoryRegions.get(regionID);
 
-        if (index > -1) {
-            this.memoryRegions.splice(index, 1);
+        if (memoryRegion) {
+
+            for (let i = memoryRegion.startAddress; i <= memoryRegion.endAddress; i++) {
+
+                this.memoryCells[i].memoryRegion = undefined;
+                this.memoryCells[i].cellType = MemoryCellType.READ_WRITE;
+                this.memoryCells[i].dataValue = 0;
+
+            }
+
+            this.memoryRegions.delete(regionID);
+
+            const parameters: Map<string, any> = new Map<string, any>();
+            parameters.set('regionID', memoryRegion.regionID);
+
+            this.memoryOperationSource.next(new MemoryOperation(MemoryOperationType.REMOVE_REGION, parameters));
+
         }
 
     }
@@ -215,15 +254,19 @@ export class MemoryService {
 
         this.lastAccess = -1;
         this.size = size;
-        this.data = new Array(this.size);
+        this.memoryCells = new Array(this.size);
 
         for (let i = 0; i < this.size; i++) {
-            this.data[i] = new MemoryCell(i);
+            this.memoryCells[i] = new MemoryCell(i);
         }
 
-        this.memoryRegions = [];
+        this.memoryRegions.clear();
 
-        return this.data;
+        const parameters: Map<string, any> = new Map<string, any>();
+        parameters.set('size', size);
+        this.memoryOperationSource.next(new MemoryOperation(MemoryOperationType.SIZE_CHANGE, parameters));
+
+        return this.memoryCells;
 
     }
 
@@ -235,51 +278,104 @@ export class MemoryService {
 
         this.lastAccess = address;
 
-        if (this.data[address].memoryRegion != null) {
+        const parameters: Map<string, any> = new Map<string, any>();
+        parameters.set('address', address);
+        parameters.set('value', this.memoryCells[address].dataValue);
 
-            this.data[address].memoryRegion.lastAccess = address;
+        if (this.memoryCells[address].memoryRegion) {
 
-            if (this.data[address].memoryRegion.operationEventEmitter !== null) {
+            this.memoryCells[address].memoryRegion.lastAccess = address;
 
-                this.data[address].memoryRegion.operationEventEmitter.emit(
-                    new MemoryOperation(MemoryOperationType.READ, this.data[address]));
+            if (this.memoryCells[address].memoryRegion.operationSource) {
+
+                this.memoryCells[address].memoryRegion.operationSource.next(
+                    new MemoryOperation(MemoryOperationType.READ_CELL, parameters));
 
             }
 
         }
 
-        return this.data[address].dataValue;
+        this.memoryOperationSource.next(new MemoryOperation(MemoryOperationType.REMOVE_REGION, parameters));
+
+        return this.memoryCells[address].dataValue;
 
     }
 
     public store(address: number, value: number) {
 
         if (address < 0 || address > this.size) {
-            throw Error('Memory access violation at ' + address);
+            throw Error(`Memory access violation at ${address}`);
+        }
+
+        if (isNaN(value)) {
+            throw Error('Invalid value (Nan)');
         }
 
         if (value < 0 || value > 255) {
-            throw Error('Invalid data value ' + value);
+            throw Error(`Invalid data value ${value}`);
         }
 
-        if (this.data[address].cellType === MemoryCellType.READ_ONLY) {
+        if (this.memoryCells[address].cellType === MemoryCellType.READ_ONLY) {
             throw Error(`Invalid storage into read-only cell ${address}`);
         }
 
         this.lastAccess = address;
-        this.data[address].dataValue = value;
+        this.memoryCells[address].dataValue = value;
 
-        if (this.data[address].memoryRegion != null) {
+        const parameters: Map<string, any> = new Map<string, any>();
+        parameters.set('address', address);
+        parameters.set('value', value);
 
-            this.data[address].memoryRegion.lastAccess = address;
+        if (this.memoryCells[address].memoryRegion) {
 
-            if (this.data[address].memoryRegion.operationEventEmitter !== null) {
+            this.memoryCells[address].memoryRegion.lastAccess = address;
 
-                this.data[address].memoryRegion.operationEventEmitter.emit(
-                    new MemoryOperation(MemoryOperationType.WRITE, this.data[address]));
+            if (this.memoryCells[address].memoryRegion.operationSource) {
+
+                this.memoryCells[address].memoryRegion.operationSource.next(
+                    new MemoryOperation(MemoryOperationType.WRITE_CELL, parameters));
 
             }
         }
+
+        this.memoryOperationSource.next(new MemoryOperation(MemoryOperationType.WRITE_CELL, parameters));
+
+    }
+
+    public multiStore(initialAddress: number, values: Array<number>) {
+
+        if (initialAddress < 0 || (initialAddress + values.length) > this.size) {
+            throw Error(`Memory access violation at (${initialAddress}, ${initialAddress + values.length}`);
+        }
+
+        for (let i = 0; i < values.length; i++) {
+
+            if (values[i] < 0 || values[i] > 255) {
+                throw Error(`Invalid data value [${i}]: ${values[i]}`);
+            }
+
+            if (this.memoryCells[initialAddress + i].cellType === MemoryCellType.READ_ONLY) {
+                throw Error(`Invalid storage into read-only cell ${initialAddress + i}`);
+            }
+
+            if (this.memoryCells[initialAddress + i].memoryRegion) {
+                throw Error(`Invalid multi-storage on a memory region (${this.memoryCells[initialAddress + i].memoryRegion.regionID}`);
+            }
+
+        }
+
+        for (let i = 0; i < values.length; i++) {
+
+            this.memoryCells[initialAddress + i].dataValue = values[i];
+
+        }
+
+        this.lastAccess = initialAddress + values.length;
+
+        const parameters: Map<string, any> = new Map<string, any>();
+        parameters.set('initialAddress', initialAddress);
+        parameters.set('values', values);
+        this.memoryOperationSource.next(new MemoryOperation(MemoryOperationType.WRITE_CELLS, parameters));
 
     }
 
@@ -287,15 +383,17 @@ export class MemoryService {
 
         this.lastAccess = -1;
 
-        for (let i = 0; i < this.data.length; i++) {
+        for (let i = 0; i < this.memoryCells.length; i++) {
 
-            this.data[i].memoryRegion = null;
-            this.data[i].cellType = MemoryCellType.READ_WRITE;
-            this.data[i].dataValue = 0;
+            this.memoryCells[i].memoryRegion = undefined;
+            this.memoryCells[i].cellType = MemoryCellType.READ_WRITE;
+            this.memoryCells[i].dataValue = 0;
 
         }
 
-        this.memoryRegions = [];
+        this.memoryRegions.clear();
+
+        this.memoryOperationSource.next(new MemoryOperation(MemoryOperationType.RESET, undefined));
 
     }
 

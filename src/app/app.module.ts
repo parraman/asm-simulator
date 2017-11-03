@@ -13,6 +13,8 @@ import { IoregistersViewComponent } from './ioregisters-view/ioregisters-view.co
 import { MemoryService } from './memory.service';
 import { IORegMapService} from './ioregmap.service';
 import { AssemblerService } from './assembler.service';
+import { ErrorBarComponent } from './error-bar/error-bar.component';
+import { ErrorBarService } from './error-bar.service';
 
 @NgModule({
     declarations: [
@@ -23,7 +25,8 @@ import { AssemblerService } from './assembler.service';
         TextualDisplayComponent,
         RegistersViewComponent,
         MemoryCellAutofocusDirective,
-        IoregistersViewComponent
+        IoregistersViewComponent,
+        ErrorBarComponent
     ],
     imports: [
         BrowserModule,
@@ -32,7 +35,8 @@ import { AssemblerService } from './assembler.service';
     providers: [
         MemoryService,
         IORegMapService,
-        AssemblerService
+        AssemblerService,
+        ErrorBarService
     ],
     bootstrap: [AppComponent]
 })

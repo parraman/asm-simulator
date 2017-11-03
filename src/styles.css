@@ -67,16 +67,19 @@
   text-align:center;
   float:left;
   box-sizing: border-box;
-  padding: 0px;
+  padding: 0;
 }
 
 .memory-cell-input {
   font-size: 80%;
-  padding: 0px;
+  padding: 0;
   border: 1px;
   border-style: solid;
   border-color: #66AFE9;
   border-radius: 2px;
+  width: inherit;
+  height: inherit;
+  text-align: inherit;
 }
 
 .memory-cell-input:focus {
@@ -181,3 +184,55 @@ body {
   padding-top:70px;
 }
 
+.instr-bg {
+  background-color: #E6F3FF;
+}
+
+.instr-bg a {
+  color: inherit;
+  cursor: pointer;
+}
+
+.stack-bg {
+  background-color: #F8DCB4;
+}
+
+.marker {
+  width: 1.8em;
+  color: #FFF;
+  border-radius: 2px;
+}
+
+.marker-ip {
+  background-color: #428BCA;
+}
+
+.marker-sp {
+  background-color: #EEA236;
+}
+
+.marker-a {
+  background-color: #4D8C20;
+}
+
+.marker-b {
+  background-color: #22D19D;
+}
+
+.marker-c {
+  background-color: #A137ED;
+}
+
+.marker-d {
+  background-color: #E81F1F;
+}
+
+.error-bar {
+  position: fixed;
+  bottom: 0;
+  top: auto;
+  width: 100%;
+  z-index: 10;
+  margin-bottom: 0;
+  background: white;
+}

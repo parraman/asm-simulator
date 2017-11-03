@@ -8,11 +8,14 @@
       <div class="memory-index-msb" *ngFor="let i of memoryRowsIndexes"><small>{{i}}</small></div>
     </div>
     <div class="source-code memory-content">
-      <div *ngFor="let i of memoryService.data; let j = index" (click)="editingCell = j; newCellValue = pad(i.dataValue, 16, 2)">
-        <div class="memory-block" *ngIf="editingCell !== j">
-          <small>{{pad(i.dataValue, 16, 2)}}</small>
+      <div class="memory-block"  *ngFor="let i of memoryCellViews; let j = index" (click)="memoryCellClick($event, j)" [ngClass]="i.style">
+        <div *ngIf="editingCell !== j && i.isInstruction === false">
+          <small>{{i.dataValue}}</small>
         </div>
-        <input class="memory-block memory-cell-input" *ngIf="editingCell === j" appAutofocus [(ngModel)]="newCellValue" (keyup.escape)="editingCell = -1" (keyup.enter)="setCellValue(j)" (blur)="editingCell = -1" title="New cell value">
+        <a *ngIf="editingCell !== j && i.isInstruction === true">
+          <small>{{i.dataValue}}</small>
+        </a>
+        <input class="memory-cell-input" *ngIf="editingCell === j" appAutofocus [(ngModel)]="newCellValue" (keyup.escape)="editingCell = -1" (keyup.enter)="setCellValue(j)" (blur)="editingCell = -1" title="New cell value">
       </div>
     </div>
   </div>

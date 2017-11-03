@@ -93,10 +93,10 @@ const REGEX_LABEL = /^[.A-Za-z]\w*$/;
 @Injectable()
 export class AssemblerService {
 
-    private code: Array<number> = [];
-    private mapping: Map<number, number> = new Map<number, number>();
-    private labels: Map<string, number> = new Map<string, number>();
-    private normalizedLabels: Array<string> = [];
+    private code: Array<number>;
+    private mapping: Map<number, number>;
+    private labels: Map<string, number>;
+    private normalizedLabels: Array<string>;
 
     // Allowed formats: 200, 200d, 0xA4, 0o48, 101b
     private static parseNumber(input: string): number {
@@ -293,6 +293,11 @@ export class AssemblerService {
 
     public go(input: string): { code: Array<number>, mapping: Map<number, number>, labels: Map<string, number> } {
 
+        this.code = [];
+        this.mapping = new Map<number, number>();
+        this.labels = new Map<string, number>();
+        this. normalizedLabels = [];
+
         const lines = input.split('\n');
 
         for (let i = 0, l = lines.length; i < l; i++) {
@@ -327,7 +332,7 @@ export class AssemblerService {
                                     this.code.push(p1.value[j]);
                                 }
                             } else {
-                                throw Error('DB does not support this operand');
+                                throw {error: 'DB does not support this operand', line: i};
                             }
 
                             break;
@@ -360,7 +365,7 @@ export class AssemblerService {
                             } else if (p1.type === 'regaddress' && p2.type === 'number') {
                                 opCode = OPCODES.MOV_NUMBER_TO_REGADDRESS;
                             } else {
-                                throw Error('MOV does not support these operands');
+                                throw {error: 'MOV does not support these operands', line: i};
                             }
 
                             this.code.push(opCode, p1.value, p2.value);
@@ -378,7 +383,7 @@ export class AssemblerService {
                             } else if (p1.type === 'register' && p2.type === 'number') {
                                 opCode = OPCODES.ADD_NUMBER_TO_REG;
                             } else {
-                                throw Error('ADD does not support this operands');
+                                throw {error: 'ADD does not support this operands', line: i};
                             }
 
                             this.code.push(opCode, p1.value, p2.value);
@@ -396,7 +401,7 @@ export class AssemblerService {
                             } else if (p1.type === 'register' && p2.type === 'number') {
                                 opCode = OPCODES.SUB_NUMBER_FROM_REG;
                             } else {
-                                throw Error('SUB does not support this operands');
+                                throw {error: 'SUB does not support this operands', line: i};
                             }
 
                             this.code.push(opCode, p1.value, p2.value);
@@ -408,7 +413,7 @@ export class AssemblerService {
                             if (p1.type === 'register') {
                                 opCode = OPCODES.INC_REG;
                             } else {
-                                throw Error('INC does not support this operand');
+                                throw {error: 'INC does not support this operand', line: i};
                             }
 
                             this.code.push(opCode, p1.value);
