@@ -3,6 +3,7 @@ import { Injectable } from '@angular/core';
 import { Subject } from 'rxjs/Subject';
 import { Observable } from 'rxjs/Observable';
 
+
 export enum MemoryCellType {
 
     READ_WRITE = 1,
@@ -242,7 +243,7 @@ export class MemoryService {
             this.memoryRegions.delete(regionID);
 
             const parameters: Map<string, any> = new Map<string, any>();
-            parameters.set('regionID', memoryRegion.regionID);
+            parameters.set('regionID', regionID);
 
             this.memoryOperationSource.next(new MemoryOperation(MemoryOperationType.REMOVE_REGION, parameters));
 
