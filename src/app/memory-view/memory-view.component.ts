@@ -1,29 +1,11 @@
-import { Component, OnInit, Directive, AfterViewInit,
+import { Component, OnInit, AfterViewInit,
          ElementRef, Input, OnDestroy, SimpleChanges, OnChanges,
          EventEmitter, Output } from '@angular/core';
 import { MemoryOperation, MemoryService, MemoryOperationType } from '../memory.service';
 import { Subscription } from 'rxjs/Subscription';
 import { ErrorBarService } from '../error-bar.service';
+import { Utils } from '../utils';
 
-
-function pad(n: number, radix: number, width: number, zeroChar: string = '0'): string {
-
-    const num = n.toString(radix).toUpperCase();
-    return num.length >= width ? num : new Array(width - num.length + 1).join(zeroChar) + num;
-
-}
-
-@Directive({
-    selector: '[appAutofocus]'
-})
-export class MemoryCellAutofocusDirective implements AfterViewInit {
-
-    constructor(private el: ElementRef) {}
-
-    ngAfterViewInit() {
-        this.el.nativeElement.focus();
-    }
-}
 
 class MemoryCellView {
 
@@ -35,7 +17,7 @@ class MemoryCellView {
     constructor(address: number, initialValue: number = 0, initialStyle?: string, isInstruction: boolean = false) {
 
         this.style = initialStyle;
-        this.dataValue = pad(initialValue, 16, 2);
+        this.dataValue = Utils.pad(initialValue, 16, 2);
         this.address = address;
         this.isInstruction = isInstruction;
 
@@ -91,13 +73,13 @@ export class MemoryViewComponent implements OnInit, OnDestroy, OnChanges {
 
         for (const i of Array.from({length: 16}, (value, key) => key)) {
 
-            this.memoryColsIndexes.push(pad(i, 16, 1));
+            this.memoryColsIndexes.push(Utils.pad(i, 16, 1));
 
         }
 
         for (const i of Array.from({length: this.memoryService.getSize() / 16}, (value, key) => key)) {
 
-            this.memoryRowsIndexes.push(pad(i, 16, 3));
+            this.memoryRowsIndexes.push(Utils.pad(i, 16, 3));
 
         }
 
@@ -122,7 +104,7 @@ export class MemoryViewComponent implements OnInit, OnDestroy, OnChanges {
 
         for (let i = startAddress; i <= endAddress; i++) {
 
-            this.memoryCellViews[i].dataValue = pad(initialValue, 16, 2);
+            this.memoryCellViews[i].dataValue = Utils.pad(initialValue, 16, 2);
             this.memoryCellViews[i].style =
                 name.replace(/([a-z])([A-Z])/g, '$1-$2').toLowerCase();
 
@@ -154,7 +136,7 @@ export class MemoryViewComponent implements OnInit, OnDestroy, OnChanges {
 
     private operationWriteCell(address: number, value: number) {
 
-        this.memoryCellViews[address].dataValue = pad(value, 16, 2);
+        this.memoryCellViews[address].dataValue = Utils.pad(value, 16, 2);
 
     }
 
@@ -162,7 +144,7 @@ export class MemoryViewComponent implements OnInit, OnDestroy, OnChanges {
 
         for (let i = initialAddress; i < initialAddress + values.length; i++) {
 
-            this.memoryCellViews[i].dataValue = pad(values[i], 16, 2);
+            this.memoryCellViews[i].dataValue = Utils.pad(values[i], 16, 2);
 
         }
 
