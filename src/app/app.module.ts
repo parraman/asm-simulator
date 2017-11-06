@@ -16,6 +16,7 @@ import { AssemblerService } from './assembler.service';
 import { ErrorBarComponent } from './error-bar/error-bar.component';
 import { ErrorBarService } from './error-bar.service';
 import { AutofocusDirective } from './autofocus.directive';
+import {IrqCtrlService} from "./irqctrl.service";
 
 @NgModule({
     declarations: [
@@ -37,7 +38,8 @@ import { AutofocusDirective } from './autofocus.directive';
         MemoryService,
         IORegMapService,
         AssemblerService,
-        ErrorBarService
+        ErrorBarService,
+        IrqCtrlService
     ],
     bootstrap: [AppComponent]
 })

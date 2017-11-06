@@ -1,91 +1,13 @@
-import { Injectable } from '@angular/core';
+import {Injectable} from '@angular/core';
 
 import { isNumeric } from 'rxjs/util/isNumeric';
-
-export enum OPCODES {
-
-    NONE = 0,
-    MOV_REG_TO_REG = 1,
-    MOV_ADDRESS_TO_REG = 2,
-    MOV_REGADDRESS_TO_REG = 3,
-    MOV_REG_TO_ADDRESS = 4,
-    MOV_REG_TO_REGADDRESS = 5,
-    MOV_NUMBER_TO_REG = 6,
-    MOV_NUMBER_TO_ADDRESS = 7,
-    MOV_NUMBER_TO_REGADDRESS = 8,
-    ADD_REG_TO_REG = 10,
-    ADD_REGADDRESS_TO_REG = 11,
-    ADD_ADDRESS_TO_REG = 12,
-    ADD_NUMBER_TO_REG = 13,
-    SUB_REG_FROM_REG = 14,
-    SUB_REGADDRESS_FROM_REG = 15,
-    SUB_ADDRESS_FROM_REG = 16,
-    SUB_NUMBER_FROM_REG = 17,
-    INC_REG = 18,
-    DEC_REG = 19,
-    CMP_REG_WITH_REG = 20,
-    CMP_REGADDRESS_WITH_REG = 21,
-    CMP_ADDRESS_WITH_REG = 22,
-    CMP_NUMBER_WITH_REG = 23,
-    JMP_REGADDRESS = 30,
-    JMP_ADDRESS = 31,
-    JC_REGADDRESS = 32,
-    JC_ADDRESS = 33,
-    JNC_REGADDRESS = 34,
-    JNC_ADDRESS = 35,
-    JZ_REGADDRESS = 36,
-    JZ_ADDRESS = 37,
-    JNZ_REGADDRESS = 38,
-    JNZ_ADDRESS = 39,
-    JA_REGADDRESS = 40,
-    JA_ADDRESS = 41,
-    JNA_REGADDRESS = 42,
-    JNA_ADDRESS = 43,
-    PUSH_REG = 50,
-    PUSH_REGADDRESS = 51,
-    PUSH_ADDRESS = 52,
-    PUSH_NUMBER = 53,
-    POP_REG = 54,
-    CALL_REGADDRESS = 55,
-    CALL_ADDRESS = 56,
-    RET = 57,
-    MUL_REG = 60,
-    MUL_REGADDRESS = 61,
-    MUL_ADDRESS = 62,
-    MUL_NUMBER = 63,
-    DIV_REG = 64,
-    DIV_REGADDRESS = 65,
-    DIV_ADDRESS = 66,
-    DIV_NUMBER = 67,
-    AND_REG_WITH_REG = 70,
-    AND_REGADDRESS_WITH_REG = 71,
-    AND_ADDRESS_WITH_REG = 72,
-    AND_NUMBER_WITH_REG = 73,
-    OR_REG_WITH_REG = 74,
-    OR_REGADDRESS_WITH_REG = 75,
-    OR_ADDRESS_WITH_REG = 76,
-    OR_NUMBER_WITH_REG = 77,
-    XOR_REG_WITH_REG = 78,
-    XOR_REGADDRESS_WITH_REG = 79,
-    XOR_ADDRESS_WITH_REG = 80,
-    XOR_NUMBER_WITH_REG = 81,
-    NOT_REG = 82,
-    SHL_REG_WITH_REG = 90,
-    SHL_REGADDRESS_WITH_REG = 91,
-    SHL_ADDRESS_WITH_REG = 92,
-    SHL_NUMBER_WITH_REG = 93,
-    SHR_REG_WITH_REG = 94,
-    SHR_REGADDRESS_WITH_REG = 95,
-    SHR_ADDRESS_WITH_REG = 96,
-    SHR_NUMBER_WITH_REG = 97
-
-}
+import { OpCode, OperandType, instructionSet } from './instrset';
 
 const REGEX = /^[\t ]*(?:([.A-Za-z]\w*)[:])?(?:[\t ]*([A-Za-z]{2,4})(?:[\t ]+(\[(\w+((\+|-)\d+)?)\]|\".+?\"|\'.+?\'|[.A-Za-z0-9]\w*)(?:[\t ]*[,][\t ]*(\[(\w+((\+|-)\d+)?)\]|\".+?\"|\'.+?\'|[.A-Za-z0-9]\w*))?)?)?/;
 const OP1_GROUP = 3;
 const OP2_GROUP = 7;
 
-// MATCHES: "(+|-)INTEGER"
+// MATCHES: "(+|-)DECIMAL"
 const REGEX_NUM = /^[-+]?[0-9]+$/;
 // MATCHES: "(.L)abel"
 const REGEX_LABEL = /^[.A-Za-z]\w*$/;
@@ -96,7 +18,6 @@ export class AssemblerService {
     private code: Array<number>;
     private mapping: Map<number, number>;
     private labels: Map<string, number>;
-    private normalizedLabels: Array<string>;
 
     // Allowed formats: 200, 200d, 0xA4, 0o48, 101b
     private static parseNumber(input: string): number {
@@ -115,7 +36,7 @@ export class AssemblerService {
         }
     }
 
-    // Allowed registers: A, B, C, D, SP, SR
+    // Allowed registers: A, B, C, D, SP
     private static parseRegister(input: string): number | undefined {
 
         input = input.toUpperCase();
@@ -130,8 +51,6 @@ export class AssemblerService {
             return 3;
         } else if (input === 'SP') {
             return 4;
-        } else if (input === 'SR') {
-            return 5;
         } else {
             return undefined;
         }
@@ -175,19 +94,19 @@ export class AssemblerService {
 
         let offset = m * parseInt(input.slice(offset_start + 1), 10);
 
-        if (offset < -16 || offset > 15) {
-            throw Error('offset must be a value between -16...+15');
+        if (offset < -128 || offset > 127) {
+            throw Error('offset must be a value between -128...+127');
         }
 
         if (offset < 0) {
-            offset = 32 + offset; // two's complement representation in 5-bit
+            offset = 256 + offset; // two's complement representation in 8-bit
         }
 
-        return offset * 8 + base; // shift offset 3 bits right and add code for register
+        return (offset << 8) + base; // shift offset 8 bits right and add code for register
     }
 
     // Allowed: Register, Label or Number; SP+/-Number is allowed for 'regaddress' type
-    private static parseRegOrNumber(input: string, typeReg: string, typeNumber: string) {
+    private static parseRegOrNumber(input: string, typeReg: OperandType, typeNumber: OperandType) {
 
         let register = AssemblerService.parseRegister(input);
 
@@ -200,7 +119,7 @@ export class AssemblerService {
             if (label !== undefined) {
                 return {type: typeNumber, value: label};
             } else {
-                if (typeReg === 'regaddress') {
+                if (typeReg === OperandType.REGADDRESS) {
 
                     register = AssemblerService.parseOffsetAddressing(input);
 
@@ -213,8 +132,8 @@ export class AssemblerService {
 
                 if (isNaN(value)) {
                     throw Error(`Not a ${typeNumber}: ${value}`);
-                } else if (value < 0 || value > 255) {
-                    throw Error(`${typeNumber} must have a value between 0-255`);
+                } else if (value < 0 || value > 65535) {
+                    throw Error(`${typeNumber} must have a value between 0-65536`);
                 }
 
                 return {type: typeNumber, value: value};
@@ -235,7 +154,7 @@ export class AssemblerService {
             case '[': // [number] or [register]
 
                 const address = input.slice(1, input.length - 1);
-                return AssemblerService.parseRegOrNumber(address, 'regaddress', 'address');
+                return AssemblerService.parseRegOrNumber(address, OperandType.REGADDRESS, OperandType.ADDRESS);
 
             case '"': // "String"
 
@@ -246,7 +165,7 @@ export class AssemblerService {
                     chars.push(text.charCodeAt(i));
                 }
 
-                return {type: 'numbers', value: chars};
+                return {type: OperandType.NUMBERS, value: chars};
 
             case '\'': // 'C'
 
@@ -257,11 +176,11 @@ export class AssemblerService {
 
                 }
 
-                return {type: 'number', value: character.charCodeAt(0)};
+                return {type: OperandType.NUMBER, value: character.charCodeAt(0)};
 
             default: // REGISTER, NUMBER or LABEL
 
-                return AssemblerService.parseRegOrNumber(input, 'register', 'number');
+                return AssemblerService.parseRegOrNumber(input, OperandType.REGISTER, OperandType.NUMBER);
         }
 
     }
@@ -276,19 +195,58 @@ export class AssemblerService {
 
         const upperLabel = label.toUpperCase();
 
-        if (upperLabel in this.normalizedLabels) {
+        if (this.labels.has(upperLabel)) {
             throw Error(`Duplicated label: ${label}`);
         }
 
-        if (upperLabel === 'A' || upperLabel === 'B' || upperLabel === 'C' || upperLabel === 'D') {
+        if (upperLabel === 'A' || upperLabel === 'B' || upperLabel === 'C' || upperLabel === 'D' ||
+            upperLabel === 'SR') {
             throw Error(`Label contains keyword: ${upperLabel}`);
         }
 
-        this.labels.set(label, this.code.length);
+        this.labels.set(upperLabel, this.code.length);
+    }
+
+    private storeIntegerIntoCode(value: number, index: number) {
+
+        const msb = (value & 0xFF00) >> 8;
+        const lsb = (value & 0x00FF);
+        this.code[index] = msb;
+        this.code[index + 1] = lsb;
+
+    }
+
+    private storeLabelIntoCode(value: number, index: number) {
+
+        this.code[index] = value;
+        this.code[index + 1] = 0;
+
     }
 
 
     constructor() {
+    }
+
+    private pushOperandToCode(item: {type: OperandType, value: number}) {
+
+        switch (item.type) {
+            case OperandType.NUMBER:
+            case OperandType.ADDRESS:
+            case OperandType.REGADDRESS:
+                /* It can be a number OR a label */
+                if (isNumeric(item.value)) {
+                    /* It is a number */
+                    this.storeIntegerIntoCode(item.value, this.code.length);
+                } else {
+                    /* It is a label, we have to let space for the real address */
+                    this.storeLabelIntoCode(item.value, this.code.length);
+                }
+                break;
+            case OperandType.REGISTER:
+                this.code.push(item.value);
+                break;
+        }
+
     }
 
     public go(input: string): { code: Array<number>, mapping: Map<number, number>, labels: Map<string, number> } {
@@ -296,7 +254,6 @@ export class AssemblerService {
         this.code = [];
         this.mapping = new Map<number, number>();
         this.labels = new Map<string, number>();
-        this. normalizedLabels = [];
 
         const lines = input.split('\n');
 
@@ -314,443 +271,69 @@ export class AssemblerService {
                     const instr = match[2].toUpperCase();
                     let p1, p2, opCode;
 
-                    // Add mapping instr pos to line number
-                    // Don't do it for DB as this is not a real instruction
+                    // Start parsing instructions (except DB, for it is not a real instruction)
+
                     if (instr !== 'DB') {
+
                         this.mapping.set(this.code.length, i);
-                    }
 
-                    switch (instr) {
-                        case 'DB':
+                        if (match[OP1_GROUP] === undefined) {
+
+                            try {
+                                opCode = instructionSet.getInstruction(instr, undefined, undefined);
+                            } catch (e) {
+                                throw {error: e.toString(), line: i};
+                            }
+
+                            this.code.push(opCode);
+
+                        } else {
 
                             p1 = AssemblerService.getValue(match[OP1_GROUP]);
 
-                            if (p1.type === 'number') {
-                                this.code.push(p1.value);
-                            } else if (p1.type === 'numbers') {
-                                for (let j = 0, k = p1.value.length; j < k; j++) {
-                                    this.code.push(p1.value[j]);
+                            if (match[OP2_GROUP] === undefined) {
+
+                                try {
+                                    opCode = instructionSet.getInstruction(instr, p1.type, undefined);
+                                } catch (e) {
+                                    throw {error: e.toString(), line: i};
                                 }
+
+                                this.code.push(opCode);
+                                this.pushOperandToCode(p1);
+
                             } else {
-                                throw {error: 'DB does not support this operand', line: i};
+
+                                p2 = AssemblerService.getValue(match[OP2_GROUP]);
+
+                                try {
+                                    opCode = instructionSet.getInstruction(instr, p1.type, p2.type);
+                                } catch (e) {
+                                    throw {error: e.toString(), line: i};
+                                }
+
+                                this.code.push(opCode);
+                                this.pushOperandToCode(p1);
+                                this.pushOperandToCode(p2);
+
                             }
 
-                            break;
+                        }
 
-                        case 'HLT':
+                    } else {
 
-                            AssemblerService.checkNoExtraArg('HLT', match[OP1_GROUP]);
-                            opCode = OPCODES.NONE;
-                            this.code.push(opCode);
-                            break;
+                        p1 = AssemblerService.getValue(match[OP1_GROUP]);
 
-                        case 'MOV':
-                            p1 = AssemblerService.getValue(match[OP1_GROUP]);
-                            p2 = AssemblerService.getValue(match[OP2_GROUP]);
-
-                            if (p1.type === 'register' && p2.type === 'register') {
-                                opCode = OPCODES.MOV_REG_TO_REG;
-                            } else if (p1.type === 'register' && p2.type === 'address') {
-                                opCode = OPCODES.MOV_ADDRESS_TO_REG;
-                            } else if (p1.type === 'register' && p2.type === 'regaddress') {
-                                opCode = OPCODES.MOV_REGADDRESS_TO_REG;
-                            } else if (p1.type === 'address' && p2.type === 'register') {
-                                opCode = OPCODES.MOV_REG_TO_ADDRESS;
-                            } else if (p1.type === 'regaddress' && p2.type === 'register') {
-                                opCode = OPCODES.MOV_REG_TO_REGADDRESS;
-                            } else if (p1.type === 'register' && p2.type === 'number') {
-                                opCode = OPCODES.MOV_NUMBER_TO_REG;
-                            } else if (p1.type === 'address' && p2.type === 'number') {
-                                opCode = OPCODES.MOV_NUMBER_TO_ADDRESS;
-                            } else if (p1.type === 'regaddress' && p2.type === 'number') {
-                                opCode = OPCODES.MOV_NUMBER_TO_REGADDRESS;
-                            } else {
-                                throw {error: 'MOV does not support these operands', line: i};
+                        if (p1.type === OperandType.NUMBER) {
+                            this.code.push(p1.value);
+                        } else if (p1.type === OperandType.NUMBERS) {
+                            for (let j = 0, k = p1.value.length; j < k; j++) {
+                                this.code.push(p1.value[j]);
                             }
+                        } else {
+                            throw {error: 'DB does not support this operand', line: i};
+                        }
 
-                            this.code.push(opCode, p1.value, p2.value);
-                            break;
-                        case 'ADD':
-                            p1 = AssemblerService.getValue(match[OP1_GROUP]);
-                            p2 = AssemblerService.getValue(match[OP2_GROUP]);
-
-                            if (p1.type === 'register' && p2.type === 'register') {
-                                opCode = OPCODES.ADD_REG_TO_REG;
-                            } else if (p1.type === 'register' && p2.type === 'regaddress') {
-                                opCode = OPCODES.ADD_REGADDRESS_TO_REG;
-                            } else if (p1.type === 'register' && p2.type === 'address') {
-                                opCode = OPCODES.ADD_ADDRESS_TO_REG;
-                            } else if (p1.type === 'register' && p2.type === 'number') {
-                                opCode = OPCODES.ADD_NUMBER_TO_REG;
-                            } else {
-                                throw {error: 'ADD does not support this operands', line: i};
-                            }
-
-                            this.code.push(opCode, p1.value, p2.value);
-                            break;
-                        case 'SUB':
-                            p1 = AssemblerService.getValue(match[OP1_GROUP]);
-                            p2 = AssemblerService.getValue(match[OP2_GROUP]);
-
-                            if (p1.type === 'register' && p2.type === 'register') {
-                                opCode = OPCODES.SUB_REG_FROM_REG;
-                            } else if (p1.type === 'register' && p2.type === 'regaddress') {
-                                opCode = OPCODES.SUB_REGADDRESS_FROM_REG;
-                            } else if (p1.type === 'register' && p2.type === 'address') {
-                                opCode = OPCODES.SUB_ADDRESS_FROM_REG;
-                            } else if (p1.type === 'register' && p2.type === 'number') {
-                                opCode = OPCODES.SUB_NUMBER_FROM_REG;
-                            } else {
-                                throw {error: 'SUB does not support this operands', line: i};
-                            }
-
-                            this.code.push(opCode, p1.value, p2.value);
-                            break;
-                        case 'INC':
-                            p1 = AssemblerService.getValue(match[OP1_GROUP]);
-                            AssemblerService.checkNoExtraArg('INC', match[OP2_GROUP]);
-
-                            if (p1.type === 'register') {
-                                opCode = OPCODES.INC_REG;
-                            } else {
-                                throw {error: 'INC does not support this operand', line: i};
-                            }
-
-                            this.code.push(opCode, p1.value);
-
-                            break;
-                        case 'DEC':
-                            p1 = AssemblerService.getValue(match[OP1_GROUP]);
-                            AssemblerService.checkNoExtraArg('DEC', match[OP2_GROUP]);
-
-                            if (p1.type === 'register') {
-                                opCode = OPCODES.DEC_REG;
-                            } else {
-                                throw {error: 'DEC does not support this operand', line: i};
-                            }
-
-                            this.code.push(opCode, p1.value);
-
-                            break;
-                        case 'CMP':
-                            p1 = AssemblerService.getValue(match[OP1_GROUP]);
-                            p2 = AssemblerService.getValue(match[OP2_GROUP]);
-
-                            if (p1.type === 'register' && p2.type === 'register') {
-                                opCode = OPCODES.CMP_REG_WITH_REG;
-                            } else if (p1.type === 'register' && p2.type === 'regaddress') {
-                                opCode = OPCODES.CMP_REGADDRESS_WITH_REG;
-                            } else if (p1.type === 'register' && p2.type === 'address') {
-                                opCode = OPCODES.CMP_ADDRESS_WITH_REG;
-                            } else if (p1.type === 'register' && p2.type === 'number') {
-                                opCode = OPCODES.CMP_NUMBER_WITH_REG;
-                            } else {
-                                throw {error: 'CMP does not support this operands', line: i};
-                            }
-
-                            this.code.push(opCode, p1.value, p2.value);
-                            break;
-                        case 'JMP':
-                            p1 = AssemblerService.getValue(match[OP1_GROUP]);
-                            AssemblerService.checkNoExtraArg('JMP', match[OP2_GROUP]);
-
-                            if (p1.type === 'register') {
-                                opCode = OPCODES.JMP_REGADDRESS;
-                            } else if (p1.type === 'number') {
-                                opCode = OPCODES.JMP_ADDRESS;
-                            } else {
-                                throw {error: 'JMP does not support this operands', line: i};
-                            }
-
-                            this.code.push(opCode, p1.value);
-                            break;
-                        case 'JC':
-                        case 'JB':
-                        case 'JNAE':
-                            p1 = AssemblerService.getValue(match[OP1_GROUP]);
-                            AssemblerService.checkNoExtraArg(instr, match[OP2_GROUP]);
-
-                            if (p1.type === 'register') {
-                                opCode = OPCODES.JC_REGADDRESS;
-                            } else if (p1.type === 'number') {
-                                opCode = OPCODES.JC_ADDRESS;
-                            } else {
-                                throw {error: instr + ' does not support this operand', line: i};
-                            }
-
-                            this.code.push(opCode, p1.value);
-                            break;
-                        case 'JNC':
-                        case 'JNB':
-                        case 'JAE':
-                            p1 = AssemblerService.getValue(match[OP1_GROUP]);
-                            AssemblerService.checkNoExtraArg(instr, match[OP2_GROUP]);
-
-                            if (p1.type === 'register') {
-                                opCode = OPCODES.JNC_REGADDRESS;
-                            } else if (p1.type === 'number') {
-                                opCode = OPCODES.JNC_ADDRESS;
-                            } else {
-                                throw {error: instr + 'does not support this operand', line: i};
-                            }
-
-                            this.code.push(opCode, p1.value);
-                            break;
-                        case 'JZ':
-                        case 'JE':
-                            p1 = AssemblerService.getValue(match[OP1_GROUP]);
-                            AssemblerService.checkNoExtraArg(instr, match[OP2_GROUP]);
-
-                            if (p1.type === 'register') {
-                                opCode = OPCODES.JZ_REGADDRESS;
-                            } else if (p1.type === 'number') {
-                                opCode = OPCODES.JZ_ADDRESS;
-                            } else {
-                                throw {error: instr + ' does not support this operand', line: i};
-                            }
-
-                            this.code.push(opCode, p1.value);
-                            break;
-                        case 'JNZ':
-                        case 'JNE':
-                            p1 = AssemblerService.getValue(match[OP1_GROUP]);
-                            AssemblerService.checkNoExtraArg(instr, match[OP2_GROUP]);
-
-                            if (p1.type === 'register') {
-                                opCode = OPCODES.JNZ_REGADDRESS;
-                            } else if (p1.type === 'number') {
-                                opCode = OPCODES.JNZ_ADDRESS;
-                            } else {
-                                throw {error: instr + ' does not support this operand', line: i};
-                            }
-
-                            this.code.push(opCode, p1.value);
-                            break;
-                        case 'JA':
-                        case 'JNBE':
-                            p1 = AssemblerService.getValue(match[OP1_GROUP]);
-                            AssemblerService.checkNoExtraArg(instr, match[OP2_GROUP]);
-
-                            if (p1.type === 'register') {
-                                opCode = OPCODES.JA_REGADDRESS;
-                            } else if (p1.type === 'number') {
-                                opCode = OPCODES.JA_ADDRESS;
-                            } else {
-                                throw {error: instr + ' does not support this operand', line: i};
-                            }
-
-                            this.code.push(opCode, p1.value);
-                            break;
-                        case 'JNA':
-                        case 'JBE':
-                            p1 = AssemblerService.getValue(match[OP1_GROUP]);
-                            AssemblerService.checkNoExtraArg(instr, match[OP2_GROUP]);
-
-                            if (p1.type === 'register') {
-                                opCode = OPCODES.JNA_REGADDRESS;
-                            } else if (p1.type === 'number') {
-                                opCode = OPCODES.JNA_ADDRESS;
-                            } else {
-                                throw {error: instr + ' does not support this operand', line: i};
-                            }
-
-                            this.code.push(opCode, p1.value);
-                            break;
-                        case 'PUSH':
-                            p1 = AssemblerService.getValue(match[OP1_GROUP]);
-                            AssemblerService.checkNoExtraArg(instr, match[OP2_GROUP]);
-
-                            if (p1.type === 'register') {
-                                opCode = OPCODES.PUSH_REG;
-                            } else if (p1.type === 'regaddress') {
-                                opCode = OPCODES.PUSH_REGADDRESS;
-                            } else if (p1.type === 'address') {
-                                opCode = OPCODES.PUSH_ADDRESS;
-                            } else if (p1.type === 'number') {
-                                opCode = OPCODES.PUSH_NUMBER;
-                            } else {
-                                throw {error: 'PUSH does not support this operand', line: i};
-                            }
-
-                            this.code.push(opCode, p1.value);
-                            break;
-                        case 'POP':
-                            p1 = AssemblerService.getValue(match[OP1_GROUP]);
-                            AssemblerService.checkNoExtraArg(instr, match[OP2_GROUP]);
-
-                            if (p1.type === 'register') {
-                                opCode = OPCODES.POP_REG;
-                            } else {
-                                throw {error: 'PUSH does not support this operand', line: i};
-                            }
-
-                            this.code.push(opCode, p1.value);
-                            break;
-                        case 'CALL':
-                            p1 = AssemblerService.getValue(match[OP1_GROUP]);
-                            AssemblerService.checkNoExtraArg(instr, match[OP2_GROUP]);
-
-                            if (p1.type === 'register') {
-                                opCode = OPCODES.CALL_REGADDRESS;
-                            } else if (p1.type === 'number') {
-                                opCode = OPCODES.CALL_ADDRESS;
-                            } else {
-                                throw {error: 'CALL does not support this operand', line: i};
-                            }
-
-                            this.code.push(opCode, p1.value);
-                            break;
-                        case 'RET':
-                            AssemblerService.checkNoExtraArg(instr, match[OP1_GROUP]);
-
-                            opCode = OPCODES.RET;
-
-                            this.code.push(opCode);
-
-                            break;
-
-                        case 'MUL':
-                            p1 = AssemblerService.getValue(match[OP1_GROUP]);
-                            AssemblerService.checkNoExtraArg(instr, match[OP2_GROUP]);
-
-                            if (p1.type === 'register') {
-                                opCode = OPCODES.MUL_REG;
-                            } else if (p1.type === 'regaddress') {
-                                opCode = OPCODES.MUL_REGADDRESS;
-                            } else if (p1.type === 'address') {
-                                opCode = OPCODES.MUL_ADDRESS;
-                            } else if (p1.type === 'number') {
-                                opCode = OPCODES.MUL_NUMBER;
-                            } else {
-                                throw {error: 'MULL does not support this operand', line: i};
-                            }
-
-                            this.code.push(opCode, p1.value);
-                            break;
-                        case 'DIV':
-                            p1 = AssemblerService.getValue(match[OP1_GROUP]);
-                            AssemblerService.checkNoExtraArg(instr, match[OP2_GROUP]);
-
-                            if (p1.type === 'register') {
-                                opCode = OPCODES.DIV_REG;
-                            } else if (p1.type === 'regaddress') {
-                                opCode = OPCODES.DIV_REGADDRESS;
-                            } else if (p1.type === 'address') {
-                                opCode = OPCODES.DIV_ADDRESS;
-                            } else if (p1.type === 'number') {
-                                opCode = OPCODES.DIV_NUMBER;
-                            } else {
-                                throw {error: 'DIV does not support this operand', line: i};
-                            }
-
-                            this.code.push(opCode, p1.value);
-                            break;
-                        case 'AND':
-                            p1 = AssemblerService.getValue(match[OP1_GROUP]);
-                            p2 = AssemblerService.getValue(match[OP2_GROUP]);
-
-                            if (p1.type === 'register' && p2.type === 'register') {
-                                opCode = OPCODES.AND_REG_WITH_REG;
-                            } else if (p1.type === 'register' && p2.type === 'regaddress') {
-                                opCode = OPCODES.AND_REGADDRESS_WITH_REG;
-                            } else if (p1.type === 'register' && p2.type === 'address') {
-                                opCode = OPCODES.AND_ADDRESS_WITH_REG;
-                            } else if (p1.type === 'register' && p2.type === 'number') {
-                                opCode = OPCODES.AND_NUMBER_WITH_REG;
-                            } else {
-                                throw {error: 'AND does not support this operands', line: i};
-                            }
-
-                            this.code.push(opCode, p1.value, p2.value);
-                            break;
-                        case 'OR':
-                            p1 = AssemblerService.getValue(match[OP1_GROUP]);
-                            p2 = AssemblerService.getValue(match[OP2_GROUP]);
-
-                            if (p1.type === 'register' && p2.type === 'register') {
-                                opCode = OPCODES.OR_REG_WITH_REG;
-                            } else if (p1.type === 'register' && p2.type === 'regaddress') {
-                                opCode = OPCODES.OR_REGADDRESS_WITH_REG;
-                            } else if (p1.type === 'register' && p2.type === 'address') {
-                                opCode = OPCODES.OR_ADDRESS_WITH_REG;
-                            } else if (p1.type === 'register' && p2.type === 'number') {
-                                opCode = OPCODES.OR_NUMBER_WITH_REG;
-                            } else {
-                                throw {error: 'OR does not support this operands', line: i};
-                            }
-
-                            this.code.push(opCode, p1.value, p2.value);
-                            break;
-                        case 'XOR':
-                            p1 = AssemblerService.getValue(match[OP1_GROUP]);
-                            p2 = AssemblerService.getValue(match[OP2_GROUP]);
-
-                            if (p1.type === 'register' && p2.type === 'register') {
-                                opCode = OPCODES.XOR_REG_WITH_REG;
-                            } else if (p1.type === 'register' && p2.type === 'regaddress') {
-                                opCode = OPCODES.XOR_REGADDRESS_WITH_REG;
-                            } else if (p1.type === 'register' && p2.type === 'address') {
-                                opCode = OPCODES.XOR_ADDRESS_WITH_REG;
-                            } else if (p1.type === 'register' && p2.type === 'number') {
-                                opCode = OPCODES.XOR_NUMBER_WITH_REG;
-                            } else {
-                                throw {error: 'XOR does not support this operands', line: i};
-                            }
-
-                            this.code.push(opCode, p1.value, p2.value);
-                            break;
-                        case 'NOT':
-                            p1 = AssemblerService.getValue(match[OP1_GROUP]);
-                            AssemblerService.checkNoExtraArg(instr, match[OP2_GROUP]);
-
-                            if (p1.type === 'register') {
-                                opCode = OPCODES.NOT_REG;
-                            } else {
-                                throw {error: 'NOT does not support this operand', line: i};
-                            }
-
-                            this.code.push(opCode, p1.value);
-                            break;
-                        case 'SHL':
-                        case 'SAL':
-                            p1 = AssemblerService.getValue(match[OP1_GROUP]);
-                            p2 = AssemblerService.getValue(match[OP2_GROUP]);
-
-                            if (p1.type === 'register' && p2.type === 'register') {
-                                opCode = OPCODES.SHL_REG_WITH_REG;
-                            } else if (p1.type === 'register' && p2.type === 'regaddress') {
-                                opCode = OPCODES.SHL_REGADDRESS_WITH_REG;
-                            } else if (p1.type === 'register' && p2.type === 'address') {
-                                opCode = OPCODES.SHL_ADDRESS_WITH_REG;
-                            } else if (p1.type === 'register' && p2.type === 'number') {
-                                opCode = OPCODES.SHL_NUMBER_WITH_REG;
-                            } else {
-                                throw {error: `${instr} does not support this operands`, line: i};
-                            }
-
-                            this.code.push(opCode, p1.value, p2.value);
-                            break;
-                        case 'SHR':
-                        case 'SAR':
-                            p1 = AssemblerService.getValue(match[OP1_GROUP]);
-                            p2 = AssemblerService.getValue(match[OP2_GROUP]);
-
-                            if (p1.type === 'register' && p2.type === 'register') {
-                                opCode = OPCODES.SHR_REG_WITH_REG;
-                            } else if (p1.type === 'register' && p2.type === 'regaddress') {
-                                opCode = OPCODES.SHR_REGADDRESS_WITH_REG;
-                            } else if (p1.type === 'register' && p2.type === 'address') {
-                                opCode = OPCODES.SHR_ADDRESS_WITH_REG;
-                            } else if (p1.type === 'register' && p2.type === 'number') {
-                                opCode = OPCODES.SHR_NUMBER_WITH_REG;
-                            } else {
-                                throw {error: instr + ' does not support this operands', line: i};
-                            }
-
-                            this.code.push(opCode, p1.value, p2.value);
-                            break;
-                        default:
-                            throw {error: `Invalid instruction: ${match[2]}`, line: i};
                     }
                 }
             } else {
@@ -766,10 +349,10 @@ export class AssemblerService {
         // Replace labels
         for (let i = 0, l = this.code.length; i < l; i++) {
             if (isNumeric(this.code[i]) === false) {
-                if (this.labels.has(this.code[i].toString())) {
-                    this.code[i] = this.labels.get(this.code[i].toString());
+                const upperLabel = this.code[i].toString().toUpperCase();
+                if (this.labels.has(upperLabel)) {
+                    this.storeIntegerIntoCode(this.labels.get(upperLabel), i);
                 } else {
-
                     throw {error: `Undefined label: ${this.code[i]}`};
                 }
             }

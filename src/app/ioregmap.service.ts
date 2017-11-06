@@ -29,11 +29,11 @@ export class IORegister {
     public value: number;
     public operationSource: Subject<IORegisterOperation>;
 
-    constructor(name: string, address: number, 
-		initialValue: number = 0,
-		registerType: IORegisterType = IORegisterType.READ_WRITE,
-		operationSource?: Subject<IORegisterOperation>,
-		description?: string) {
+    constructor(name: string, address: number,
+                initialValue: number = 0,
+                registerType: IORegisterType = IORegisterType.READ_WRITE,
+                operationSource?: Subject<IORegisterOperation>,
+                description?: string) {
 
         this.name = name;
         this.description = description;
@@ -77,11 +77,15 @@ export class IORegMapService {
 
     }
 
-    public addRegister(name: string, address: number, 
+    public getRegistersMap(): Map<number, IORegister> {
+        return this.registersMap;
+    }
+
+    public addRegister(name: string, address: number,
                        initialValue: number = 0,
-		       registerType: IORegisterType = IORegisterType.READ_WRITE,
-		       operationSource?: Subject<IORegisterOperation>,
-		       description?: string): number {
+                       registerType: IORegisterType = IORegisterType.READ_WRITE,
+                       operationSource?: Subject<IORegisterOperation>,
+                       description?: string): number {
 
         /* We need to check that the address is within limits [0, 65535] */
         if (address < 0 || address > 65535) {

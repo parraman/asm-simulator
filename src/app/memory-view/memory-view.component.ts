@@ -29,8 +29,7 @@ class MemoryCellView {
 
 @Component({
     selector: 'app-memory-view',
-    templateUrl: './memory-view.component.html',
-    styleUrls: ['./memory-view.component.css']
+    templateUrl: './memory-view.component.html'
 })
 export class MemoryViewComponent implements OnInit, OnDestroy, OnChanges {
 
@@ -130,6 +129,8 @@ export class MemoryViewComponent implements OnInit, OnDestroy, OnChanges {
 
             }
 
+            this.memoryRegionViews.delete(regionID);
+
         }
 
     }
@@ -174,6 +175,8 @@ export class MemoryViewComponent implements OnInit, OnDestroy, OnChanges {
                 this.operationWriteCells(
                     memoryOperation.data.get('initialAddress'),
                     memoryOperation.data.get('values'));
+                break;
+            case MemoryOperationType.READ_CELL:
                 break;
             case MemoryOperationType.RESET: // TODO: Complete the code to reset the memory view
                 break;
