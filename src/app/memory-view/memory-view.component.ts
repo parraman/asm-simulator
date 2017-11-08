@@ -166,17 +166,17 @@ export class MemoryViewComponent implements OnInit, OnDestroy, OnChanges {
             case MemoryOperationType.REMOVE_REGION:
                 this.operationRemoveRegion(memoryOperation.data.get('regionID'));
                 break;
-            case MemoryOperationType.WRITE_CELL:
+            case MemoryOperationType.STORE_BYTE:
                 this.operationWriteCell(
                     memoryOperation.data.get('address'),
                     memoryOperation.data.get('value'));
                 break;
-            case MemoryOperationType.WRITE_CELLS:
+            case MemoryOperationType.STORE_BYTES:
                 this.operationWriteCells(
                     memoryOperation.data.get('initialAddress'),
                     memoryOperation.data.get('values'));
                 break;
-            case MemoryOperationType.READ_CELL:
+            case MemoryOperationType.LOAD_BYTE:
                 break;
             case MemoryOperationType.RESET: // TODO: Complete the code to reset the memory view
                 break;
@@ -192,7 +192,7 @@ export class MemoryViewComponent implements OnInit, OnDestroy, OnChanges {
 
 
         try {
-            this.memoryService.store(address, parseInt(this.newCellValue, 16));
+            this.memoryService.storeByte(address, parseInt(this.newCellValue, 16), false);
         } catch (e) {
             this.errorBarService.setErrorMessage(e.toString());
         }
@@ -205,13 +205,30 @@ export class MemoryViewComponent implements OnInit, OnDestroy, OnChanges {
 
     ngOnChanges(changes: SimpleChanges) {
 
-        if ('mapping' in changes && this.mapping) {
+        if ('mapping' in changes) {
 
-            for (const i of Array.from(this.mapping.keys())) {
+            /* We need to undo the previous assignment */
 
-                this.memoryCellViews[i].style = 'instr-bg';
-                this.memoryCellViews[i].isInstruction = true;
+            const previousMapping: Map<number, number> = changes['mapping'].previousValue;
 
+            if (previousMapping) {
+                for (const i of Array.from(previousMapping.keys())) {
+
+                    this.memoryCellViews[i].style = undefined;
+                    this.memoryCellViews[i].isInstruction = false;
+
+                }
+            }
+
+            const currentMapping: Map<number, number> = changes['mapping'].currentValue;
+
+            if (currentMapping) {
+                for (const i of Array.from(currentMapping.keys())) {
+
+                    this.memoryCellViews[i].style = 'instr-bg';
+                    this.memoryCellViews[i].isInstruction = true;
+
+                }
             }
 
         }

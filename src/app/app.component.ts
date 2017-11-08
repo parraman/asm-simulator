@@ -49,7 +49,7 @@ export class AppComponent {
             this.mapping = result.mapping;
             this.labels = result.labels;
 
-            this.memoryService.multiStore(0, this.code);
+            this.memoryService.storeBytes(0, this.code);
 
         }
     }

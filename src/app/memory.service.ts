@@ -15,11 +15,13 @@ export enum MemoryOperationType {
 
     RESET = 0,
     SIZE_CHANGE = 1,
-    READ_CELL = 2,
-    WRITE_CELL = 3,
-    WRITE_CELLS = 4,
-    ADD_REGION = 5,
-    REMOVE_REGION = 6
+    LOAD_BYTE = 2,
+    STORE_BYTE = 3,
+    STORE_BYTES = 4,
+    LOAD_WORD = 5,
+    STORE_WORD = 6,
+    ADD_REGION = 7,
+    REMOVE_REGION = 8
 
 }
 
@@ -271,7 +273,7 @@ export class MemoryService {
 
     }
 
-    public load(address: number): number {
+    public loadByte(address: number): number {
 
         if (address < 0 || address > this.size) {
             throw Error('Memory access violation at ' + address);
@@ -290,19 +292,19 @@ export class MemoryService {
             if (this.memoryCells[address].memoryRegion.operationSource) {
 
                 this.memoryCells[address].memoryRegion.operationSource.next(
-                    new MemoryOperation(MemoryOperationType.READ_CELL, parameters));
+                    new MemoryOperation(MemoryOperationType.LOAD_BYTE, parameters));
 
             }
 
         }
 
-        this.memoryOperationSource.next(new MemoryOperation(MemoryOperationType.REMOVE_REGION, parameters));
+        this.memoryOperationSource.next(new MemoryOperation(MemoryOperationType.LOAD_BYTE, parameters));
 
         return this.memoryCells[address].dataValue;
 
     }
 
-    public store(address: number, value: number) {
+    public storeByte(address: number, value: number, isInstruction: boolean = true) {
 
         if (address < 0 || address > this.size) {
             throw Error(`Memory access violation at ${address}`);
@@ -316,7 +318,7 @@ export class MemoryService {
             throw Error(`Invalid data value ${value}`);
         }
 
-        if (this.memoryCells[address].cellType === MemoryCellType.READ_ONLY) {
+        if (isInstruction && (this.memoryCells[address].cellType === MemoryCellType.READ_ONLY)) {
             throw Error(`Invalid storage into read-only cell ${address}`);
         }
 
@@ -334,16 +336,16 @@ export class MemoryService {
             if (this.memoryCells[address].memoryRegion.operationSource) {
 
                 this.memoryCells[address].memoryRegion.operationSource.next(
-                    new MemoryOperation(MemoryOperationType.WRITE_CELL, parameters));
+                    new MemoryOperation(MemoryOperationType.STORE_BYTE, parameters));
 
             }
         }
 
-        this.memoryOperationSource.next(new MemoryOperation(MemoryOperationType.WRITE_CELL, parameters));
+        this.memoryOperationSource.next(new MemoryOperation(MemoryOperationType.STORE_BYTE, parameters));
 
     }
 
-    public multiStore(initialAddress: number, values: Array<number>) {
+    public storeBytes(initialAddress: number, values: Array<number>, isInstruction: boolean = true) {
 
         if (initialAddress < 0 || (initialAddress + values.length) > this.size) {
             throw Error(`Memory access violation at (${initialAddress}, ${initialAddress + values.length}`);
@@ -355,7 +357,7 @@ export class MemoryService {
                 throw Error(`Invalid data value [${i}]: ${values[i]}`);
             }
 
-            if (this.memoryCells[initialAddress + i].cellType === MemoryCellType.READ_ONLY) {
+            if (isInstruction && this.memoryCells[initialAddress + i].cellType === MemoryCellType.READ_ONLY) {
                 throw Error(`Invalid storage into read-only cell ${initialAddress + i}`);
             }
 
@@ -376,7 +378,88 @@ export class MemoryService {
         const parameters: Map<string, any> = new Map<string, any>();
         parameters.set('initialAddress', initialAddress);
         parameters.set('values', values);
-        this.memoryOperationSource.next(new MemoryOperation(MemoryOperationType.WRITE_CELLS, parameters));
+        this.memoryOperationSource.next(new MemoryOperation(MemoryOperationType.STORE_BYTES, parameters));
+
+    }
+
+    public loadWord(address: number): number {
+
+        if (address < 0 || address >= this.size) {
+            throw Error('Memory access violation at ' + address);
+        }
+
+        this.lastAccess = address;
+
+        const word = (this.memoryCells[address].dataValue << 8) +
+            (this.memoryCells[address + 1].dataValue);
+
+        const parameters: Map<string, any> = new Map<string, any>();
+        parameters.set('address', address);
+        parameters.set('value', word);
+
+        if (this.memoryCells[address].memoryRegion) {
+
+            this.memoryCells[address].memoryRegion.lastAccess = address;
+
+            if (this.memoryCells[address].memoryRegion.operationSource) {
+
+                this.memoryCells[address].memoryRegion.operationSource.next(
+                    new MemoryOperation(MemoryOperationType.LOAD_WORD, parameters));
+
+            }
+
+        }
+
+        this.memoryOperationSource.next(new MemoryOperation(MemoryOperationType.LOAD_WORD, parameters));
+
+        return word;
+
+    }
+
+    public storeWord(address: number, value: number, isInstruction: boolean = true) {
+
+        if (address < 0 || address >= this.size) {
+            throw Error(`Memory access violation at ${address}`);
+        }
+
+        if (isNaN(value)) {
+            throw Error('Invalid value (Nan)');
+        }
+
+        if (value < 0 || value > 65535) {
+            throw Error(`Invalid data value ${value}`);
+        }
+
+        if (isInstruction && (this.memoryCells[address].cellType === MemoryCellType.READ_ONLY ||
+            this.memoryCells[address + 1].cellType === MemoryCellType.READ_ONLY)) {
+            throw Error(`Invalid storage into read-only cell ${address}`);
+        }
+
+        this.lastAccess = address;
+
+        const msb = (value & 0xFF00) >> 8;
+        const lsb = (value & 0x00FF);
+
+        this.memoryCells[address].dataValue = msb;
+        this.memoryCells[address + 1].dataValue = lsb;
+
+        const parameters: Map<string, any> = new Map<string, any>();
+        parameters.set('address', address);
+        parameters.set('value', value);
+
+        if (this.memoryCells[address].memoryRegion) {
+
+            this.memoryCells[address].memoryRegion.lastAccess = address;
+
+            if (this.memoryCells[address].memoryRegion.operationSource) {
+
+                this.memoryCells[address].memoryRegion.operationSource.next(
+                    new MemoryOperation(MemoryOperationType.STORE_BYTE, parameters));
+
+            }
+        }
+
+        this.memoryOperationSource.next(new MemoryOperation(MemoryOperationType.STORE_WORD, parameters));
 
     }
 

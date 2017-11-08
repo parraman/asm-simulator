@@ -21,6 +21,7 @@ export class AssemblerService {
 
     // Allowed formats: 200, 200d, 0xA4, 0o48, 101b
     private static parseNumber(input: string): number {
+
         if (input.slice(0, 2) === '0x') {
             return parseInt(input.slice(2), 16);
         } else if (input.slice(0, 2) === '0o') {
@@ -34,6 +35,7 @@ export class AssemblerService {
         } else {
             throw Error('Invalid number format');
         }
+
     }
 
     // Allowed registers: A, B, C, D, SP
@@ -131,9 +133,7 @@ export class AssemblerService {
                 const value = AssemblerService.parseNumber(input);
 
                 if (isNaN(value)) {
-                    throw Error(`Not a ${typeNumber}: ${value}`);
-                } else if (value < 0 || value > 65535) {
-                    throw Error(`${typeNumber} must have a value between 0-65536`);
+                    throw Error(`Not a number: ${value}`);
                 }
 
                 return {type: typeNumber, value: value};
@@ -165,7 +165,7 @@ export class AssemblerService {
                     chars.push(text.charCodeAt(i));
                 }
 
-                return {type: OperandType.NUMBERS, value: chars};
+                return {type: OperandType.ARRAY, value: chars};
 
             case '\'': // 'C'
 
@@ -176,19 +176,13 @@ export class AssemblerService {
 
                 }
 
-                return {type: OperandType.NUMBER, value: character.charCodeAt(0)};
+                return {type: OperandType.BYTE, value: character.charCodeAt(0)};
 
             default: // REGISTER, NUMBER or LABEL
 
                 return AssemblerService.parseRegOrNumber(input, OperandType.REGISTER, OperandType.NUMBER);
         }
 
-    }
-
-    private static checkNoExtraArg(instr: string, arg: string) {
-        if (arg !== undefined) {
-            throw Error(`${instr}: too many arguments`);
-        }
     }
 
     private addLabel(label: string) {
@@ -207,7 +201,7 @@ export class AssemblerService {
         this.labels.set(upperLabel, this.code.length);
     }
 
-    private storeIntegerIntoCode(value: number, index: number) {
+    private storeWordIntoCode(value: number, index: number) {
 
         const msb = (value & 0xFF00) >> 8;
         const lsb = (value & 0x00FF);
@@ -230,19 +224,21 @@ export class AssemblerService {
     private pushOperandToCode(item: {type: OperandType, value: number}) {
 
         switch (item.type) {
-            case OperandType.NUMBER:
+            case OperandType.WORD:
+            case OperandType.NUMBER: /* "NUMBER" at this point is a label */
             case OperandType.ADDRESS:
             case OperandType.REGADDRESS:
                 /* It can be a number OR a label */
                 if (isNumeric(item.value)) {
                     /* It is a number */
-                    this.storeIntegerIntoCode(item.value, this.code.length);
+                    this.storeWordIntoCode(item.value, this.code.length);
                 } else {
-                    /* It is a label, we have to let space for the real address */
+                    /* It is a label, we have to let space for the real word */
                     this.storeLabelIntoCode(item.value, this.code.length);
                 }
                 break;
             case OperandType.REGISTER:
+            case OperandType.BYTE:
                 this.code.push(item.value);
                 break;
         }
@@ -261,89 +257,124 @@ export class AssemblerService {
 
             const match = REGEX.exec(lines[i]);
 
-            if (match[1] !== undefined || match[2] !== undefined) {
-                if (match[1] !== undefined) {
-                    this.addLabel(match[1]);
-                }
+            if (match[1] === undefined && match[2] === undefined) {
 
-                if (match[2] !== undefined) {
-
-                    const instr = match[2].toUpperCase();
-                    let p1, p2, opCode;
-
-                    // Start parsing instructions (except DB, for it is not a real instruction)
-
-                    if (instr !== 'DB') {
-
-                        this.mapping.set(this.code.length, i);
-
-                        if (match[OP1_GROUP] === undefined) {
-
-                            try {
-                                opCode = instructionSet.getInstruction(instr, undefined, undefined);
-                            } catch (e) {
-                                throw {error: e.toString(), line: i};
-                            }
-
-                            this.code.push(opCode);
-
-                        } else {
-
-                            p1 = AssemblerService.getValue(match[OP1_GROUP]);
-
-                            if (match[OP2_GROUP] === undefined) {
-
-                                try {
-                                    opCode = instructionSet.getInstruction(instr, p1.type, undefined);
-                                } catch (e) {
-                                    throw {error: e.toString(), line: i};
-                                }
-
-                                this.code.push(opCode);
-                                this.pushOperandToCode(p1);
-
-                            } else {
-
-                                p2 = AssemblerService.getValue(match[OP2_GROUP]);
-
-                                try {
-                                    opCode = instructionSet.getInstruction(instr, p1.type, p2.type);
-                                } catch (e) {
-                                    throw {error: e.toString(), line: i};
-                                }
-
-                                this.code.push(opCode);
-                                this.pushOperandToCode(p1);
-                                this.pushOperandToCode(p2);
-
-                            }
-
-                        }
-
-                    } else {
-
-                        p1 = AssemblerService.getValue(match[OP1_GROUP]);
-
-                        if (p1.type === OperandType.NUMBER) {
-                            this.code.push(p1.value);
-                        } else if (p1.type === OperandType.NUMBERS) {
-                            for (let j = 0, k = p1.value.length; j < k; j++) {
-                                this.code.push(p1.value[j]);
-                            }
-                        } else {
-                            throw {error: 'DB does not support this operand', line: i};
-                        }
-
-                    }
-                }
-            } else {
                 // Check if line starts with a comment otherwise the line contains an error and can not be parsed
                 const line = lines[i].trim();
                 if (line !== '' && line.slice(0, 1) !== ';') {
                     throw {error: 'Syntax error', line: i};
                 }
+                continue;
             }
 
+            if (match[1] !== undefined) {
+                this.addLabel(match[1]);
+            }
+
+            if (match[2] !== undefined) {
+
+                const instr = match[2].toUpperCase();
+                let p1, p2, instructionSpec;
+
+                // Start parsing instructions (except DB, for it is not a real instruction)
+
+                if (instr === 'DB') {
+
+                    p1 = AssemblerService.getValue(match[OP1_GROUP]);
+
+                    if (p1.type === OperandType.NUMBER) {
+                        this.code.push(p1.value);
+                    } else if (p1.type === OperandType.ARRAY) {
+                        for (let j = 0, k = p1.value.length; j < k; j++) {
+                            this.code.push(p1.value[j]);
+                        }
+                    } else {
+                        throw {error: 'DB does not support this operand', line: i};
+                    }
+
+                    continue;
+                }
+
+                this.mapping.set(this.code.length, i);
+
+                if (match[OP1_GROUP] !== undefined) {
+
+                    p1 = AssemblerService.getValue(match[OP1_GROUP]);
+
+                    if (match[OP2_GROUP] !== undefined) {
+
+                        p2 = AssemblerService.getValue(match[OP2_GROUP]);
+
+                    }
+
+                }
+
+                try {
+                    instructionSpec = instructionSet.getInstruction(instr, (p1) ? p1.type : undefined,
+                        (p2) ? p2.type : undefined);
+                } catch (e) {
+                    throw {error: e.toString(), line: i};
+                }
+
+                if (instructionSpec.operand1 === OperandType.WORD) {
+
+                    if (isNumeric(p1.value) && (p1.value < 0 || p1.value > 65535)) {
+                        throw {error: 'Operand must have a value between 0-65536', line: i};
+                    }
+
+                    p1.type = OperandType.WORD;
+
+                } else if (instructionSpec.operand1 === OperandType.BYTE) {
+
+                    if (isNumeric(p1.value)) {
+                        if (p1.value < 0 || p1.value > 255) {
+                            throw {error: 'Operand must have a value between 0-255', line: i};
+                        } else {
+                            p1.type = OperandType.BYTE;
+                        }
+                    } else {
+                        throw {error: 'Operand must have a value between 0-255', line: i};
+                    }
+
+                }
+
+                if (instructionSpec.operand2 === OperandType.WORD) {
+
+                    if (isNumeric(p2.value) && (p2.value < 0 || p2.value > 65535)) {
+                        throw {error: 'Operand must have a value between 0-65536', line: i};
+                    }
+
+                    p2.type = OperandType.WORD;
+
+                } else if (instructionSpec.operand2 === OperandType.BYTE) {
+
+                    if (isNumeric(p2.value)) {
+                        if (p2.value < 0 || p2.value > 255) {
+                            throw {error: 'Operand must have a value between 0-255', line: i};
+                        } else {
+                            p2.type = OperandType.BYTE;
+                        }
+                    } else {
+                        throw {error: 'Operand must have a value between 0-255', line: i};
+                    }
+
+                }
+
+                this.code.push(instructionSpec.opcode);
+
+                if (p1) {
+
+                    this.pushOperandToCode(p1);
+
+                }
+
+                if (p2) {
+
+                    this.pushOperandToCode(p2);
+
+                }
+
+            }
         }
 
         // Replace labels
@@ -351,7 +382,7 @@ export class AssemblerService {
             if (isNumeric(this.code[i]) === false) {
                 const upperLabel = this.code[i].toString().toUpperCase();
                 if (this.labels.has(upperLabel)) {
-                    this.storeIntegerIntoCode(this.labels.get(upperLabel), i);
+                    this.storeWordIntoCode(this.labels.get(upperLabel), i);
                 } else {
                     throw {error: `Undefined label: ${this.code[i]}`};
                 }
