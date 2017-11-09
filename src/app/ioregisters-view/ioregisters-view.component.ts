@@ -38,9 +38,7 @@ export class IORegistersViewComponent implements OnInit, OnDestroy {
     private ioRegisterOperationSubscription: Subscription;
 
 
-    constructor(private ioRegMapService: IORegMapService) { }
-
-    ngOnInit() {
+    constructor(private ioRegMapService: IORegMapService) {
 
         const registersMap = this.ioRegMapService.getRegistersMap();
 
@@ -57,6 +55,9 @@ export class IORegistersViewComponent implements OnInit, OnDestroy {
         this.ioRegisterOperationSubscription = this.ioRegMapService.ioRegisterOperation$.subscribe(
             (ioRegisterOperation) => this.processIORegisterOperation(ioRegisterOperation)
         );
+    }
+
+    ngOnInit() {
 
     }
 

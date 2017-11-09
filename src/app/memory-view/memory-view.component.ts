@@ -66,6 +66,10 @@ export class MemoryViewComponent implements OnInit, OnDestroy, OnChanges {
 
         }
 
+        this.memoryOperationSubscription = this.memoryService.memoryOperation$.subscribe(
+            (memoryOperation) => this.processMemoryOperation(memoryOperation)
+        );
+
     }
 
     private createIndexes() {
@@ -85,11 +89,6 @@ export class MemoryViewComponent implements OnInit, OnDestroy, OnChanges {
     }
 
     ngOnInit() {
-
-        this.memoryOperationSubscription = this.memoryService.memoryOperation$.subscribe(
-            (memoryOperation) => this.processMemoryOperation(memoryOperation)
-        );
-
     }
 
     ngOnDestroy() {
@@ -197,8 +196,11 @@ export class MemoryViewComponent implements OnInit, OnDestroy, OnChanges {
             this.errorBarService.setErrorMessage(e.toString());
         }
 
-        this.memoryCellViews[address].style = undefined;
-        this.memoryCellViews[address].isInstruction = false;
+        if (this.memoryCellViews[address].isInstruction === true) {
+            this.memoryCellViews[address].style = undefined;
+            this.memoryCellViews[address].isInstruction = false;
+        }
+
         this.editingCell = -1;
 
     }

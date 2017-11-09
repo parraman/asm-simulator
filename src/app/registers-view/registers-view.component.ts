@@ -1,15 +1,14 @@
 import { Component, OnInit } from '@angular/core';
 
 @Component({
-  selector: 'app-registers-view',
-  templateUrl: './registers-view.component.html',
-  styleUrls: ['./registers-view.component.css']
+    selector: 'app-registers-view',
+    templateUrl: './registers-view.component.html'
 })
 export class RegistersViewComponent implements OnInit {
 
-  constructor() { }
+    constructor() { }
 
-  ngOnInit() {
-  }
+    ngOnInit() {
+    }
 
 }
