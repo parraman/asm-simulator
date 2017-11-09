@@ -231,6 +231,12 @@ export class InstructionSet {
         throw Error(`${mnemonic} does not support these operands`);
     }
 
+    public getInstructionFromOpCode(opcode: number) {
+
+        return this.instructionsMap.get(opcode);
+
+    }
+
     public addInstruction(opcode: OpCode, mnemonic: string, methodName: string,
                           operand1: OperandType, operand2: OperandType) {
 

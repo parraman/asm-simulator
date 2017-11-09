@@ -2,6 +2,7 @@ import { Component, ElementRef, ViewChild } from '@angular/core';
 import { AssemblerService } from './assembler.service';
 import { MemoryService } from './memory.service';
 import { ErrorBarService } from './error-bar.service';
+import { CPUService } from './cpu.service';
 
 @Component({
     selector: 'app-root',
@@ -29,7 +30,8 @@ export class AppComponent {
 
     constructor (private assemblerService: AssemblerService,
                  private memoryService: MemoryService,
-                 private errorBarService: ErrorBarService) {}
+                 private errorBarService: ErrorBarService,
+                 private cpuService: CPUService) {}
 
     public assemble() {
 
@@ -81,6 +83,16 @@ export class AppComponent {
                 element.selectionEnd = endPos;
             }
 
+        }
+
+    }
+
+    public executeStep() {
+
+        try {
+            this.cpuService.step();
+        } catch (e) {
+            this.errorBarService.setErrorMessage(e.toString());
         }
 
     }

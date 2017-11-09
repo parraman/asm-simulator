@@ -1,6 +1,14 @@
 <nav class="navbar navbar-inverse navbar-fixed-top">
   <div class="container">
-    <div class="navbar-header"><a class="navbar-brand navbar-link" href="#">16-bit Assembler Simulator</a></div>
+    <div class="navbar-header">
+      <div class="btn-group">
+        <button type="button" class="btn btn-success navbar-btn" (click)="run()" *ngIf="isRunning"><span class="glyphicon glyphicon-play"></span> Run</button>
+        <button type="button" class="btn btn-default navbar-btn" (click)="stop()" *ngIf="!isRunning"><span class="glyphicon glyphicon-stop"></span> Stop</button>
+        <button type="button" class="btn btn-default navbar-btn" (click)="executeStep()" [disabled]="isRunning"><span class="glyphicon glyphicon-forward"></span> Step</button>
+      </div>
+      <button type="button" class="btn btn-default navbar-btn" (click)="reset()">Reset</button>
+    </div>
+    <div class="navbar-header navbar-right"><a class="navbar-brand navbar-link" href="#">16-bit Assembler Simulator</a></div>
   </div>
 </nav>
 <div class="container">

@@ -143,6 +143,13 @@ export class CPUStatusRegister extends CPURegister {
 
     }
 
+    get value(): number {
+
+        this.pushReadValue();
+        return this._value;
+
+    }
+
     set value(newValue: number) {
 
         if ((newValue &= (1 << SRBit.HALT)) !== 0) {

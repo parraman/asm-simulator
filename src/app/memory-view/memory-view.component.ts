@@ -239,7 +239,7 @@ export class MemoryViewComponent implements OnInit, OnDestroy, OnChanges {
 
     public memoryCellClick(event: MouseEvent, address: number) {
 
-        if (event.ctrlKey) {
+        if (event.ctrlKey || event.metaKey) {
 
             this.editingCell = address;
             this.newCellValue = this.memoryCellViews[address].dataValue;

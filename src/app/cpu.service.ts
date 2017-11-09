@@ -3,7 +3,7 @@ import { Injectable } from '@angular/core';
 import { Subject } from 'rxjs/Subject';
 import { Observable } from 'rxjs/Observable';
 
-import { OpCode, OperandType, Instruction } from './instrset';
+import {OpCode, OperandType, Instruction, instructionSet} from './instrset';
 import { MemoryService } from './memory.service';
 
 import { CPURegisterIndex, CPURegister, CPUStatusRegister, CPURegisterOperation } from './cpuregs';
@@ -144,6 +144,95 @@ export class CPUService {
         return Math.floor(this.registersBank[CPURegisterIndex.A].value / divisor);
     }
 
+    public step() {
+
+        if (this.SR.halt === 1) {
+
+            return;
+
+        } else if (this.SR.fault === 1) {
+
+            throw Error('CPU in FAULT mode: reset required');
+
+        }
+
+        let currentIP = this.IP.value;
+
+        const opcode = this.memoryService.loadByte(currentIP);
+        currentIP += 1;
+
+        const instruction = instructionSet.getInstructionFromOpCode(opcode);
+
+        if (instruction === undefined) {
+            throw Error(`Invalid opcode: ${opcode}`);
+        }
+
+        const args: Array<number> = [];
+
+        switch (instruction.operand1) {
+
+            case OperandType.BYTE:
+            case OperandType.REGISTER:
+                const byte = this.memoryService.loadByte(currentIP);
+                args.push(byte);
+                currentIP += 1;
+                break;
+            case OperandType.WORD:
+            case OperandType.ADDRESS:
+                const word = this.memoryService.loadWord(currentIP);
+                args.push(word);
+                currentIP += 2;
+                break;
+            case OperandType.REGADDRESS:
+                const regaddress = this.memoryService.loadWord(currentIP);
+                let offset = (regaddress && 0xFF00) >> 8;
+                const register = (regaddress && 0x00FF);
+                if ( offset > 127 ) {
+                    offset = offset - 256;
+                }
+                args.push(register);
+                args.push(offset);
+                currentIP += 2;
+                break;
+            default:
+                break;
+        }
+
+        switch (instruction.operand2) {
+
+            case OperandType.BYTE:
+            case OperandType.REGISTER:
+                const byte = this.memoryService.loadByte(currentIP);
+                args.push(byte);
+                currentIP += 1;
+                break;
+            case OperandType.WORD:
+            case OperandType.ADDRESS:
+                const word = this.memoryService.loadWord(currentIP);
+                args.push(word);
+                currentIP += 2;
+                break;
+            case OperandType.REGADDRESS:
+                const regaddress = this.memoryService.loadWord(currentIP);
+                let offset = (regaddress && 0xFF00) >> 8;
+                const register = (regaddress && 0x00FF);
+                if ( offset > 127 ) {
+                    offset = offset - 256;
+                }
+                args.push(register);
+                args.push(offset);
+                currentIP += 2;
+                break;
+            default:
+                break;
+        }
+
+        this.IP.value = currentIP;
+
+        this[instruction.methodName].apply(this, args);
+
+    }
+
     @Instruction(OpCode.HLT, 'HLT')
     private instrHLT(): number | undefined {
         this.SR.halt = 1;
@@ -209,6 +298,11 @@ export class CPUService {
     @Instruction(OpCode.MOV_WORD_TO_REG, 'MOV', OperandType.REGISTER, OperandType.WORD)
     private instrMOV_WORD_TO_REG(toRegister: number, word: number): number | void {
 
+        if (CPUService.isGPRorSP(toRegister) === false) {
+            throw Error(`Invalid first operand: register index ${toRegister} out of bounds`);
+        }
+
+        this.registersBank.get(toRegister).value = word;
     }
 
     @Instruction(OpCode.MOV_WORD_TO_ADDRESS, 'MOV', OperandType.ADDRESS, OperandType.WORD)
@@ -374,10 +468,20 @@ export class CPUService {
     @Instruction(OpCode.JMP_REGADDRESS, 'JMP', OperandType.REGADDRESS)
     private instrJMP_REGADDRESS(toRegister: number, toOffset: number): number | void {
 
+        if (CPUService.isGPRorSP(toRegister) === false) {
+            throw Error(`Invalid first operand: register index ${toRegister} out of bounds`);
+        }
+
+        const address = this.registersBank.get(toRegister).value + toOffset;
+
+        this.IP.value = address;
+
     }
 
     @Instruction(OpCode.JMP_ADDRESS, 'JMP', OperandType.WORD)
     private instrJMP_ADDRESS(toAddress: number): number | void {
+
+        this.IP.value = toAddress;
 
     }
 
