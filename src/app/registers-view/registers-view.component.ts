@@ -93,27 +93,27 @@ export class RegistersViewComponent implements OnInit, OnDestroy {
 
         register = registerBank.get(CPURegisterIndex.B);
         this.B = new CPURegisterView(register.name, register.value, register.description);
-        this.registersMap.set(CPURegisterIndex.A, this.B);
+        this.registersMap.set(CPURegisterIndex.B, this.B);
 
         register = registerBank.get(CPURegisterIndex.C);
         this.C = new CPURegisterView(register.name, register.value, register.description);
-        this.registersMap.set(CPURegisterIndex.A, this.C);
+        this.registersMap.set(CPURegisterIndex.C, this.C);
 
         register = registerBank.get(CPURegisterIndex.D);
         this.D = new CPURegisterView(register.name, register.value, register.description);
-        this.registersMap.set(CPURegisterIndex.A, this.D);
+        this.registersMap.set(CPURegisterIndex.D, this.D);
 
         register = registerBank.get(CPURegisterIndex.IP);
         this.IP = new CPURegisterView(register.name, register.value, register.description);
-        this.registersMap.set(CPURegisterIndex.A, this.IP);
+        this.registersMap.set(CPURegisterIndex.IP, this.IP);
 
         register = registerBank.get(CPURegisterIndex.SP);
         this.SP = new CPURegisterView(register.name, register.value, register.description);
-        this.registersMap.set(CPURegisterIndex.A, this.SP);
+        this.registersMap.set(CPURegisterIndex.SP, this.SP);
 
         register = registerBank.get(CPURegisterIndex.SR);
         this.SR = new CPURegisterView(register.name, register.value, register.description);
-        this.registersMap.set(CPURegisterIndex.A, this.SR);
+        this.registersMap.set(CPURegisterIndex.SR, this.SR);
 
         this.cpuRegisterOperationSubscription = this.cpuService.cpuRegisterOperation$.subscribe(
             (cpuRegisterOperation) => this.processCPURegisterOperation(cpuRegisterOperation)
