@@ -104,6 +104,36 @@ export class CPURegister {
 
     }
 
+    set lsb(newValue: number) {
+
+        this._value = (this._value && 0xFF00) + newValue;
+        this.pushWriteValue(this._value);
+
+    }
+
+    get lsb() {
+
+        this.pushReadValue();
+
+        return (this._value && 0x00FF);
+
+    }
+
+    set msb(newValue: number) {
+
+        this._value = (this._value && 0x00FF) + (newValue << 8);
+        this.pushWriteValue(this._value);
+
+    }
+
+    get msb() {
+
+        this.pushReadValue();
+
+        return ((this._value && 0xFF00) >>> 8);
+
+    }
+
 }
 
 

@@ -437,7 +437,7 @@ export class MemoryService {
 
         this.lastAccess = address;
 
-        const msb = (value & 0xFF00) >> 8;
+        const msb = (value & 0xFF00) >>> 8;
         const lsb = (value & 0x00FF);
 
         this.memoryCells[address].dataValue = msb;
