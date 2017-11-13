@@ -293,8 +293,8 @@ export class CPUService {
                 break;
             case OperandType.REGADDRESS:
                 const regaddress = this.memoryService.loadWord(this.nextIP);
-                let offset = (regaddress && 0xFF00) >>> 8;
-                register = (regaddress && 0x00FF);
+                let offset = (regaddress & 0xFF00) >>> 8;
+                register = (regaddress & 0x00FF);
                 if ( offset > 127 ) {
                     offset = offset - 256;
                 }
@@ -327,8 +327,8 @@ export class CPUService {
                 break;
             case OperandType.REGADDRESS:
                 const regaddress = this.memoryService.loadWord(this.nextIP);
-                let offset = (regaddress && 0xFF00) >>> 8;
-                register = (regaddress && 0x00FF);
+                let offset = (regaddress & 0xFF00) >>> 8;
+                register = (regaddress & 0x00FF);
                 if ( offset > 127 ) {
                     offset = offset - 256;
                 }

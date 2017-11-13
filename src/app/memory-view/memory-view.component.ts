@@ -168,11 +168,21 @@ export class MemoryViewComponent implements OnInit, OnDestroy, OnChanges {
 
     }
 
-    private operationWriteCell(address: number, value: number) {
+    private operationWriteByte(address: number, value: number) {
 
         this.memoryCellViews[address].dataValue = Utils.pad(value, 16, 2);
 
     }
+
+    private operationWriteWord(address: number, value: number) {
+
+        const lsb = (value & 0x00FF);
+        const msb = (value & 0xFF00) >>> 8;
+        this.memoryCellViews[address].dataValue = Utils.pad(msb, 16, 2);
+        this.memoryCellViews[address + 1].dataValue = Utils.pad(lsb, 16, 2);
+
+    }
+
 
     private operationWriteCells(initialAddress: number, values: Array<number>) {
 
@@ -359,7 +369,7 @@ export class MemoryViewComponent implements OnInit, OnDestroy, OnChanges {
                 this.operationRemoveRegion(memoryOperation.data.get('regionID'));
                 break;
             case MemoryOperationType.STORE_BYTE:
-                this.operationWriteCell(
+                this.operationWriteByte(
                     memoryOperation.data.get('address'),
                     memoryOperation.data.get('value'));
                 break;
@@ -367,6 +377,11 @@ export class MemoryViewComponent implements OnInit, OnDestroy, OnChanges {
                 this.operationWriteCells(
                     memoryOperation.data.get('initialAddress'),
                     memoryOperation.data.get('values'));
+                break;
+            case MemoryOperationType.STORE_WORD:
+                this.operationWriteWord(
+                    memoryOperation.data.get('address'),
+                    memoryOperation.data.get('value'));
                 break;
             case MemoryOperationType.LOAD_BYTE:
                 break;

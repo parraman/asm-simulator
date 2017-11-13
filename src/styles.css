@@ -57,7 +57,7 @@
 
 .memory-content {
   float:left;
-  width:386px;
+  width:384px;
 }
 
 .memory-block {
@@ -198,7 +198,6 @@ body {
 }
 
 .marker {
-  width: 1.8em;
   color: #FFF;
   border-radius: 2px;
 }

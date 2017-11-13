@@ -162,7 +162,7 @@ export class CPUGeneralPurposeRegister extends CPURegister {
 
     set lsb(newValue: number) {
 
-        this._value = (this._value && 0xFF00) + newValue;
+        this._value = (this._value & 0xFF00) + newValue;
         this.pushWriteValue(this._value);
 
     }
@@ -171,13 +171,13 @@ export class CPUGeneralPurposeRegister extends CPURegister {
 
         this.pushReadValue();
 
-        return (this._value && 0x00FF);
+        return (this._value & 0x00FF);
 
     }
 
     set msb(newValue: number) {
 
-        this._value = (this._value && 0x00FF) + (newValue << 8);
+        this._value = (this._value & 0x00FF) + (newValue << 8);
         this.pushWriteValue(this._value);
 
     }
@@ -186,7 +186,7 @@ export class CPUGeneralPurposeRegister extends CPURegister {
 
         this.pushReadValue();
 
-        return ((this._value && 0xFF00) >>> 8);
+        return ((this._value & 0xFF00) >>> 8);
 
     }
 }
