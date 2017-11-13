@@ -24,6 +24,11 @@ export class AppComponent {
     public mapping: Map<number, number>;
     public labels: Map<string, number>;
 
+    public displayA = false;
+    public displayB = false;
+    public displayC = false;
+    public showInstructions = true;
+
     public selectedLine = -1;
 
     @ViewChild('codeTextArea') codeTextArea: ElementRef;

@@ -146,6 +146,10 @@ export class RegistersViewComponent implements OnInit, OnDestroy {
         switch (cpuRegisterOperation.operationType) {
 
             case CPURegisterOperationType.WRITE:
+            case CPURegisterOperationType.PUSH_WORD:
+            case CPURegisterOperationType.PUSH_BYTE:
+            case CPURegisterOperationType.POP_WORD:
+            case CPURegisterOperationType.POP_BYTE:
                 this.operationWriteRegister(
                     cpuRegisterOperation.index,
                     cpuRegisterOperation.value);

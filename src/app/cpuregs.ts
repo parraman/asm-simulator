@@ -19,14 +19,57 @@ export enum CPURegisterIndex {
     D = 3,
     SP = 4,
     IP = 5,
-    SR = 6
+    SR = 6,
+    AH = 10,
+    AL = 11,
+    BH = 12,
+    BL = 13,
+    CH = 14,
+    CL = 15,
+    DH = 16,
+    DL = 17
+
+}
+
+export function getRegisterSize(index: CPURegisterIndex): number {
+
+    let size: number;
+
+    switch (index) {
+
+        case CPURegisterIndex.A:
+        case CPURegisterIndex.B:
+        case CPURegisterIndex.C:
+        case CPURegisterIndex.D:
+        case CPURegisterIndex.SP:
+        case CPURegisterIndex.IP:
+        case CPURegisterIndex.SR:
+            size = 16;
+            break;
+        case CPURegisterIndex.AH:
+        case CPURegisterIndex.AL:
+        case CPURegisterIndex.BH:
+        case CPURegisterIndex.BL:
+        case CPURegisterIndex.CH:
+        case CPURegisterIndex.CL:
+        case CPURegisterIndex.DH:
+        case CPURegisterIndex.DL:
+            size = 8;
+            break;
+    }
+
+    return size;
 
 }
 
 export enum CPURegisterOperationType {
 
     READ = 1,
-    WRITE = 2
+    WRITE = 2,
+    PUSH_WORD = 3, /* Stack pointer specific operation: push 2 bytes to stack */
+    PUSH_BYTE = 4, /* Stack pointer specific operation: push 1 byte to stack */
+    POP_WORD = 5, /* Stack pointer specific operation: pop 2 bytes from stack */
+    POP_BYTE = 6 /* Stack pointer specific operation: pop 2 bytes from stack */
 
 }
 
@@ -104,6 +147,19 @@ export class CPURegister {
 
     }
 
+
+}
+
+export class CPUGeneralPurposeRegister extends CPURegister {
+
+    constructor (name: string, index: number, initialValue: number,
+                 operationSource?: Subject<CPURegisterOperation>,
+                 description?: string) {
+
+        super(name, index, initialValue, operationSource, description);
+
+    }
+
     set lsb(newValue: number) {
 
         this._value = (this._value && 0xFF00) + newValue;
@@ -131,6 +187,69 @@ export class CPURegister {
         this.pushReadValue();
 
         return ((this._value && 0xFF00) >>> 8);
+
+    }
+}
+
+export class CPUStackPointerRegister extends CPURegister {
+
+    constructor (name: string, index: number, initialValue: number,
+                 operationSource?: Subject<CPURegisterOperation>,
+                 description?: string) {
+
+        super(name, index, initialValue, operationSource, description);
+
+    }
+
+    public pushWord() {
+
+        this._value = this._value - 2;
+
+        if (this.operationSource) {
+
+            this.operationSource.next(new CPURegisterOperation(CPURegisterOperationType.PUSH_WORD,
+                this.index, this._value));
+
+        }
+
+    }
+
+    public popWord() {
+
+        this._value = this._value + 2;
+
+        if (this.operationSource) {
+
+            this.operationSource.next(new CPURegisterOperation(CPURegisterOperationType.POP_WORD,
+                this.index, this._value));
+
+        }
+
+    }
+
+    public pushByte() {
+
+        this._value = this._value - 1;
+
+        if (this.operationSource) {
+
+            this.operationSource.next(new CPURegisterOperation(CPURegisterOperationType.PUSH_BYTE,
+                this.index, this._value));
+
+        }
+
+    }
+
+    public popByte() {
+
+        this._value = this._value + 1;
+
+        if (this.operationSource) {
+
+            this.operationSource.next(new CPURegisterOperation(CPURegisterOperationType.POP_BYTE,
+                this.index, this._value));
+
+        }
 
     }
 

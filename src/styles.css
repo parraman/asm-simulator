@@ -57,7 +57,7 @@
 
 .memory-content {
   float:left;
-  width:384px;
+  width:386px;
 }
 
 .memory-block {
@@ -205,6 +205,10 @@ body {
 
 .marker-ip {
   background-color: #428BCA;
+}
+
+.marker a {
+  color: inherit;
 }
 
 .marker-sp {

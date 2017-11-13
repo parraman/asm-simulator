@@ -39,7 +39,7 @@
       <div class="panel panel-default">
         <div class="panel-body">
           <app-registers-view></app-registers-view>
-          <app-memory-view [mapping]="mapping" (onMemoryCellClick)="memoryCellClick($event)"></app-memory-view>
+          <app-memory-view [mapping]="mapping" [displayA]="displayA" [displayB]="displayB" [displayC]="displayC" [displayD]="displayD" [showInstructions]="showInstructions" (onMemoryCellClick)="memoryCellClick($event)"></app-memory-view>
           <div class="small" style="margin-top:10px;"><span>Clock speed: </span>
             <select>
               <optgroup label="This is a group">

@@ -1,16 +1,19 @@
 import { Component, OnInit, AfterViewInit,
-         ElementRef, Input, OnDestroy, SimpleChanges, OnChanges,
-         EventEmitter, Output } from '@angular/core';
+    ElementRef, Input, OnDestroy, SimpleChanges, OnChanges,
+    EventEmitter, Output } from '@angular/core';
 import { MemoryOperation, MemoryService, MemoryOperationType } from '../memory.service';
 import { Subscription } from 'rxjs/Subscription';
 import { ErrorBarService } from '../error-bar.service';
 import { Utils } from '../utils';
+import { CPUService } from '../cpu.service';
+import { CPURegisterIndex, CPURegisterOperation, CPURegisterOperationType } from '../cpuregs';
 
 
 class MemoryCellView {
 
     public dataValue: string;
     public style: string;
+    public memoryRegionStyle: string;
     public address: number;
     public isInstruction: boolean;
 
@@ -34,6 +37,12 @@ class MemoryCellView {
 export class MemoryViewComponent implements OnInit, OnDestroy, OnChanges {
 
     @Input() mapping: Map<number, number>;
+    @Input() displayA: boolean;
+    @Input() displayB: boolean;
+    @Input() displayC: boolean;
+    @Input() displayD: boolean;
+    @Input() showInstructions: boolean;
+
     @Output() onMemoryCellClick = new EventEmitter<number>();
 
     public memoryCellViews: Array<MemoryCellView>;
@@ -42,6 +51,7 @@ export class MemoryViewComponent implements OnInit, OnDestroy, OnChanges {
         new Map<string, {'startAddress': number, 'endAddress': number}>();
 
     private memoryOperationSubscription: Subscription;
+    private cpuRegisterOperationSubscription: Subscription;
 
     public memoryColsIndexes: string[] = [];
     public memoryRowsIndexes: string[] = [];
@@ -51,7 +61,17 @@ export class MemoryViewComponent implements OnInit, OnDestroy, OnChanges {
     public editingCell = -1;
     public newCellValue: string;
 
+    private stackedCells: Array<number> = [];
+
+    private registerAPointer: number;
+    private registerBPointer: number;
+    private registerCPointer: number;
+    private registerDPointer: number;
+    private registerIPPointer: number;
+    private registerSPPointer: number;
+
     constructor(private memoryService: MemoryService,
+                private cpuService: CPUService,
                 private errorBarService: ErrorBarService) {
 
         this.size = memoryService.getSize();
@@ -66,8 +86,21 @@ export class MemoryViewComponent implements OnInit, OnDestroy, OnChanges {
 
         }
 
+        const registerBank = this.cpuService.getRegistersBank();
+
+        this.registerAPointer = registerBank.get(CPURegisterIndex.A).value;
+        this.registerBPointer = registerBank.get(CPURegisterIndex.B).value;
+        this.registerCPointer = registerBank.get(CPURegisterIndex.C).value;
+        this.registerDPointer = registerBank.get(CPURegisterIndex.D).value;
+        this.registerSPPointer = registerBank.get(CPURegisterIndex.SP).value;
+        this.registerIPPointer = registerBank.get(CPURegisterIndex.IP).value;
+
         this.memoryOperationSubscription = this.memoryService.memoryOperation$.subscribe(
             (memoryOperation) => this.processMemoryOperation(memoryOperation)
+        );
+
+        this.cpuRegisterOperationSubscription = this.cpuService.cpuRegisterOperation$.subscribe(
+            (cpuRegisterOperation) => this.processCPURegisterOperation(cpuRegisterOperation)
         );
 
     }
@@ -103,9 +136,9 @@ export class MemoryViewComponent implements OnInit, OnDestroy, OnChanges {
         for (let i = startAddress; i <= endAddress; i++) {
 
             this.memoryCellViews[i].dataValue = Utils.pad(initialValue, 16, 2);
-            this.memoryCellViews[i].style =
+            this.memoryCellViews[i].memoryRegionStyle =
                 name.replace(/([a-z])([A-Z])/g, '$1-$2').toLowerCase();
-
+            this.updateCellStyle(i);
         }
 
         this.memoryRegionViews.set(regionID, {'startAddress': startAddress, 'endAddress': endAddress});
@@ -124,7 +157,8 @@ export class MemoryViewComponent implements OnInit, OnDestroy, OnChanges {
             for (let i = startAddress; i <= endAddress; i++) {
 
                 this.memoryCellViews[i].dataValue = '00';
-                this.memoryCellViews[i].style = undefined;
+                this.memoryCellViews[i].memoryRegionStyle = undefined;
+                this.updateCellStyle(i);
 
             }
 
@@ -147,6 +181,165 @@ export class MemoryViewComponent implements OnInit, OnDestroy, OnChanges {
             this.memoryCellViews[i].dataValue = Utils.pad(values[i], 16, 2);
 
         }
+
+    }
+
+    private operationPushWord(value: number) {
+
+        const previousRegisterSPPointer = this.registerSPPointer;
+        this.registerSPPointer = value;
+
+        this.stackedCells.push(previousRegisterSPPointer);
+        this.stackedCells.push(previousRegisterSPPointer - 1);
+
+        this.updateCellStyle(previousRegisterSPPointer);
+        this.updateCellStyle(previousRegisterSPPointer - 1);
+        this.updateCellStyle(this.registerSPPointer);
+
+    }
+
+    private operationPushByte(value: number) {
+
+        const previousRegisterSPPointer = this.registerSPPointer;
+        this.registerSPPointer = value;
+
+        this.stackedCells.push(previousRegisterSPPointer);
+
+        this.updateCellStyle(previousRegisterSPPointer);
+        this.updateCellStyle(this.registerSPPointer);
+
+    }
+
+    private operationPopByte(value: number) {
+
+        const previousRegisterSPPointer = this.registerSPPointer;
+        this.registerSPPointer = value;
+
+        this.stackedCells.splice(this.stackedCells.indexOf(previousRegisterSPPointer), 1);
+
+        this.updateCellStyle(previousRegisterSPPointer);
+        this.updateCellStyle(this.registerSPPointer);
+
+    }
+
+    private operationPopWord(value: number) {
+
+        const previousRegisterSPPointer = this.registerSPPointer;
+        this.registerSPPointer = value;
+
+        this.stackedCells.splice(this.stackedCells.indexOf(previousRegisterSPPointer), 1);
+        this.stackedCells.splice(this.stackedCells.indexOf(previousRegisterSPPointer + 1), 1);
+
+        this.updateCellStyle(previousRegisterSPPointer);
+        this.updateCellStyle(previousRegisterSPPointer + 1);
+        this.updateCellStyle(this.registerSPPointer);
+
+    }
+
+    private operationWriteRegister(index: CPURegisterIndex, value: number) {
+
+        switch (index) {
+
+            case CPURegisterIndex.A:
+                if (this.displayA === true) {
+
+                    const previousRegisterAPointer = this.registerAPointer;
+                    this.registerAPointer = value;
+
+                    if (previousRegisterAPointer >= 0 && previousRegisterAPointer < this.size) {
+                        this.updateCellStyle(previousRegisterAPointer);
+                    }
+                    this.updateCellStyle(this.registerAPointer);
+                }
+                break;
+            case CPURegisterIndex.B:
+                if (this.displayB === true) {
+
+                    const previousRegisterBPointer = this.registerBPointer;
+                    this.registerBPointer = value;
+
+                    if (previousRegisterBPointer >= 0 && previousRegisterBPointer < this.size) {
+                        this.updateCellStyle(previousRegisterBPointer);
+                    }
+                    this.updateCellStyle(this.registerBPointer);
+                }
+                break;
+            case CPURegisterIndex.C:
+                if (this.displayC === true) {
+
+                    const previousregisterCPointer = this.registerCPointer;
+                    this.registerCPointer = value;
+
+                    if (previousregisterCPointer >= 0 && previousregisterCPointer < this.size) {
+                        this.updateCellStyle(previousregisterCPointer);
+                    }
+                    this.updateCellStyle(this.registerCPointer);
+
+                }
+                break;
+            case CPURegisterIndex.D:
+                if (this.displayD === true) {
+
+                    const previousregisterDPointer = this.registerDPointer;
+                    this.registerDPointer = value;
+
+                    if (previousregisterDPointer >= 0 && previousregisterDPointer < this.size) {
+                        this.updateCellStyle(previousregisterDPointer);
+                    }
+                    this.updateCellStyle(this.registerDPointer);
+
+                }
+                break;
+            case CPURegisterIndex.IP:
+
+                const previousregisterIPPointer = this.registerIPPointer;
+                this.registerIPPointer = value;
+
+                this.updateCellStyle(previousregisterIPPointer);
+                this.updateCellStyle(this.registerIPPointer);
+
+                break;
+
+            case CPURegisterIndex.SP:
+
+                const previousRegisterSPPointer = this.registerSPPointer;
+                this.registerSPPointer = value;
+
+                this.updateCellStyle(previousRegisterSPPointer);
+                this.updateCellStyle(this.registerSPPointer);
+
+                // And we have to flush the stack
+                const previousStackedCells = this.stackedCells;
+                this.stackedCells = [];
+                previousStackedCells.forEach((cell) => this.updateCellStyle(cell));
+
+                break;
+
+        }
+
+    }
+
+    private processCPURegisterOperation(cpuRegisterOperation: CPURegisterOperation) {
+
+        switch (cpuRegisterOperation.operationType) {
+
+            case CPURegisterOperationType.WRITE:
+                this.operationWriteRegister(cpuRegisterOperation.index, cpuRegisterOperation.value);
+                break;
+            case CPURegisterOperationType.PUSH_WORD:
+                this.operationPushWord(cpuRegisterOperation.value);
+                break;
+            case CPURegisterOperationType.PUSH_BYTE:
+                this.operationPushByte(cpuRegisterOperation.value);
+                break;
+            case CPURegisterOperationType.POP_WORD:
+                this.operationPopWord(cpuRegisterOperation.value);
+                break;
+            case CPURegisterOperationType.POP_BYTE:
+                this.operationPopByte(cpuRegisterOperation.value);
+                break;
+        }
+
 
     }
 
@@ -197,11 +390,72 @@ export class MemoryViewComponent implements OnInit, OnDestroy, OnChanges {
         }
 
         if (this.memoryCellViews[address].isInstruction === true) {
-            this.memoryCellViews[address].style = undefined;
             this.memoryCellViews[address].isInstruction = false;
+            this.updateCellStyle(address);
         }
 
         this.editingCell = -1;
+
+    }
+
+    private updateCellStyle(address: number) {
+
+        /* Order of styling:
+         * - instruction pointer >
+         * - stack pointer >
+         * - register A pointer >
+         * - register B pointer >
+         * - register C pointer >
+         * - register D pointer >
+         * - stack
+         * - mapped instruction >
+         * - region
+         */
+
+        if (address < 0 || address >= this.size) {
+            return;
+        }
+
+        if (this.memoryCellViews[address].memoryRegionStyle !== undefined) {
+            this.memoryCellViews[address].style = this.memoryCellViews[address].memoryRegionStyle;
+        }
+
+        if (this.showInstructions &&
+            this.memoryCellViews[address].isInstruction === true) {
+            this.memoryCellViews[address].style = 'instr-bg';
+        }
+
+        if (this.stackedCells.indexOf(address) !== -1) {
+            this.memoryCellViews[address].style = 'stack-bg';
+        }
+
+        if (this.displayC === true &&
+            this.registerCPointer === address) {
+            this.memoryCellViews[address].style = 'marker marker-d';
+        }
+
+        if (this.displayC === true &&
+            this.registerCPointer === address) {
+            this.memoryCellViews[address].style = 'marker marker-c';
+        }
+
+        if (this.displayB === true &&
+            this.registerBPointer === address) {
+            this.memoryCellViews[address].style = 'marker marker-b';
+        }
+
+        if (this.displayA === true &&
+            this.registerAPointer === address) {
+            this.memoryCellViews[address].style = 'marker marker-a';
+        }
+
+        if (this.registerSPPointer === address) {
+            this.memoryCellViews[address].style = 'marker marker-sp';
+        }
+
+        if (this.registerIPPointer === address) {
+            this.memoryCellViews[address].style = 'marker marker-ip';
+        }
 
     }
 
@@ -216,8 +470,8 @@ export class MemoryViewComponent implements OnInit, OnDestroy, OnChanges {
             if (previousMapping) {
                 for (const i of Array.from(previousMapping.keys())) {
 
-                    this.memoryCellViews[i].style = undefined;
                     this.memoryCellViews[i].isInstruction = false;
+                    this.updateCellStyle(i);
 
                 }
             }
@@ -227,8 +481,8 @@ export class MemoryViewComponent implements OnInit, OnDestroy, OnChanges {
             if (currentMapping) {
                 for (const i of Array.from(currentMapping.keys())) {
 
-                    this.memoryCellViews[i].style = 'instr-bg';
                     this.memoryCellViews[i].isInstruction = true;
+                    this.updateCellStyle(i);
 
                 }
             }

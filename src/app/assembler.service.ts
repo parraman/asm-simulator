@@ -1,7 +1,8 @@
 import {Injectable} from '@angular/core';
 
 import { isNumeric } from 'rxjs/util/isNumeric';
-import { OpCode, OperandType, instructionSet } from './instrset';
+import { OperandType, instructionSet } from './instrset';
+import { CPURegisterIndex, getRegisterSize } from './cpuregs';
 
 const REGEX = /^[\t ]*(?:([.A-Za-z]\w*)[:])?(?:[\t ]*([A-Za-z]{2,4})(?:[\t ]+(\[(\w+((\+|-)\d+)?)\]|\".+?\"|\'.+?\'|[.A-Za-z0-9]\w*)(?:[\t ]*[,][\t ]*(\[(\w+((\+|-)\d+)?)\]|\".+?\"|\'.+?\'|[.A-Za-z0-9]\w*))?)?)?/;
 const OP1_GROUP = 3;
@@ -44,15 +45,31 @@ export class AssemblerService {
         input = input.toUpperCase();
 
         if (input === 'A') {
-            return 0;
+            return CPURegisterIndex.A;
         } else if (input === 'B') {
-            return 1;
+            return CPURegisterIndex.B;
         } else if (input === 'C') {
-            return 2;
+            return CPURegisterIndex.C;
         } else if (input === 'D') {
-            return 3;
+            return CPURegisterIndex.D;
         } else if (input === 'SP') {
-            return 4;
+            return CPURegisterIndex.SP;
+        } else if (input === 'AH') {
+            return CPURegisterIndex.AH;
+        } else if (input === 'AL') {
+            return CPURegisterIndex.AL;
+        } else if (input === 'BH') {
+            return CPURegisterIndex.BH;
+        } else if (input === 'BL') {
+            return CPURegisterIndex.BL;
+        } else if (input === 'CH') {
+            return CPURegisterIndex.CH;
+        } else if (input === 'CL') {
+            return CPURegisterIndex.CL;
+        } else if (input === 'DH') {
+            return CPURegisterIndex.DH;
+        } else if (input === 'DL') {
+            return CPURegisterIndex.DL;
         } else {
             return undefined;
         }
@@ -67,23 +84,27 @@ export class AssemblerService {
         let base = 0;
 
         if (input[0] === 'A') {
-            base = 0;
+            base = CPURegisterIndex.A;
         } else if (input[0] === 'B') {
-            base = 1;
+            base = CPURegisterIndex.B;
         } else if (input[0] === 'C') {
-            base = 2;
+            base = CPURegisterIndex.C;
         } else if (input[0] === 'D') {
-            base = 3;
+            base = CPURegisterIndex.D;
         } else if (input.slice(0, 2) === 'SP') {
-            base = 4;
+            base = CPURegisterIndex.SP;
         } else {
             return undefined;
         }
 
         let offset_start = 1;
 
-        if (base === 4) {
+        if (base === CPURegisterIndex.SP) {
             offset_start = 2;
+        }
+
+        if (input.length === offset_start) {
+            return base;
         }
 
         if (input[offset_start] === '-') {
@@ -107,43 +128,93 @@ export class AssemblerService {
         return (offset << 8) + base; // shift offset 8 bits right and add code for register
     }
 
-    // Allowed: Register, Label or Number; SP+/-Number is allowed for 'regaddress' type
-    private static parseRegOrNumber(input: string, typeReg: OperandType, typeNumber: OperandType) {
+    // Allowed: Register addressing, Label or Number
+    private static parseAddressItem(input: string) {
 
-        let register = AssemblerService.parseRegister(input);
+        // First we check if it is a register addressing
+        const register = AssemblerService.parseOffsetAddressing(input);
 
         if (register !== undefined) {
-            return {type: typeReg, value: register};
-        } else {
-
-            const label = AssemblerService.parseLabel(input);
-
-            if (label !== undefined) {
-                return {type: typeNumber, value: label};
-            } else {
-                if (typeReg === OperandType.REGADDRESS) {
-
-                    register = AssemblerService.parseOffsetAddressing(input);
-
-                    if (register !== undefined) {
-                        return {type: typeReg, value: register};
-                    }
-                }
-
-                const value = AssemblerService.parseNumber(input);
-
-                if (isNaN(value)) {
-                    throw Error(`Not a number: ${value}`);
-                }
-
-                return {type: typeNumber, value: value};
-            }
+            return {type: OperandType.REGADDRESS, value: register};
         }
+
+        const label = AssemblerService.parseLabel(input);
+
+        if (label !== undefined) {
+            return {type: OperandType.ADDRESS, value: label};
+        }
+
+        const value = AssemblerService.parseNumber(input);
+
+        if (isNaN(value)) {
+            throw Error(`Not a number nor a valid register addressing: ${value}`);
+        }
+
+        return {type: OperandType.ADDRESS, value: value};
+
+    }
+
+    // Allowed: Register, Label or Number
+    private static parseNumericItem(input: string) {
+
+        const register = AssemblerService.parseRegister(input);
+
+        if (register !== undefined) {
+            return {type: OperandType.REGISTER, value: register};
+        }
+
+        const label = AssemblerService.parseLabel(input);
+
+        if (label !== undefined) {
+            return {type: OperandType.NUMBER, value: label};
+        }
+
+        const value = AssemblerService.parseNumber(input);
+
+        if (isNaN(value)) {
+            throw Error(`Not a number nor a valid register: ${value}`);
+        }
+
+        return {type: OperandType.NUMBER, value: value};
     }
 
     private static parseLabel(input: string): string | undefined {
 
         return REGEX_LABEL.exec(input) ? input : undefined;
+
+    }
+
+    private static checkOperandTypeValue(operandType: OperandType, value: number): OperandType {
+
+        switch (operandType) {
+
+            case OperandType.WORD:
+                if (isNumeric(value) && (value < 0 || value > 65535)) {
+                    throw Error('Operand must have a value between 0-65536');
+                }
+                break;
+            case OperandType.BYTE:
+                if (isNumeric(value)) {
+                    if (value < 0 || value > 255) {
+                        throw Error('Operand must have a value between 0-255');
+                    }
+                } else {
+                    throw Error('Operand must have a value between 0-255');
+                }
+                break;
+            case OperandType.REGISTER_8BITS:
+                if (getRegisterSize(value) !== 8) {
+                    throw Error('Invalid register. Instruction requires an 8-bit register operand');
+                }
+                break;
+            case OperandType.REGISTER_16BITS:
+                if (getRegisterSize(value) !== 16) {
+                    throw Error('Invalid register. Instruction requires a 16-bit register operand');
+                }
+                break;
+        }
+
+        return operandType;
 
     }
 
@@ -154,7 +225,7 @@ export class AssemblerService {
             case '[': // [number] or [register]
 
                 const address = input.slice(1, input.length - 1);
-                return AssemblerService.parseRegOrNumber(address, OperandType.REGADDRESS, OperandType.ADDRESS);
+                return AssemblerService.parseAddressItem(address);
 
             case '"': // "String"
 
@@ -180,7 +251,7 @@ export class AssemblerService {
 
             default: // REGISTER, NUMBER or LABEL
 
-                return AssemblerService.parseRegOrNumber(input, OperandType.REGISTER, OperandType.NUMBER);
+                return AssemblerService.parseNumericItem(input);
         }
 
     }
@@ -194,7 +265,9 @@ export class AssemblerService {
         }
 
         if (upperLabel === 'A' || upperLabel === 'B' || upperLabel === 'C' || upperLabel === 'D' ||
-            upperLabel === 'SR') {
+            upperLabel === 'AH' || upperLabel === 'AL' || upperLabel === 'BH' || upperLabel === 'BL' ||
+            upperLabel === 'CH' || upperLabel === 'CL' || upperLabel === 'DH' || upperLabel === 'DL' ||
+            upperLabel === 'SP' || upperLabel === 'SR') {
             throw Error(`Label contains keyword: ${upperLabel}`);
         }
 
@@ -217,7 +290,6 @@ export class AssemblerService {
 
     }
 
-
     constructor() {
     }
 
@@ -237,7 +309,8 @@ export class AssemblerService {
                     this.storeLabelIntoCode(item.value, this.code.length);
                 }
                 break;
-            case OperandType.REGISTER:
+            case OperandType.REGISTER_8BITS:
+            case OperandType.REGISTER_16BITS:
             case OperandType.BYTE:
                 this.code.push(item.value);
                 break;
@@ -312,52 +385,15 @@ export class AssemblerService {
                 try {
                     instructionSpec = instructionSet.getInstruction(instr, (p1) ? p1.type : undefined,
                         (p2) ? p2.type : undefined);
+
+                    if (p1) {
+                        p1.type = AssemblerService.checkOperandTypeValue(instructionSpec.operand1, p1.value);
+                    }
+                    if (p2) {
+                        p2.type = AssemblerService.checkOperandTypeValue(instructionSpec.operand2, p2.value);
+                    }
                 } catch (e) {
                     throw {error: e.toString(), line: i};
-                }
-
-                if (instructionSpec.operand1 === OperandType.WORD) {
-
-                    if (isNumeric(p1.value) && (p1.value < 0 || p1.value > 65535)) {
-                        throw {error: 'Operand must have a value between 0-65536', line: i};
-                    }
-
-                    p1.type = OperandType.WORD;
-
-                } else if (instructionSpec.operand1 === OperandType.BYTE) {
-
-                    if (isNumeric(p1.value)) {
-                        if (p1.value < 0 || p1.value > 255) {
-                            throw {error: 'Operand must have a value between 0-255', line: i};
-                        } else {
-                            p1.type = OperandType.BYTE;
-                        }
-                    } else {
-                        throw {error: 'Operand must have a value between 0-255', line: i};
-                    }
-
-                }
-
-                if (instructionSpec.operand2 === OperandType.WORD) {
-
-                    if (isNumeric(p2.value) && (p2.value < 0 || p2.value > 65535)) {
-                        throw {error: 'Operand must have a value between 0-65536', line: i};
-                    }
-
-                    p2.type = OperandType.WORD;
-
-                } else if (instructionSpec.operand2 === OperandType.BYTE) {
-
-                    if (isNumeric(p2.value)) {
-                        if (p2.value < 0 || p2.value > 255) {
-                            throw {error: 'Operand must have a value between 0-255', line: i};
-                        } else {
-                            p2.type = OperandType.BYTE;
-                        }
-                    } else {
-                        throw {error: 'Operand must have a value between 0-255', line: i};
-                    }
-
                 }
 
                 this.code.push(instructionSpec.opcode);

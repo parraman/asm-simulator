@@ -5,6 +5,7 @@ import { Observable } from 'rxjs/Observable';
 
 import { IORegisterOperation, IORegMapService,
          IORegisterType, IORegisterOperationType } from './ioregmap.service';
+import {CPUService} from "./cpu.service";
 
 const IRQMASK_REGISTER_ADDRESS = 0;
 const IRQSTATUS_REGISTER_ADDRESS = 1;
@@ -20,7 +21,9 @@ export class IrqCtrlService {
 
     private ioRegisterOperation$: Observable<IORegisterOperation>;
 
-    constructor(private ioRegMapService: IORegMapService) {
+    private interruptOutput = 0;
+
+    constructor(private ioRegMapService: IORegMapService, private cpuService: CPUService) {
 
         this.ioRegisterOperation$ = this.ioRegisterOperationSource.asObservable();
 
@@ -43,17 +46,21 @@ export class IrqCtrlService {
                 break;
             case IRQSTATUS_REGISTER_ADDRESS:
                 this.irqStatusRegister = value;
-
-                /* TODO: trigger CPU interrupt */
-                /*
-
-                if ((this.irqStatusRegister & this.irqMaskRegister) !== 0) {
-
-                }
-                */
-
                 break;
         }
+
+        if ((this.irqStatusRegister & this.irqMaskRegister) !== 0) {
+
+            if (this.interruptOutput === 0) {
+                this.interruptOutput = 1;
+                this.cpuService.raiseInterrupt();
+            }
+
+        } else if (this.interruptOutput === 1) {
+            this.interruptOutput = 0;
+            this.cpuService.lowerInterrupt();
+        }
+
     }
 
     private processRegisterOperation(ioRegisterOperation: IORegisterOperation) {
