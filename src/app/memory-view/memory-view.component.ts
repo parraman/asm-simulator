@@ -225,7 +225,7 @@ export class MemoryViewComponent implements OnInit, OnDestroy, OnChanges {
         const previousRegisterSPPointer = this.registerSPPointer;
         this.registerSPPointer = value;
 
-        this.stackedCells.splice(this.stackedCells.indexOf(previousRegisterSPPointer), 1);
+        this.stackedCells.splice(this.stackedCells.indexOf(previousRegisterSPPointer + 1), 1);
 
         this.updateCellStyle(previousRegisterSPPointer);
         this.updateCellStyle(this.registerSPPointer);
@@ -237,8 +237,8 @@ export class MemoryViewComponent implements OnInit, OnDestroy, OnChanges {
         const previousRegisterSPPointer = this.registerSPPointer;
         this.registerSPPointer = value;
 
-        this.stackedCells.splice(this.stackedCells.indexOf(previousRegisterSPPointer), 1);
         this.stackedCells.splice(this.stackedCells.indexOf(previousRegisterSPPointer + 1), 1);
+        this.stackedCells.splice(this.stackedCells.indexOf(previousRegisterSPPointer + 2), 1);
 
         this.updateCellStyle(previousRegisterSPPointer);
         this.updateCellStyle(previousRegisterSPPointer + 1);
@@ -431,6 +431,8 @@ export class MemoryViewComponent implements OnInit, OnDestroy, OnChanges {
             return;
         }
 
+        this.memoryCellViews[address].style = undefined;
+
         if (this.memoryCellViews[address].memoryRegionStyle !== undefined) {
             this.memoryCellViews[address].style = this.memoryCellViews[address].memoryRegionStyle;
         }
@@ -444,8 +446,8 @@ export class MemoryViewComponent implements OnInit, OnDestroy, OnChanges {
             this.memoryCellViews[address].style = 'stack-bg';
         }
 
-        if (this.displayC === true &&
-            this.registerCPointer === address) {
+        if (this.displayD === true &&
+            this.registerDPointer === address) {
             this.memoryCellViews[address].style = 'marker marker-d';
         }
 

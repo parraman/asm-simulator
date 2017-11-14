@@ -91,18 +91,30 @@ export class CPUService {
 
     constructor(protected memoryService: MemoryService) {
 
-        this.registersBank.set(CPURegisterIndex.A,
-            new CPUGeneralPurposeRegister('A', CPURegisterIndex.A, 0,
-                this.cpuRegisterOperationSource, 'General Purpose Register A'));
-        this.registersBank.set(CPURegisterIndex.B,
-            new CPUGeneralPurposeRegister('B', CPURegisterIndex.B, 0,
-                this.cpuRegisterOperationSource, 'General Purpose Register B'));
-        this.registersBank.set(CPURegisterIndex.C,
-            new CPUGeneralPurposeRegister('C', CPURegisterIndex.C, 0,
-                this.cpuRegisterOperationSource, 'General Purpose Register C'));
-        this.registersBank.set(CPURegisterIndex.D,
-            new CPUGeneralPurposeRegister('D', CPURegisterIndex.D, 0,
-                this.cpuRegisterOperationSource, 'General Purpose Register D'));
+        const registerA = new CPUGeneralPurposeRegister('A', CPURegisterIndex.A, 0,
+            this.cpuRegisterOperationSource, 'General Purpose Register A');
+        this.registersBank.set(CPURegisterIndex.A, registerA);
+        this.registersBank.set(CPURegisterIndex.AH, registerA);
+        this.registersBank.set(CPURegisterIndex.AL, registerA);
+
+        const registerB = new CPUGeneralPurposeRegister('B', CPURegisterIndex.B, 0,
+            this.cpuRegisterOperationSource, 'General Purpose Register B')
+        this.registersBank.set(CPURegisterIndex.B, registerB);
+        this.registersBank.set(CPURegisterIndex.BH, registerB);
+        this.registersBank.set(CPURegisterIndex.BL, registerB);
+
+        const registerC = new CPUGeneralPurposeRegister('C', CPURegisterIndex.C, 0,
+            this.cpuRegisterOperationSource, 'General Purpose Register C');
+        this.registersBank.set(CPURegisterIndex.C, registerC);
+        this.registersBank.set(CPURegisterIndex.CH, registerC);
+        this.registersBank.set(CPURegisterIndex.CL, registerC);
+
+        const registerD = new CPUGeneralPurposeRegister('D', CPURegisterIndex.D, 0,
+            this.cpuRegisterOperationSource, 'General Purpose Register D');
+        this.registersBank.set(CPURegisterIndex.D, registerD);
+        this.registersBank.set(CPURegisterIndex.DH, registerD);
+        this.registersBank.set(CPURegisterIndex.DL, registerD);
+
         this.registersBank.set(CPURegisterIndex.SP,
             new CPUStackPointerRegister('SP', CPURegisterIndex.SP, 0,
                 this.cpuRegisterOperationSource, 'Stack Pointer Register'));

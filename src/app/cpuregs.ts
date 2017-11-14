@@ -332,7 +332,7 @@ export class CPUStatusRegister extends CPURegister {
             this._value &= ~(1 << SRBit.HALT);
         } else {
             this._halt = 1;
-            this._value |= ~(1 << SRBit.HALT);
+            this._value |= (1 << SRBit.HALT);
         }
 
         this.pushWriteValue(this._value);
@@ -352,7 +352,7 @@ export class CPUStatusRegister extends CPURegister {
             this._value &= ~(1 << SRBit.FAULT);
         } else {
             this._fault = 1;
-            this._value |= ~(1 << SRBit.FAULT);
+            this._value |= (1 << SRBit.FAULT);
         }
 
         this.pushWriteValue(this._value);
@@ -372,7 +372,7 @@ export class CPUStatusRegister extends CPURegister {
             this._value &= ~(1 << SRBit.ZERO);
         } else {
             this._zero = 1;
-            this._value |= ~(1 << SRBit.ZERO);
+            this._value |= (1 << SRBit.ZERO);
         }
 
         this.pushWriteValue(this._value);
@@ -392,7 +392,7 @@ export class CPUStatusRegister extends CPURegister {
             this._value &= ~(1 << SRBit.CARRY);
         } else {
             this._carry = 1;
-            this._value |= ~(1 << SRBit.CARRY);
+            this._value |= (1 << SRBit.CARRY);
         }
 
         this.pushWriteValue(this._value);
@@ -412,7 +412,7 @@ export class CPUStatusRegister extends CPURegister {
             this._value &= ~(1 << SRBit.IRQMASK);
         } else {
             this._irqMask = 1;
-            this._value |= ~(1 << SRBit.IRQMASK);
+            this._value |= (1 << SRBit.IRQMASK);
         }
 
         this.pushWriteValue(this._value);
@@ -432,7 +432,7 @@ export class CPUStatusRegister extends CPURegister {
             this._value &= ~(1 << SRBit.SUPERVISOR);
         } else {
             this._supervisor = 1;
-            this._value |= ~(1 << SRBit.SUPERVISOR);
+            this._value |= (1 << SRBit.SUPERVISOR);
         }
 
         this.pushWriteValue(this._value);
