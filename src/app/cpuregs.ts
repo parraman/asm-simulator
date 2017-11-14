@@ -1,6 +1,6 @@
 import { Subject } from 'rxjs/Subject';
 
-enum SRBit {
+export enum SRBit {
 
     HALT = 0,
     FAULT = 1,
@@ -94,19 +94,21 @@ export class CPURegister {
     public name: string;
     public description: string;
     public index: number;
+    public resetValue: number;
 
     protected _value: number;
 
     public operationSource: Subject<CPURegisterOperation>;
 
-    constructor (name: string, index: number, initialValue: number,
+    constructor (name: string, index: number, resetValue: number,
                  operationSource?: Subject<CPURegisterOperation>,
                  description?: string) {
 
         this.name = name;
         this.description = description;
         this.index = index;
-        this._value = initialValue;
+        this.resetValue = resetValue;
+        this._value = resetValue;
         this.operationSource = operationSource;
 
     }
@@ -152,11 +154,11 @@ export class CPURegister {
 
 export class CPUGeneralPurposeRegister extends CPURegister {
 
-    constructor (name: string, index: number, initialValue: number,
+    constructor (name: string, index: number, resetValue: number,
                  operationSource?: Subject<CPURegisterOperation>,
                  description?: string) {
 
-        super(name, index, initialValue, operationSource, description);
+        super(name, index, resetValue, operationSource, description);
 
     }
 
@@ -193,11 +195,11 @@ export class CPUGeneralPurposeRegister extends CPURegister {
 
 export class CPUStackPointerRegister extends CPURegister {
 
-    constructor (name: string, index: number, initialValue: number,
+    constructor (name: string, index: number, resetValue: number,
                  operationSource?: Subject<CPURegisterOperation>,
                  description?: string) {
 
-        super(name, index, initialValue, operationSource, description);
+        super(name, index, resetValue, operationSource, description);
 
     }
 
@@ -301,23 +303,35 @@ export class CPUStatusRegister extends CPURegister {
 
     set value(newValue: number) {
 
-        if ((newValue &= (1 << SRBit.HALT)) !== 0) {
+        if ((newValue & (1 << SRBit.HALT)) !== 0) {
             this._halt = 1;
+        } else {
+            this._halt = 0;
         }
-        if ((newValue &= (1 << SRBit.FAULT)) !== 0) {
+        if ((newValue & (1 << SRBit.FAULT)) !== 0) {
             this._fault = 1;
+        } else {
+            this._fault = 0;
         }
-        if ((newValue &= (1 << SRBit.ZERO)) !== 0) {
+        if ((newValue & (1 << SRBit.ZERO)) !== 0) {
             this._zero = 1;
+        } else {
+            this._zero = 0;
         }
-        if ((newValue &= (1 << SRBit.CARRY)) !== 0) {
+        if ((newValue & (1 << SRBit.CARRY)) !== 0) {
             this._carry = 1;
+        } else {
+            this._carry = 0;
         }
-        if ((newValue &= (1 << SRBit.IRQMASK)) !== 0) {
+        if ((newValue & (1 << SRBit.IRQMASK)) !== 0) {
             this._irqMask = 1;
+        } else {
+            this._irqMask = 0;
         }
-        if ((newValue &= (1 << SRBit.SUPERVISOR)) !== 0) {
+        if ((newValue & (1 << SRBit.SUPERVISOR)) !== 0) {
             this._supervisor = 1;
+        } else {
+            this._supervisor = 0;
         }
 
         this._value = newValue;

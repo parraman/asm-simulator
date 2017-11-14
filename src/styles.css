@@ -108,7 +108,7 @@
   display:inline-block;
   float:left;
   font-size:14px;
-  margin-right:8px;
+  margin-right:4px;
   padding-right:6px;
   padding-left:5px;
   line-height:22px;
@@ -132,8 +132,11 @@
 .register-value-byte {
   float:left;
   text-align:center;
-  line-height:20px;
+  line-height:18px;
   font-size:14px;
+  margin-top: 2px;
+  padding-left: 3px;
+  padding-right: 3px;
 }
 
 .register-value-bitmap, .status-register-bit-label {
@@ -242,4 +245,8 @@ body {
 
 .visual-display-region {
   background-color: #fff2f0;
+}
+
+.textual-display-region {
+  background-color: #ffffe0;
 }

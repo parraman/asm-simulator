@@ -4,6 +4,11 @@ import { MemoryService } from './memory.service';
 import { ErrorBarService } from './error-bar.service';
 import { CPUService } from './cpu.service';
 
+import { Subscription } from 'rxjs/Subscription';
+import { Observable } from 'rxjs/Rx';
+import { CPURegisterIndex, CPURegisterOperation, CPURegisterOperationType, SRBit } from './cpuregs';
+import { IORegMapService } from './ioregmap.service';
+
 @Component({
     selector: 'app-root',
     templateUrl: './app.component.html'
@@ -27,16 +32,67 @@ export class AppComponent {
     public displayA = false;
     public displayB = false;
     public displayC = false;
+    public displayD = false;
+
     public showInstructions = true;
 
-    public selectedLine = -1;
+    public isRunning = false;
+
+    public isCPUHalted = false;
+
+    public speed = 250;
 
     @ViewChild('codeTextArea') codeTextArea: ElementRef;
+
+    private cpuRegisterOperationSubscription: Subscription;
+    private timerSubscription: Subscription;
 
     constructor (private assemblerService: AssemblerService,
                  private memoryService: MemoryService,
                  private errorBarService: ErrorBarService,
-                 private cpuService: CPUService) {}
+                 private ioRegMapService: IORegMapService,
+                 private cpuService: CPUService) {
+
+        this.cpuRegisterOperationSubscription = this.cpuService.cpuRegisterOperation$.subscribe(
+            (cpuRegisterOperation) => this.processCPURegisterOperation(cpuRegisterOperation)
+        );
+
+    }
+
+    private processCPURegisterOperation(cpuRegisterOperation: CPURegisterOperation) {
+
+        if (cpuRegisterOperation.index === CPURegisterIndex.IP &&
+            cpuRegisterOperation.operationType === CPURegisterOperationType.WRITE) {
+
+            if (this.mapping && this.mapping.has(cpuRegisterOperation.value) && this.codeTextArea) {
+
+                this.markLine(this.mapping.get(cpuRegisterOperation.value));
+
+            }
+
+        } else if (cpuRegisterOperation.index === CPURegisterIndex.SR &&
+            cpuRegisterOperation.operationType === CPURegisterOperationType.WRITE) {
+
+            if ((cpuRegisterOperation.value & (1 << SRBit.HALT)) !== 0) {
+
+                this.isCPUHalted = true;
+
+                if (this.isRunning === true) {
+
+                    this.isRunning = false;
+                    this.timerSubscription.unsubscribe();
+
+                }
+
+            } else {
+
+                this.isCPUHalted = false;
+
+            }
+
+        }
+
+    }
 
     public assemble() {
 
@@ -47,8 +103,10 @@ export class AppComponent {
         } catch (e) {
             if (e.line) {
                 this.errorBarService.setErrorMessage(e.line + ': ' + e.error);
-            } else {
+            } else if (e.error) {
                 this.errorBarService.setErrorMessage(e.error);
+            } else {
+                this.errorBarService.setErrorMessage(e.toString());
             }
         } finally {
 
@@ -61,32 +119,36 @@ export class AppComponent {
         }
     }
 
+    private markLine(line: number) {
+
+        const element = this.codeTextArea.nativeElement;
+
+        const lines = element.value.split('\n');
+
+        // Calculate start/end
+        let startPos = 0;
+        for (let x = 0; x < lines.length; x++) {
+            if (x === line) {
+                break;
+            }
+            startPos += (lines[x].length + 1);
+        }
+
+        const endPos = lines[line].length + startPos;
+
+        if (element.selectionStart !== undefined) {
+            element.focus();
+            element.selectionStart = startPos;
+            element.selectionEnd = endPos;
+        }
+
+    }
+
     public memoryCellClick(address: number) {
 
         if (this.mapping && this.mapping.has(address) && this.codeTextArea) {
 
-            this.selectedLine = this.mapping.get(address);
-
-            const element = this.codeTextArea.nativeElement;
-
-            const lines = element.value.split('\n');
-
-            // Calculate start/end
-            let startPos = 0;
-            for (let x = 0; x < lines.length; x++) {
-                if (x === this.selectedLine) {
-                    break;
-                }
-                startPos += (lines[x].length + 1);
-            }
-
-            const endPos = lines[this.selectedLine].length + startPos;
-
-            if (element.selectionStart !== undefined) {
-                element.focus();
-                element.selectionStart = startPos;
-                element.selectionEnd = endPos;
-            }
+            this.markLine(this.mapping.get(address));
 
         }
 
@@ -94,11 +156,77 @@ export class AppComponent {
 
     public executeStep() {
 
-        try {
-            this.cpuService.step();
-        } catch (e) {
-            this.errorBarService.setErrorMessage(e.toString());
+        if (this.isCPUHalted === true) {
+            return;
         }
+
+        try {
+
+            this.cpuService.step();
+
+        } catch (e) {
+
+            this.errorBarService.setErrorMessage(e.toString());
+
+        }
+
+    }
+
+    public run() {
+
+        if (this.isCPUHalted === true) {
+            return;
+        }
+
+        this.isRunning = true;
+
+        this.timerSubscription = Observable.timer(1, this.speed).subscribe(
+            (ticks: any) => {
+
+                try {
+
+                    this.cpuService.step();
+
+                } catch (e) {
+
+                    this.errorBarService.setErrorMessage(e.toString());
+                    this.isRunning = false;
+                    this.timerSubscription.unsubscribe();
+
+                }
+
+            }
+        );
+    }
+
+    public stop() {
+
+        if (this.timerSubscription && this.timerSubscription.closed === false) {
+
+            this.isRunning = false;
+            this.timerSubscription.unsubscribe();
+
+        }
+
+    }
+
+    public reset() {
+
+        this.mapping = undefined;
+        this.cpuService.reset();
+        this.memoryService.reset();
+        this.ioRegMapService.reset();
+
+    }
+
+    public textAreaKeyDown(event: KeyboardEvent) {
+
+        const element = this.codeTextArea.nativeElement;
+        const start = element.selectionStart;
+        const end = element.selectionEnd;
+
+        element.value = element.value.substring(0, start) + '\t' + element.value.substring(end);
+        element.selectionStart = element.selectionEnd = start + 1;
 
     }
 

@@ -1,5 +1,4 @@
-import { Component, OnInit, AfterViewInit,
-    ElementRef, Input, OnDestroy, SimpleChanges, OnChanges,
+import { Component, OnInit, Input, OnDestroy, SimpleChanges, OnChanges,
     EventEmitter, Output } from '@angular/core';
 import { MemoryOperation, MemoryService, MemoryOperationType } from '../memory.service';
 import { Subscription } from 'rxjs/Subscription';
@@ -11,7 +10,9 @@ import { CPURegisterIndex, CPURegisterOperation, CPURegisterOperationType } from
 
 class MemoryCellView {
 
-    public dataValue: string;
+    private _value: number;
+    private _strValue: string;
+
     public style: string;
     public memoryRegionStyle: string;
     public address: number;
@@ -20,12 +21,31 @@ class MemoryCellView {
     constructor(address: number, initialValue: number = 0, initialStyle?: string, isInstruction: boolean = false) {
 
         this.style = initialStyle;
-        this.dataValue = Utils.pad(initialValue, 16, 2);
+        this._value = initialValue;
+        this._strValue = Utils.pad(initialValue, 16, 2);
         this.address = address;
         this.isInstruction = isInstruction;
 
     }
 
+    get value() {
+
+        return this._value;
+
+    }
+
+    get strValue() {
+
+        return this._strValue;
+
+    }
+
+    set value(newValue: number) {
+
+        this._value = newValue;
+        this._strValue = Utils.pad(newValue, 16, 2);
+
+    }
 
 }
 
@@ -95,6 +115,9 @@ export class MemoryViewComponent implements OnInit, OnDestroy, OnChanges {
         this.registerSPPointer = registerBank.get(CPURegisterIndex.SP).value;
         this.registerIPPointer = registerBank.get(CPURegisterIndex.IP).value;
 
+        this.updateCellStyle(this.registerIPPointer);
+        this.updateCellStyle(this.registerSPPointer);
+
         this.memoryOperationSubscription = this.memoryService.memoryOperation$.subscribe(
             (memoryOperation) => this.processMemoryOperation(memoryOperation)
         );
@@ -135,7 +158,7 @@ export class MemoryViewComponent implements OnInit, OnDestroy, OnChanges {
 
         for (let i = startAddress; i <= endAddress; i++) {
 
-            this.memoryCellViews[i].dataValue = Utils.pad(initialValue, 16, 2);
+            this.memoryCellViews[i].value = initialValue;
             this.memoryCellViews[i].memoryRegionStyle =
                 name.replace(/([a-z])([A-Z])/g, '$1-$2').toLowerCase();
             this.updateCellStyle(i);
@@ -156,7 +179,7 @@ export class MemoryViewComponent implements OnInit, OnDestroy, OnChanges {
 
             for (let i = startAddress; i <= endAddress; i++) {
 
-                this.memoryCellViews[i].dataValue = '00';
+                this.memoryCellViews[i].value = 0;
                 this.memoryCellViews[i].memoryRegionStyle = undefined;
                 this.updateCellStyle(i);
 
@@ -170,16 +193,14 @@ export class MemoryViewComponent implements OnInit, OnDestroy, OnChanges {
 
     private operationWriteByte(address: number, value: number) {
 
-        this.memoryCellViews[address].dataValue = Utils.pad(value, 16, 2);
+        this.memoryCellViews[address].value = value;
 
     }
 
     private operationWriteWord(address: number, value: number) {
 
-        const lsb = (value & 0x00FF);
-        const msb = (value & 0xFF00) >>> 8;
-        this.memoryCellViews[address].dataValue = Utils.pad(msb, 16, 2);
-        this.memoryCellViews[address + 1].dataValue = Utils.pad(lsb, 16, 2);
+        this.memoryCellViews[address].value = (value & 0xFF00) >>> 8;
+        this.memoryCellViews[address + 1].value = (value & 0x00FF);
 
     }
 
@@ -188,7 +209,17 @@ export class MemoryViewComponent implements OnInit, OnDestroy, OnChanges {
 
         for (let i = initialAddress; i < initialAddress + values.length; i++) {
 
-            this.memoryCellViews[i].dataValue = Utils.pad(values[i], 16, 2);
+            this.memoryCellViews[i].value = values[i];
+
+        }
+
+    }
+
+    private operationReset() {
+
+        for (let i = 0; i < this.size; i++) {
+
+            this.memoryCellViews[i].value = 0;
 
         }
 
@@ -251,10 +282,11 @@ export class MemoryViewComponent implements OnInit, OnDestroy, OnChanges {
         switch (index) {
 
             case CPURegisterIndex.A:
-                if (this.displayA === true) {
 
-                    const previousRegisterAPointer = this.registerAPointer;
-                    this.registerAPointer = value;
+                const previousRegisterAPointer = this.registerAPointer;
+                this.registerAPointer = value;
+
+                if (this.displayA === true) {
 
                     if (previousRegisterAPointer >= 0 && previousRegisterAPointer < this.size) {
                         this.updateCellStyle(previousRegisterAPointer);
@@ -263,10 +295,11 @@ export class MemoryViewComponent implements OnInit, OnDestroy, OnChanges {
                 }
                 break;
             case CPURegisterIndex.B:
-                if (this.displayB === true) {
 
-                    const previousRegisterBPointer = this.registerBPointer;
-                    this.registerBPointer = value;
+                const previousRegisterBPointer = this.registerBPointer;
+                this.registerBPointer = value;
+
+                if (this.displayB === true) {
 
                     if (previousRegisterBPointer >= 0 && previousRegisterBPointer < this.size) {
                         this.updateCellStyle(previousRegisterBPointer);
@@ -275,10 +308,11 @@ export class MemoryViewComponent implements OnInit, OnDestroy, OnChanges {
                 }
                 break;
             case CPURegisterIndex.C:
-                if (this.displayC === true) {
 
-                    const previousregisterCPointer = this.registerCPointer;
-                    this.registerCPointer = value;
+                const previousregisterCPointer = this.registerCPointer;
+                this.registerCPointer = value;
+
+                if (this.displayC === true) {
 
                     if (previousregisterCPointer >= 0 && previousregisterCPointer < this.size) {
                         this.updateCellStyle(previousregisterCPointer);
@@ -288,10 +322,11 @@ export class MemoryViewComponent implements OnInit, OnDestroy, OnChanges {
                 }
                 break;
             case CPURegisterIndex.D:
-                if (this.displayD === true) {
 
-                    const previousregisterDPointer = this.registerDPointer;
-                    this.registerDPointer = value;
+                const previousregisterDPointer = this.registerDPointer;
+                this.registerDPointer = value;
+
+                if (this.displayD === true) {
 
                     if (previousregisterDPointer >= 0 && previousregisterDPointer < this.size) {
                         this.updateCellStyle(previousregisterDPointer);
@@ -385,7 +420,8 @@ export class MemoryViewComponent implements OnInit, OnDestroy, OnChanges {
                 break;
             case MemoryOperationType.LOAD_BYTE:
                 break;
-            case MemoryOperationType.RESET: // TODO: Complete the code to reset the memory view
+            case MemoryOperationType.RESET:
+                this.operationReset();
                 break;
             case MemoryOperationType.SIZE_CHANGE: // TODO: Complete the code to update the size of the memory
                 break;
@@ -505,6 +541,27 @@ export class MemoryViewComponent implements OnInit, OnDestroy, OnChanges {
             }
 
         }
+        if ('displayA' in changes) {
+
+            this.updateCellStyle(this.registerAPointer);
+
+        }
+        if ('displayB' in changes) {
+
+            this.updateCellStyle(this.registerBPointer);
+
+        }
+        if ('displayC' in changes) {
+
+            this.updateCellStyle(this.registerCPointer);
+
+        }
+        if ('displayD' in changes) {
+
+            this.updateCellStyle(this.registerDPointer);
+
+        }
+
 
     }
 
@@ -513,7 +570,7 @@ export class MemoryViewComponent implements OnInit, OnDestroy, OnChanges {
         if (event.ctrlKey || event.metaKey) {
 
             this.editingCell = address;
-            this.newCellValue = this.memoryCellViews[address].dataValue;
+            this.newCellValue = this.memoryCellViews[address].strValue;
 
         } else {
 

@@ -27,10 +27,11 @@ export class IORegister {
     public address: number;
     public registerType: IORegisterType;
     public value: number;
+    public resetValue: number;
     public operationSource: Subject<IORegisterOperation>;
 
     constructor(name: string, address: number,
-                initialValue: number = 0,
+                resetValue: number = 0,
                 registerType: IORegisterType = IORegisterType.READ_WRITE,
                 operationSource?: Subject<IORegisterOperation>,
                 description?: string) {
@@ -39,7 +40,8 @@ export class IORegister {
         this.description = description;
         this.address = address;
         this.registerType = registerType;
-        this.value = initialValue;
+        this.resetValue = resetValue;
+        this.value = resetValue;
         this.operationSource = operationSource;
 
     }
@@ -186,6 +188,12 @@ export class IORegMapService {
         }
 
         this.ioRegisterOperationSource.next(new IORegisterOperation(IORegisterOperationType.WRITE, parameters));
+
+    }
+
+    public reset() {
+
+        this.registersMap.forEach((register) => this.store(register.address, register.resetValue));
 
     }
 

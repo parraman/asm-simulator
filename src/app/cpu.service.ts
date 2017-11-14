@@ -258,6 +258,18 @@ export class CPUService {
 
     }
 
+    public reset() {
+
+        this.registersBank.get(CPURegisterIndex.A).value = this.registersBank.get(CPURegisterIndex.A).resetValue;
+        this.registersBank.get(CPURegisterIndex.B).value = this.registersBank.get(CPURegisterIndex.B).resetValue;
+        this.registersBank.get(CPURegisterIndex.C).value = this.registersBank.get(CPURegisterIndex.C).resetValue;
+        this.registersBank.get(CPURegisterIndex.D).value = this.registersBank.get(CPURegisterIndex.D).resetValue;
+        this.registersBank.get(CPURegisterIndex.IP).value = this.registersBank.get(CPURegisterIndex.IP).resetValue;
+        this.registersBank.get(CPURegisterIndex.SP).value = this.registersBank.get(CPURegisterIndex.SP).resetValue;
+        this.registersBank.get(CPURegisterIndex.SR).value = this.registersBank.get(CPURegisterIndex.SR).resetValue;
+
+    }
+
     public step() {
 
         if (this.SR.halt === 1) {

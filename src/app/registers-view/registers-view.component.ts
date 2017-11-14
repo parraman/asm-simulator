@@ -1,4 +1,4 @@
-import {Component, OnDestroy, OnInit} from '@angular/core';
+import { Component, OnDestroy, OnInit, Input } from '@angular/core';
 
 import { Subscription } from 'rxjs/Subscription';
 import { Utils } from '../utils';
@@ -11,8 +11,8 @@ class CPURegisterView {
     public name: string;
     public description: string;
     private _value: number;
-    private _strvalue: string;
-    public bitfield: Array<number> = new Array<number>(16);
+    private _strValue: string;
+    public bitField: Array<number> = new Array<number>(16);
 
     constructor(name: string, initialValue: number = 0,
                 description?: string) {
@@ -20,14 +20,14 @@ class CPURegisterView {
         this.name = name;
         this.description = description;
         this._value = initialValue;
-        this._strvalue = Utils.pad(initialValue, 16, 4);
+        this._strValue = Utils.pad(initialValue, 16, 4);
 
         for (let i = 0; i < 16; i++) {
 
             if ((initialValue & (1 << i)) === (1 << i)) {
-                this.bitfield[i] = 1;
+                this.bitField[i] = 1;
             } else {
-                this.bitfield[i] = 0;
+                this.bitField[i] = 0;
             }
 
         }
@@ -41,21 +41,21 @@ class CPURegisterView {
 
     get strValue() {
 
-        return this._strvalue;
+        return this._strValue;
 
     }
 
     set value(newValue: number) {
 
-        this._strvalue = Utils.pad(newValue, 16, 4);
+        this._strValue = Utils.pad(newValue, 16, 4);
         this._value = newValue;
 
         for (let i = 0; i < 16; i++) {
 
             if ((newValue & (1 << i)) === (1 << i)) {
-                this.bitfield[i] = 1;
+                this.bitField[i] = 1;
             } else {
-                this.bitfield[i] = 0;
+                this.bitField[i] = 0;
             }
 
         }
@@ -78,6 +78,11 @@ export class RegistersViewComponent implements OnInit, OnDestroy {
     private SR: CPURegisterView;
     private IP: CPURegisterView;
     private SP: CPURegisterView;
+
+    @Input() displayA: boolean;
+    @Input() displayB: boolean;
+    @Input() displayC: boolean;
+    @Input() displayD: boolean;
 
     private registersMap: Map<number, CPURegisterView> = new Map<number, CPURegisterView>();
 

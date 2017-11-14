@@ -10,8 +10,11 @@ class IORegisterView {
 
     public name: string;
     public description: string;
-    public address: string;
-    public value: string;
+    private _address: number;
+    private _strAddress: string;
+
+    private _value: number;
+    private _strValue: string;
 
     constructor(name: string, address: number,
                 initialValue: number = 0,
@@ -19,8 +22,46 @@ class IORegisterView {
 
         this.name = name;
         this.description = description;
-        this.address = Utils.pad(address, 16, 4);
-        this.value = Utils.pad(initialValue, 16, 4);
+        this._address = address;
+        this._strAddress = Utils.pad(address, 16, 4);
+        this._value = initialValue;
+        this._strValue = Utils.pad(initialValue, 16, 4);
+
+    }
+
+    get value() {
+
+        return this._value;
+
+    }
+
+    get strValue() {
+
+        return this._strValue;
+
+    }
+
+    set value(newValue: number) {
+
+        this._strValue = Utils.pad(newValue, 16, 4);
+
+    }
+
+    get address(): number {
+
+        return this._address;
+
+    }
+
+    get strAddress(): string {
+
+        return this._strAddress;
+
+    }
+
+    set address(newAddress: number) {
+
+        this._strAddress = Utils.pad(newAddress, 16, 4);
 
     }
 
@@ -96,7 +137,7 @@ export class IORegistersViewComponent implements OnInit, OnDestroy {
 
         if (registerView) {
 
-            registerView.value = Utils.pad(value, 16, 4);
+            registerView.value = value;
 
         }
 

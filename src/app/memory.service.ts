@@ -469,13 +469,9 @@ export class MemoryService {
 
         for (let i = 0; i < this.memoryCells.length; i++) {
 
-            this.memoryCells[i].memoryRegion = undefined;
-            this.memoryCells[i].cellType = MemoryCellType.READ_WRITE;
             this.memoryCells[i].dataValue = 0;
 
         }
-
-        this.memoryRegions.clear();
 
         this.memoryOperationSource.next(new MemoryOperation(MemoryOperationType.RESET, undefined));
 

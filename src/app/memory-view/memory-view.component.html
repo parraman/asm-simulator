@@ -10,10 +10,10 @@
     <div class="source-code memory-content">
       <div class="memory-block"  *ngFor="let i of memoryCellViews; let j = index" (click)="memoryCellClick($event, j)" [ngClass]="i.style">
         <div *ngIf="editingCell !== j && i.isInstruction === false">
-          <small>{{i.dataValue}}</small>
+          <small>{{i.strValue}}</small>
         </div>
         <a *ngIf="editingCell !== j && i.isInstruction === true">
-          <small>{{i.dataValue}}</small>
+          <small>{{i.strValue}}</small>
         </a>
         <input class="memory-cell-input" *ngIf="editingCell === j" appAutofocus [(ngModel)]="newCellValue" (keyup.escape)="editingCell = -1" (keyup.enter)="setCellValue(j)" (blur)="editingCell = -1" title="New cell value">
       </div>

@@ -10,9 +10,9 @@
     </thead>
     <tbody class="source-code">
     <tr *ngFor="let i of registerAddresses">
-      <td>{{registersViewMap.get(i).address}}</td>
+      <td>{{registersViewMap.get(i).strAddress}}</td>
       <td title="{{registersViewMap.get(i).description}}">{{registersViewMap.get(i).name}}</td>
-      <td>{{registersViewMap.get(i).value}}</td>
+      <td>{{registersViewMap.get(i).strValue}}</td>
     </tr>
     </tbody>
   </table>

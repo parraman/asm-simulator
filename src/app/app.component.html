@@ -2,8 +2,8 @@
   <div class="container">
     <div class="navbar-header">
       <div class="btn-group">
-        <button type="button" class="btn btn-success navbar-btn" (click)="run()" *ngIf="isRunning"><span class="glyphicon glyphicon-play"></span> Run</button>
-        <button type="button" class="btn btn-default navbar-btn" (click)="stop()" *ngIf="!isRunning"><span class="glyphicon glyphicon-stop"></span> Stop</button>
+        <button type="button" class="btn btn-success navbar-btn" (click)="run()" *ngIf="!isRunning"><span class="glyphicon glyphicon-play"></span> Run</button>
+        <button type="button" class="btn btn-default navbar-btn" (click)="stop()" *ngIf="isRunning"><span class="glyphicon glyphicon-stop"></span> Stop</button>
         <button type="button" class="btn btn-default navbar-btn" (click)="executeStep()" [disabled]="isRunning"><span class="glyphicon glyphicon-forward"></span> Step</button>
       </div>
       <button type="button" class="btn btn-default navbar-btn" (click)="reset()">Reset</button>
@@ -18,7 +18,7 @@
         <div class="panel-body">
           <h4>Code</h4>
           <form>
-            <textarea #codeTextArea name="code" [(ngModel)]="codeText" class="form-control source-code" rows="35" style="margin-bottom:10px;resize:none;"></textarea>
+            <textarea (keydown.tab)="textAreaKeyDown($event);false" #codeTextArea name="code" [(ngModel)]="codeText" class="form-control source-code" rows="35" style="margin-bottom:10px;resize:none;"></textarea>
             <button class="btn btn-default btn-secondary" type="button" style="background-image:none;" (click)="assemble()">Assemble </button>
           </form>
         </div>
@@ -38,19 +38,27 @@
       </div>
       <div class="panel panel-default">
         <div class="panel-body">
-          <app-registers-view></app-registers-view>
+          <app-registers-view [displayA]="displayA" [displayB]="displayB" [displayC]="displayC" [displayD]="displayD"></app-registers-view>
           <app-memory-view [mapping]="mapping" [displayA]="displayA" [displayB]="displayB" [displayC]="displayC" [displayD]="displayD" [showInstructions]="showInstructions" (onMemoryCellClick)="memoryCellClick($event)"></app-memory-view>
           <div class="small" style="margin-top:10px;"><span>Clock speed: </span>
-            <select>
-              <optgroup label="This is a group">
-                <option value="12">1 HZ</option>
-                <option value="13" selected="">4 HZ</option>
-                <option value="14">8 HZ</option>
-              </optgroup>
-            </select><span style="margin-left:5px;">Instructions: </span><a href="#">Hide </a></div>
-          <div class="small" style="margin-bottom: 20px;"><span>Register addressing: </span><span style="margin-left:5px;">A: </span><a href="#">Show </a><span style="margin-left:5px;">B: </span><a href="#">Show </a><span style="margin-left:5px;">C: </span><a href="#">Show </a><span style="margin-left:5px;">D: </span>
-            <a
-              href="#">Show </a>
+            <select [(ngModel)]="speed">
+              <option [ngValue]="1000">1 HZ</option>
+              <option [ngValue]="250">4 HZ</option>
+              <option [ngValue]="125">8 HZ</option>
+            </select><span style="margin-left:5px;">Instructions: </span><a (click)="showInstructions = false" *ngIf="showInstructions === true">Hide</a><a (click)="showInstructions = true" *ngIf="showInstructions === false">Show</a></div>
+          <div class="small" style="margin-bottom: 20px;"><span>Register addressing: </span>
+            <span style="margin-left:5px;">A: </span>
+            <a *ngIf="displayA === false" (click)="displayA = true">Show</a>
+            <a *ngIf="displayA === true" (click)="displayA = false">Hide</a>
+            <span style="margin-left:5px;">B: </span>
+            <a *ngIf="displayB === false" (click)="displayB = true">Show</a>
+            <a *ngIf="displayB === true" (click)="displayB = false">Hide</a>
+            <span style="margin-left:5px;">C: </span>
+            <a *ngIf="displayC === false" (click)="displayC = true">Show</a>
+            <a *ngIf="displayC === true" (click)="displayC = false">Hide</a>
+            <span style="margin-left:5px;">D: </span>
+            <a *ngIf="displayD === false" (click)="displayD = true">Show</a>
+            <a *ngIf="displayD === true" (click)="displayD = false">Hide</a>
           </div>
           <app-ioregisters-view></app-ioregisters-view>
         </div>
