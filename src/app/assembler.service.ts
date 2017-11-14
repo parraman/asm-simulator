@@ -4,7 +4,7 @@ import { isNumeric } from 'rxjs/util/isNumeric';
 import { OperandType, instructionSet } from './instrset';
 import { CPURegisterIndex, getRegisterSize } from './cpuregs';
 
-const REGEX = /^[\t ]*(?:([.A-Za-z]\w*)[:])?(?:[\t ]*([A-Za-z]{2,4})(?:[\t ]+(\[(\w+((\+|-)\d+)?)\]|\".+?\"|\'.+?\'|[.A-Za-z0-9]\w*)(?:[\t ]*[,][\t ]*(\[(\w+((\+|-)\d+)?)\]|\".+?\"|\'.+?\'|[.A-Za-z0-9]\w*))?)?)?/;
+const REGEX = /^[\t ]*(?:([.A-Za-z]\w*)[:])?(?:[\t ]*([A-Za-z]{2,4})(?:[\t ]+(\[(\w+((\+|-)\d+)?)\]|\"(?:[^\\"]|\\.)+?\"|\'.+?\'|[.A-Za-z0-9]\w*)(?:[\t ]*[,][\t ]*(\[(\w+((\+|-)\d+)?)\]|\"(?:[^\\"]|\\.)+?\"|\'.+?\'|[.A-Za-z0-9]\w*))?)?)?/;
 const OP1_GROUP = 3;
 const OP2_GROUP = 7;
 
@@ -229,7 +229,16 @@ export class AssemblerService {
 
             case '"': // "String"
 
-                const text = input.slice(1, input.length - 1);
+                const text = input.slice(1, input.length - 1)
+                    .replace(/\\n/, '\n')
+                    .replace(/\\t/, '\t')
+                    .replace(/\\r/, '\r')
+                    .replace(/\\b/, '\b')
+                    .replace(/\\'/, '\'')
+                    .replace(/\\"/, '\"')
+                    .replace(/\\x([0-9a-fA-F]{2})/, (m: string, c: string) => {
+                        return String.fromCharCode(parseInt(c, 16));
+                    });
                 const chars = [];
 
                 for (let i = 0, l = text.length; i < l; i++) {
