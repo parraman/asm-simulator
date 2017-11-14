@@ -5,6 +5,7 @@ import { Observable } from 'rxjs/Observable';
 
 import { OpCode, OperandType, Instruction, instructionSet } from './instrset';
 import { MemoryService } from './memory.service';
+import { IORegMapService } from './ioregmap.service';
 
 import {
     CPURegisterIndex, CPURegister, CPUStatusRegister, CPURegisterOperation,
@@ -89,7 +90,8 @@ export class CPUService {
         return Math.floor(dividend / divisor);
     }
 
-    constructor(protected memoryService: MemoryService) {
+    constructor(protected memoryService: MemoryService,
+                protected ioRegMapService: IORegMapService) {
 
         const registerA = new CPUGeneralPurposeRegister('A', CPURegisterIndex.A, 0,
             this.cpuRegisterOperationSource, 'General Purpose Register A');
@@ -2467,6 +2469,115 @@ export class CPUService {
         this.IP.value = this.popWord();
 
         return false;
+
+    }
+    
+    @Instruction(OpCode.IN_REG16, 'IN', OperandType.REGISTER_16BITS)
+    private instrIN_REG16(toRegister: number) {
+
+        if (CPUService.is16bitsGPRorSP(toRegister) === false) {
+            throw Error(`Invalid first operand: register index ${toRegister} out of bounds`);
+        }
+
+        const register_address = this.registersBank.get(toRegister).value;
+        this.registersBank.get(CPURegisterIndex.A).value =
+            this.ioRegMapService.load(register_address);
+
+        return true;
+
+    }
+
+    @Instruction(OpCode.IN_REGADDRESS, 'IN', OperandType.REGADDRESS)
+    private instrIN_REGADDRESS(toRegister: number, toOffset: number) {
+
+        if (CPUService.is16bitsGPRorSP(toRegister) === false) {
+            throw Error(`Invalid first operand: register index ${toRegister} out of bounds`);
+        }
+
+        const address = this.registersBank.get(toRegister).value + toOffset;
+        const register_address = this.memoryService.loadWord(address);
+
+        this.registersBank.get(CPURegisterIndex.A).value =
+            this.ioRegMapService.load(register_address);
+
+        return true;
+
+    }
+
+    @Instruction(OpCode.IN_ADDRESS, 'IN', OperandType.ADDRESS)
+    private instrIN_ADDRESS(toAddress: number) {
+
+        const register_address = this.memoryService.loadWord(toAddress);
+
+        this.registersBank.get(CPURegisterIndex.A).value = 
+            this.ioRegMapService.load(register_address);
+
+        return true;
+
+    }
+
+    @Instruction(OpCode.IN_WORD, 'IN', OperandType.WORD)
+    private instrIN_WORD(word: number) {
+
+        this.registersBank.get(CPURegisterIndex.A).value = 
+            this.ioRegMapService.load(word);
+
+        return true;
+
+    }
+
+    @Instruction(OpCode.OUT_REG16, 'OUT', OperandType.REGISTER_16BITS)
+    private instrOUT_REG16(toRegister: number) {
+
+        if (CPUService.is16bitsGPRorSP(toRegister) === false) {
+            throw Error(`Invalid first operand: register index ${toRegister} out of bounds`);
+        }
+
+        const register_address = this.registersBank.get(toRegister).value;
+        const value = this.registersBank.get(CPURegisterIndex.A).value;
+        this.ioRegMapService.store(register_address, value);
+
+        return true;
+
+    }
+
+    @Instruction(OpCode.OUT_REGADDRESS, 'OUT', OperandType.REGADDRESS)
+    private instrOUT_REGADDRESS(toRegister: number, toOffset: number) {
+
+        if (CPUService.is16bitsGPRorSP(toRegister) === false) {
+            throw Error(`Invalid first operand: register index ${toRegister} out of bounds`);
+        }
+
+        const address = this.registersBank.get(toRegister).value + toOffset;
+        const register_address = this.memoryService.loadWord(address);
+        const value = this.registersBank.get(CPURegisterIndex.A).value;
+
+        this.ioRegMapService.store(register_address, value);
+
+        return true;
+
+    }
+
+    @Instruction(OpCode.OUT_ADDRESS, 'OUT', OperandType.ADDRESS)
+    private instrOUT_ADDRESS(toAddress: number) {
+
+        const register_address = this.memoryService.loadWord(toAddress);
+        const value = this.registersBank.get(CPURegisterIndex.A).value;
+
+        this.ioRegMapService.store(register_address, value);
+
+        return true;
+
+    }
+
+    @Instruction(OpCode.OUT_WORD, 'OUT', OperandType.WORD)
+    private instrOUT_WORD(word: number) {
+
+        const value = this.registersBank.get(CPURegisterIndex.A).value;
+
+        this.ioRegMapService.store(word, value);
+
+        return true;
 
     }
 

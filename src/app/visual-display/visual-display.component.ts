@@ -88,6 +88,12 @@ export class VisualDisplayComponent implements OnInit, AfterViewInit {
 
     }
 
+    private operationReset() {
+
+        this.context.clearRect(0, 0, this.canvas.width, this.canvas.height);
+
+    }
+
     private processMemoryOperation(memoryOperation: MemoryOperation) {
 
         switch (memoryOperation.operationType) {
@@ -96,6 +102,9 @@ export class VisualDisplayComponent implements OnInit, AfterViewInit {
                 this.operationWriteCell(
                     memoryOperation.data.get('address'),
                     memoryOperation.data.get('value'));
+                break;
+            case MemoryOperationType.RESET:
+                this.operationReset();
                 break;
             default:
                 break;

@@ -35,7 +35,12 @@ class TextCellView {
     set value(newValue: number) {
 
         this._value = newValue;
-        this._strValue = String.fromCharCode(newValue);
+        const character = String.fromCharCode(newValue);
+        if (character.trim() === '') {
+            this._strValue = '\u00A0\u00A0';
+        } else {
+            this._strValue = character;
+        }
 
     }
 
@@ -83,6 +88,14 @@ export class TextualDisplayComponent implements OnInit {
 
     }
 
+    private operationReset() {
+
+        for (let i = 0; i < this.textCellViews.length; i++) {
+            this.textCellViews[i].value = 0;
+        }
+
+    }
+
     private processMemoryOperation(memoryOperation: MemoryOperation) {
 
         switch (memoryOperation.operationType) {
@@ -91,6 +104,9 @@ export class TextualDisplayComponent implements OnInit {
                 this.operationWriteCell(
                     memoryOperation.data.get('address'),
                     memoryOperation.data.get('value'));
+                break;
+            case MemoryOperationType.RESET:
+                this.operationReset();
                 break;
             default:
                 break;

@@ -1,21 +1,43 @@
-<h5>Memory</h5>
+<div style="width: 425px; line-height: 15px;">
+  <h5 style="display: inline-block;">Memory</h5>
+  <div class="small" style="float: right; margin-top: 15px; margin-bottom: 5px;">
+    <a *ngIf="splitMemoryArea === false" (click)="splitMemoryArea = true">Split</a>
+    <a *ngIf="splitMemoryArea === true" (click)="splitMemoryArea = false">Unsplit</a>
+  </div>
+</div>
 <div class="memory-map">
   <div class="text-muted memory-index-lsb-bar">
     <div *ngFor="let i of memoryColsIndexes" class="memory-index-lsb"><small>{{i}}</small></div>
   </div>
-  <div class="memory-area">
+  <div class="memory-area" [ngClass]="{'splitted-top': splitMemoryArea}">
     <div class="text-muted memory-index-msb-bar">
       <div class="memory-index-msb" *ngFor="let i of memoryRowsIndexes"><small>{{i}}</small></div>
     </div>
     <div class="source-code memory-content">
-      <div class="memory-block"  *ngFor="let i of memoryCellViews; let j = index" (click)="memoryCellClick($event, j)" [ngClass]="i.style">
-        <div *ngIf="editingCell !== j && i.isInstruction === false">
+      <div class="memory-block"  *ngFor="let i of memoryCellViews; let j = index" (click)="memoryCellClick($event, 0, j)" [ngClass]="i.style">
+        <div *ngIf="editingCell[0] !== j && i.isInstruction === false">
           <small>{{i.strValue}}</small>
         </div>
-        <a *ngIf="editingCell !== j && i.isInstruction === true">
+        <a *ngIf="editingCell[0] !== j && i.isInstruction === true">
           <small>{{i.strValue}}</small>
         </a>
-        <input class="memory-cell-input" *ngIf="editingCell === j" appAutofocus [(ngModel)]="newCellValue" (keyup.escape)="editingCell = -1" (keyup.enter)="setCellValue(j)" (blur)="editingCell = -1" title="New cell value">
+        <input class="memory-cell-input" *ngIf="editingCell[0] === j" appAutofocus [(ngModel)]="newCellValue" (keyup.escape)="editingCell[0] = -1" (keyup.enter)="setCellValue(0, j)" (blur)="editingCell[0] = -1" title="New cell value">
+      </div>
+    </div>
+  </div>
+  <div class="memory-area splitted-bottom" *ngIf="splitMemoryArea">
+    <div class="text-muted memory-index-msb-bar">
+      <div class="memory-index-msb" *ngFor="let i of memoryRowsIndexes"><small>{{i}}</small></div>
+    </div>
+    <div class="source-code memory-content">
+      <div class="memory-block"  *ngFor="let i of memoryCellViews; let j = index" (click)="memoryCellClick($event, 1, j)" [ngClass]="i.style">
+        <div *ngIf="editingCell[1] !== j && i.isInstruction === false">
+          <small>{{i.strValue}}</small>
+        </div>
+        <a *ngIf="editingCell[1] !== j && i.isInstruction === true">
+          <small>{{i.strValue}}</small>
+        </a>
+        <input class="memory-cell-input" *ngIf="editingCell[1] === j" appAutofocus [(ngModel)]="newCellValue" (keyup.escape)="editingCell[1] = -1" (keyup.enter)="setCellValue(1, j)" (blur)="editingCell[1] = -1" title="New cell value">
       </div>
     </div>
   </div>

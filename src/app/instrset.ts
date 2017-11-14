@@ -137,7 +137,15 @@ export enum OpCode {
     STI = 131,
     IRET = 132,
     SYSCALL = 133,
-    SYSRET = 134
+    SYSRET = 134,
+    IN_REG16 = 135,
+    IN_REGADDRESS = 136,
+    IN_ADDRESS = 137,
+    IN_WORD = 138,
+    OUT_REG16 = 139,
+    OUT_REGADDRESS = 140,
+    OUT_ADDRESS = 141,
+    OUT_WORD = 142
 
 }
 

@@ -20,7 +20,7 @@ export class AppComponent {
 
     public codeText = '; Simple example\n; Writes Hello World to the output\n\n	JMP start\n' +
         'hello: DB \"Hello World!\" ; Variable\n       DB 0	; String terminator\n\n' +
-        'start:\n	MOV SP, 255     ; Set SP \n	MOV C, hello    ; Point to var \n	MOVB DL, 232	; Point to output\n	CALL print\n' +
+        'start:\n	MOV SP, 255     ; Set SP \n	MOV C, hello    ; Point to var \n	MOV D, 0x2F0    ; Point to output\n	CALL print\n' +
         '        HLT             ; Stop execution\n\nprint:			; print(C:*from, D:*to)\n	PUSH A\n' +
         '	PUSH B\n	MOV B, 0\n.loop:\n	MOVB AL, [C]	; Get char from var\n	MOVB [D], AL	; Write to output\n' +
         '	INCB CL\n	INCB DL  \n	CMPB BL, [C]	; Check if end\n	JNZ .loop	; jump if not\n\n	POP B\n	POP A\n	RET';

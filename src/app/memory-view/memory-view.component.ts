@@ -65,6 +65,8 @@ export class MemoryViewComponent implements OnInit, OnDestroy, OnChanges {
 
     @Output() onMemoryCellClick = new EventEmitter<number>();
 
+    public splitMemoryArea = false;
+
     public memoryCellViews: Array<MemoryCellView>;
 
     private memoryRegionViews: Map<string, {'startAddress': number, 'endAddress': number}> =
@@ -78,7 +80,7 @@ export class MemoryViewComponent implements OnInit, OnDestroy, OnChanges {
 
     public size: number;
 
-    public editingCell = -1;
+    public editingCell = [-1, -1];;
     public newCellValue: string;
 
     private stackedCells: Array<number> = [];
@@ -431,7 +433,7 @@ export class MemoryViewComponent implements OnInit, OnDestroy, OnChanges {
 
     }
 
-    public setCellValue(address: number) {
+    public setCellValue(view: number, address: number) {
 
 
         try {
@@ -445,7 +447,7 @@ export class MemoryViewComponent implements OnInit, OnDestroy, OnChanges {
             this.updateCellStyle(address);
         }
 
-        this.editingCell = -1;
+        this.editingCell[view] = -1;
 
     }
 
@@ -565,11 +567,11 @@ export class MemoryViewComponent implements OnInit, OnDestroy, OnChanges {
 
     }
 
-    public memoryCellClick(event: MouseEvent, address: number) {
+    public memoryCellClick(event: MouseEvent, view: number, address: number) {
 
         if (event.ctrlKey || event.metaKey) {
 
-            this.editingCell = address;
+            this.editingCell[view] = address;
             this.newCellValue = this.memoryCellViews[address].strValue;
 
         } else {

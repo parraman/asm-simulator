@@ -96,6 +96,17 @@
   overflow-y:scroll;
 }
 
+.memory-area.splitted-top {
+  height:161px;
+  border-bottom-style: solid;
+  border-bottom-width: 1px;
+  border-bottom-color: rgb(221, 221, 221);
+}
+
+.memory-area.splitted-bottom {
+  height:160px;
+}
+
 .memory-index-msb {
   width:24px;
   height:20px;

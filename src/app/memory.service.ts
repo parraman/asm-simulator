@@ -49,7 +49,7 @@ export class MemoryOperation {
     public operationType: MemoryOperationType;
     public data: Map<string, any>;
 
-    constructor(operationType: MemoryOperationType, data: Map<string, any>) {
+    constructor(operationType: MemoryOperationType, data?: Map<string, any>) {
 
         this.operationType = operationType;
         this.data = data;
@@ -473,7 +473,17 @@ export class MemoryService {
 
         }
 
-        this.memoryOperationSource.next(new MemoryOperation(MemoryOperationType.RESET, undefined));
+        this.memoryRegions.forEach((memoryRegion) => {
+
+            if (memoryRegion.operationSource) {
+
+                memoryRegion.operationSource.next(new MemoryOperation(MemoryOperationType.RESET));
+
+            }
+
+        });
+
+        this.memoryOperationSource.next(new MemoryOperation(MemoryOperationType.RESET));
 
     }
 
