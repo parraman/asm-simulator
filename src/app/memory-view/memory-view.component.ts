@@ -80,7 +80,7 @@ export class MemoryViewComponent implements OnInit, OnDestroy, OnChanges {
 
     public size: number;
 
-    public editingCell = [-1, -1];;
+    public editingCell = [-1, -1];
     public newCellValue: string;
 
     private stackedCells: Array<number> = [];
@@ -438,13 +438,14 @@ export class MemoryViewComponent implements OnInit, OnDestroy, OnChanges {
 
         try {
             this.memoryService.storeByte(address, parseInt(this.newCellValue, 16), false);
+
+            if (this.memoryCellViews[address].isInstruction === true) {
+                this.memoryCellViews[address].isInstruction = false;
+                this.updateCellStyle(address);
+            }
+
         } catch (e) {
             this.errorBarService.setErrorMessage(e.toString());
-        }
-
-        if (this.memoryCellViews[address].isInstruction === true) {
-            this.memoryCellViews[address].isInstruction = false;
-            this.updateCellStyle(address);
         }
 
         this.editingCell[view] = -1;

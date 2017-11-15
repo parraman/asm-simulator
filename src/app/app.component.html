@@ -45,6 +45,9 @@
               <option [ngValue]="1000">1 HZ</option>
               <option [ngValue]="250">4 HZ</option>
               <option [ngValue]="125">8 HZ</option>
+              <option [ngValue]="64">16 HZ</option>
+              <option [ngValue]="32">32 HZ</option>
+              <option [ngValue]="16">64 HZ</option>
             </select><span style="margin-left:5px;">Instructions: </span><a (click)="showInstructions = false" *ngIf="showInstructions === true">Hide</a><a (click)="showInstructions = true" *ngIf="showInstructions === false">Show</a></div>
           <div class="small" style="margin-bottom: 20px;"><span>Register addressing: </span>
             <span style="margin-left:5px;">A: </span>

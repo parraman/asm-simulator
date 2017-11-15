@@ -18,6 +18,7 @@ import { ErrorBarService } from './error-bar.service';
 import { AutofocusDirective } from './autofocus.directive';
 import { IrqCtrlService } from './irqctrl.service';
 import { CPUService } from './cpu.service';
+import { PreventScrollDirective } from './prevent-scroll.directive';
 
 @NgModule({
     declarations: [
@@ -29,7 +30,8 @@ import { CPUService } from './cpu.service';
         RegistersViewComponent,
         IORegistersViewComponent,
         ErrorBarComponent,
-        AutofocusDirective
+        AutofocusDirective,
+        PreventScrollDirective
     ],
     imports: [
         BrowserModule,

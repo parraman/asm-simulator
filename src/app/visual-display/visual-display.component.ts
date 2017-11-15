@@ -78,13 +78,33 @@ export class VisualDisplayComponent implements OnInit, AfterViewInit {
 
     }
 
-    private operationWriteCell(address: number, value: number) {
+    private operationStoreByte(address: number, value: number) {
 
         const offset = address - 0x300;
         const x = offset % 16;
         const y = Math.floor(offset / 16);
 
         this.fillRect(x, y, value);
+
+    }
+
+    private operationStoreWord(address: number, value: number) {
+
+        const offset = address - 0x300;
+        const msb = (value & 0xFF00) >>> 8;
+        const lsb = (value & 0x00FF);
+
+        let x = offset % 16;
+        let y = Math.floor(offset / 16);
+
+        this.fillRect(x, y, msb);
+
+        if ((offset + 1) <= 255) {
+            x = (offset + 1) % 16;
+            y = Math.floor((offset + 1) / 16);
+
+            this.fillRect(x, y, lsb);
+        }
 
     }
 
@@ -99,7 +119,12 @@ export class VisualDisplayComponent implements OnInit, AfterViewInit {
         switch (memoryOperation.operationType) {
 
             case MemoryOperationType.STORE_BYTE:
-                this.operationWriteCell(
+                this.operationStoreByte(
+                    memoryOperation.data.get('address'),
+                    memoryOperation.data.get('value'));
+                break;
+            case MemoryOperationType.STORE_WORD:
+                this.operationStoreByte(
                     memoryOperation.data.get('address'),
                     memoryOperation.data.get('value'));
                 break;

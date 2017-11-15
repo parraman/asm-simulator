@@ -73,22 +73,7 @@ export class AppComponent {
         } else if (cpuRegisterOperation.index === CPURegisterIndex.SR &&
             cpuRegisterOperation.operationType === CPURegisterOperationType.WRITE) {
 
-            if ((cpuRegisterOperation.value & (1 << SRBit.HALT)) !== 0) {
-
-                this.isCPUHalted = true;
-
-                if (this.isRunning === true) {
-
-                    this.isRunning = false;
-                    this.timerSubscription.unsubscribe();
-
-                }
-
-            } else {
-
-                this.isCPUHalted = false;
-
-            }
+            this.isCPUHalted = (cpuRegisterOperation.value & (1 << SRBit.HALT)) !== 0;
 
         }
 

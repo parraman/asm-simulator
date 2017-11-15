@@ -2,6 +2,7 @@ import { Component, OnInit } from '@angular/core';
 import { IrqCtrlService } from '../irqctrl.service';
 import { IORegMapService, IORegisterOperation, IORegisterType,
          IORegisterOperationType} from '../ioregmap.service';
+import { ErrorBarService } from '../error-bar.service';
 
 import { Subject } from 'rxjs/Subject';
 import { Observable } from 'rxjs/Observable';
@@ -20,12 +21,15 @@ export class KeypadComponent implements OnInit {
     private kpdStatusRegister = 0; // KPDSTATUS register (address: 0x0002)
     private kpdDataRegister = 0;
 
+    private interruptOutput = false;
+
     private ioRegisterOperationSource = new Subject<IORegisterOperation>();
 
     private ioRegisterOperation$: Observable<IORegisterOperation>;
 
     constructor(private ioRegMapService: IORegMapService,
-                private irqCtrlService: IrqCtrlService) {
+                private irqCtrlService: IrqCtrlService,
+                private errorBarService: ErrorBarService) {
 
         this.ioRegisterOperation$ = this.ioRegisterOperationSource.asObservable();
 
@@ -50,6 +54,18 @@ export class KeypadComponent implements OnInit {
 
             case KPDSTATUS_REGISTER_ADDRESS:
                 this.kpdStatusRegister = value;
+
+                if ((this.kpdStatusRegister & 0x1) !== 0) {
+
+                    if (this.interruptOutput === false) {
+                        this.interruptOutput = true;
+                        this.irqCtrlService.raiseHardwareInterrupt(0);
+                    }
+                } else if (this.interruptOutput === true) {
+                    this.interruptOutput = false;
+                    this.irqCtrlService.lowerHardwareInterrupt(0);
+                }
+
                 break;
             case KPDDATA_REGISTER_ADDRESS:
                 this.kpdDataRegister = value;
@@ -57,10 +73,25 @@ export class KeypadComponent implements OnInit {
         }
     }
 
+    private processReadOperation(address: number) {
+
+        switch (address) {
+
+            case KPDSTATUS_REGISTER_ADDRESS:
+                this.ioRegMapService.store(KPDSTATUS_REGISTER_ADDRESS, 0);
+                break;
+            case KPDDATA_REGISTER_ADDRESS:
+                break;
+        }
+
+    }
+
     private processRegisterOperation(ioRegisterOperation: IORegisterOperation) {
 
         switch (ioRegisterOperation.operationType) {
             case IORegisterOperationType.READ:
+                this.processReadOperation(
+                    ioRegisterOperation.data.get('address'));
                 break;
             case IORegisterOperationType.WRITE:
                 this.processWriteOperation(
@@ -73,9 +104,16 @@ export class KeypadComponent implements OnInit {
 
     public processKey(key: number) {
 
-        this.ioRegMapService.store(KPDDATA_REGISTER_ADDRESS, key);
-        this.ioRegMapService.store(KPDSTATUS_REGISTER_ADDRESS, 1);
-        this.irqCtrlService.triggerHardwareInterrupt(0);
+        if (this.kpdStatusRegister === 0) {
+
+            this.ioRegMapService.store(KPDDATA_REGISTER_ADDRESS, key);
+            this.ioRegMapService.store(KPDSTATUS_REGISTER_ADDRESS, 1);
+
+        } else {
+
+            this.ioRegMapService.store(KPDSTATUS_REGISTER_ADDRESS, 3);
+
+        }
 
     }
 

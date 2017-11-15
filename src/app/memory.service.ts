@@ -454,7 +454,7 @@ export class MemoryService {
             if (this.memoryCells[address].memoryRegion.operationSource) {
 
                 this.memoryCells[address].memoryRegion.operationSource.next(
-                    new MemoryOperation(MemoryOperationType.STORE_BYTE, parameters));
+                    new MemoryOperation(MemoryOperationType.STORE_WORD, parameters));
 
             }
         }

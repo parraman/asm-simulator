@@ -82,9 +82,22 @@ export class TextualDisplayComponent implements OnInit {
 
     }
 
-    private operationWriteCell(address: number, value: number) {
+    private operationStoreByte(address: number, value: number) {
 
         this.textCellViews[address - 0x2F0].value = value;
+
+    }
+
+    private operationStoreWord(address: number, value: number) {
+
+        const msb = (value & 0xFF00) >>> 8;
+        const lsb = (value & 0x00FF);
+
+        this.textCellViews[address - 0x2F0].value = msb;
+
+        if ((address + 1) <= 0x2FF) {
+            this.textCellViews[address + 1 - 0x2F0].value = lsb;
+        }
 
     }
 
@@ -101,7 +114,12 @@ export class TextualDisplayComponent implements OnInit {
         switch (memoryOperation.operationType) {
 
             case MemoryOperationType.STORE_BYTE:
-                this.operationWriteCell(
+                this.operationStoreByte(
+                    memoryOperation.data.get('address'),
+                    memoryOperation.data.get('value'));
+                break;
+            case MemoryOperationType.STORE_WORD:
+                this.operationStoreWord(
                     memoryOperation.data.get('address'),
                     memoryOperation.data.get('value'));
                 break;

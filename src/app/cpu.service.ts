@@ -231,7 +231,7 @@ export class CPUService {
 
         this.IP.value = IRQ_VECTOR_ADDRESS;
 
-        this.SR.irqMask = 1;
+        this.SR.irqMask = 0;
         this.SR.supervisor = 1;
 
     }
@@ -246,7 +246,9 @@ export class CPUService {
 
         this.interruptInput = 1;
 
-        if (this.SR.irqMask === 0) {
+        this.SR.halt = 0;
+
+        if (this.SR.irqMask === 1) {
 
             this.toInterruptHandler();
 
@@ -2409,11 +2411,18 @@ export class CPUService {
     @Instruction(OpCode.CLI, 'CLI')
     private instrCLI(): boolean {
 
+        if (this.SR.supervisor === 0) {
+            this.SR.fault = 1;
+            throw Error(`Invalid use of CLI when in user mode`);
+        }
+
         this.SR.irqMask = 0;
 
         if (this.interruptInput === 1) {
 
             this.toInterruptHandler();
+
+            return false;
 
         }
 
@@ -2424,6 +2433,11 @@ export class CPUService {
     @Instruction(OpCode.STI, 'STI')
     private instrSTI(): boolean {
 
+        if (this.SR.supervisor === 0) {
+            this.SR.fault = 1;
+            throw Error(`Invalid use of STI when in user mode`);
+        }
+
         this.SR.irqMask = 1;
 
         return true;
@@ -2433,9 +2447,14 @@ export class CPUService {
     @Instruction(OpCode.IRET, 'IRET')
     private instrIRET(): boolean {
 
+        this.IP.value = this.popWord();
         this.SR.value = this.popWord();
 
-        this.IP.value = this.popWord();
+        if (this.SR.irqMask === 1 && this.interruptInput === 1) {
+
+            this.toInterruptHandler();
+
+        }
 
         return false;
 
@@ -2471,7 +2490,7 @@ export class CPUService {
         return false;
 
     }
-    
+
     @Instruction(OpCode.IN_REG16, 'IN', OperandType.REGISTER_16BITS)
     private instrIN_REG16(toRegister: number) {
 
@@ -2509,7 +2528,7 @@ export class CPUService {
 
         const register_address = this.memoryService.loadWord(toAddress);
 
-        this.registersBank.get(CPURegisterIndex.A).value = 
+        this.registersBank.get(CPURegisterIndex.A).value =
             this.ioRegMapService.load(register_address);
 
         return true;
@@ -2519,7 +2538,7 @@ export class CPUService {
     @Instruction(OpCode.IN_WORD, 'IN', OperandType.WORD)
     private instrIN_WORD(word: number) {
 
-        this.registersBank.get(CPURegisterIndex.A).value = 
+        this.registersBank.get(CPURegisterIndex.A).value =
             this.ioRegMapService.load(word);
 
         return true;

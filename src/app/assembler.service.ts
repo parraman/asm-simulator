@@ -236,7 +236,7 @@ export class AssemblerService {
                     .replace(/\\b/, '\b')
                     .replace(/\\'/, '\'')
                     .replace(/\\"/, '\"')
-                    .replace(/\\x([0-9a-fA-F]{2})/, (m: string, c: string) => {
+                    .replace(/\\x([0-9a-fA-F]{2})/g, (m: string, c: string) => {
                         return String.fromCharCode(parseInt(c, 16));
                     });
                 const chars = [];

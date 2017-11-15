@@ -21,7 +21,7 @@ export class IrqCtrlService {
 
     private ioRegisterOperation$: Observable<IORegisterOperation>;
 
-    private interruptOutput = 0;
+    private interruptOutput = false;
 
     constructor(private ioRegMapService: IORegMapService, private cpuService: CPUService) {
 
@@ -51,13 +51,13 @@ export class IrqCtrlService {
 
         if ((this.irqStatusRegister & this.irqMaskRegister) !== 0) {
 
-            if (this.interruptOutput === 0) {
-                this.interruptOutput = 1;
+            if (this.interruptOutput === false) {
+                this.interruptOutput = true;
                 this.cpuService.raiseInterrupt();
             }
 
-        } else if (this.interruptOutput === 1) {
-            this.interruptOutput = 0;
+        } else if (this.interruptOutput === true) {
+            this.interruptOutput = false;
             this.cpuService.lowerInterrupt();
         }
 
@@ -77,15 +77,29 @@ export class IrqCtrlService {
 
     }
 
-    public triggerHardwareInterrupt(irqNumber: number) {
+    public raiseHardwareInterrupt(irqNumber: number) {
 
         if (irqNumber < 0 || irqNumber > 15 || isNaN(irqNumber)) {
             throw Error(`Invalid interrupt number ${irqNumber}`);
         }
 
-        const irqMask = (1 << irqNumber);
+        let irqStatus = this.ioRegMapService.load(IRQSTATUS_REGISTER_ADDRESS);
+        irqStatus |= (1 << irqNumber);
 
-        this.ioRegMapService.store(IRQSTATUS_REGISTER_ADDRESS, irqMask);
+        this.ioRegMapService.store(IRQSTATUS_REGISTER_ADDRESS, irqStatus);
+
+    }
+
+    public lowerHardwareInterrupt(irqNumber: number) {
+
+        if (irqNumber < 0 || irqNumber > 15 || isNaN(irqNumber)) {
+            throw Error(`Invalid interrupt number ${irqNumber}`);
+        }
+
+        let irqStatus = this.ioRegMapService.load(IRQSTATUS_REGISTER_ADDRESS);
+        irqStatus &= ~(1 << irqNumber);
+
+        this.ioRegMapService.store(IRQSTATUS_REGISTER_ADDRESS, irqStatus);
 
     }
 

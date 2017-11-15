@@ -273,22 +273,22 @@ export class CPUStatusRegister extends CPURegister {
 
         super(name, index, initialValue, operationSource, description);
 
-        if ((initialValue &= (1 << SRBit.HALT)) !== 0) {
+        if ((initialValue & (1 << SRBit.HALT)) !== 0) {
             this._halt = 1;
         }
-        if ((initialValue &= (1 << SRBit.FAULT)) !== 0) {
+        if ((initialValue & (1 << SRBit.FAULT)) !== 0) {
             this._fault = 1;
         }
-        if ((initialValue &= (1 << SRBit.ZERO)) !== 0) {
+        if ((initialValue & (1 << SRBit.ZERO)) !== 0) {
             this._zero = 1;
         }
-        if ((initialValue &= (1 << SRBit.CARRY)) !== 0) {
+        if ((initialValue & (1 << SRBit.CARRY)) !== 0) {
             this._carry = 1;
         }
-        if ((initialValue &= (1 << SRBit.IRQMASK)) !== 0) {
+        if ((initialValue & (1 << SRBit.IRQMASK)) !== 0) {
             this._irqMask = 1;
         }
-        if ((initialValue &= (1 << SRBit.SUPERVISOR)) !== 0) {
+        if ((initialValue & (1 << SRBit.SUPERVISOR)) !== 0) {
             this._supervisor = 1;
         }
 
