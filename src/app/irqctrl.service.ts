@@ -9,6 +9,7 @@ import {CPUService} from "./cpu.service";
 
 const IRQMASK_REGISTER_ADDRESS = 0;
 const IRQSTATUS_REGISTER_ADDRESS = 1;
+const IRQEOI_REGISTER_ADDRESS = 2;
 
 
 @Injectable()
@@ -16,6 +17,7 @@ export class IrqCtrlService {
 
     private irqMaskRegister = 0; // IRQMASK register (address: 0x0000)
     private irqStatusRegister = 0; // IRQSTATUS register (address: 0x0001)
+    private irqLevelRegister = 0; // IRQLEVEL register (internal)
 
     private ioRegisterOperationSource = new Subject<IORegisterOperation>();
 
@@ -33,8 +35,10 @@ export class IrqCtrlService {
 
         ioRegMapService.addRegister('IRQMASK', IRQMASK_REGISTER_ADDRESS, 0, IORegisterType.READ_WRITE,
             this.ioRegisterOperationSource, 'Interrupt Controller Mask Register');
-        ioRegMapService.addRegister('IRQSTATUS', IRQSTATUS_REGISTER_ADDRESS, 0, IORegisterType.READ_WRITE,
+        ioRegMapService.addRegister('IRQSTATUS', IRQSTATUS_REGISTER_ADDRESS, 0, IORegisterType.READ_ONLY,
             this.ioRegisterOperationSource, 'Interrupt Controller Status Register');
+        ioRegMapService.addRegister('IRQEOI', IRQEOI_REGISTER_ADDRESS, 0, IORegisterType.READ_WRITE,
+            this.ioRegisterOperationSource, 'End of Interrupt Register');
 
     }
 
@@ -45,7 +49,11 @@ export class IrqCtrlService {
                 this.irqMaskRegister = value;
                 break;
             case IRQSTATUS_REGISTER_ADDRESS:
-                this.irqStatusRegister = value;
+                break;
+            case IRQEOI_REGISTER_ADDRESS:
+                this.irqStatusRegister &= ~value;
+                this.irqStatusRegister |= this.irqLevelRegister;
+                this.ioRegMapService.store(IRQSTATUS_REGISTER_ADDRESS, this.irqStatusRegister, false, false);
                 break;
         }
 
@@ -83,10 +91,16 @@ export class IrqCtrlService {
             throw Error(`Invalid interrupt number ${irqNumber}`);
         }
 
-        let irqStatus = this.ioRegMapService.load(IRQSTATUS_REGISTER_ADDRESS);
-        irqStatus |= (1 << irqNumber);
+        this.irqLevelRegister |= (1 << irqNumber);
+        this.irqStatusRegister |= (1 << irqNumber);
 
-        this.ioRegMapService.store(IRQSTATUS_REGISTER_ADDRESS, irqStatus);
+        this.ioRegMapService.store(IRQSTATUS_REGISTER_ADDRESS, this.irqStatusRegister, false, false);
+
+        if (((this.irqStatusRegister & this.irqMaskRegister) !== 0) &&
+            (this.interruptOutput === false)) {
+                this.interruptOutput = true;
+                this.cpuService.raiseInterrupt();
+        }
 
     }
 
@@ -96,10 +110,40 @@ export class IrqCtrlService {
             throw Error(`Invalid interrupt number ${irqNumber}`);
         }
 
-        let irqStatus = this.ioRegMapService.load(IRQSTATUS_REGISTER_ADDRESS);
-        irqStatus &= ~(1 << irqNumber);
+        this.irqLevelRegister &= ~(1 << irqNumber);
 
-        this.ioRegMapService.store(IRQSTATUS_REGISTER_ADDRESS, irqStatus);
+    }
+
+    public triggerHardwareInterrupt(irqNumber: number) {
+
+        if (irqNumber < 0 || irqNumber > 15 || isNaN(irqNumber)) {
+            throw Error(`Invalid interrupt number ${irqNumber}`);
+        }
+
+        this.irqStatusRegister |= (1 << irqNumber);
+
+        this.ioRegMapService.store(IRQSTATUS_REGISTER_ADDRESS, this.irqStatusRegister, false, false);
+
+        if (((this.irqStatusRegister & this.irqMaskRegister) !== 0) &&
+            (this.interruptOutput === false)) {
+                this.interruptOutput = true;
+                this.cpuService.raiseInterrupt();
+        }
+
+    }
+
+    public reset() {
+
+        this.irqMaskRegister = 0; // IRQMASK register (address: 0x0000)
+        this.irqStatusRegister = 0; // IRQSTATUS register (address: 0x0001)
+        this.irqLevelRegister = 0; // IRQLEVEL register (internal)
+
+        this.ioRegMapService.store(IRQMASK_REGISTER_ADDRESS, 0, false, false);
+        this.ioRegMapService.store(IRQSTATUS_REGISTER_ADDRESS, 0, false, false);
+        this.ioRegMapService.store(IRQEOI_REGISTER_ADDRESS, 0, false, false);
+
+        this.interruptOutput = false;
+
 
     }
 

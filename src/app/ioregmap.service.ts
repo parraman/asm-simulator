@@ -12,11 +12,10 @@ export enum IORegisterType {
 
 export enum IORegisterOperationType {
 
-    RESET = 0,
-    READ = 1,
-    WRITE = 2,
-    ADD_REGISTER = 3,
-    REMOVE_REGISTER = 4
+    READ = 0,
+    WRITE = 1,
+    ADD_REGISTER = 2,
+    REMOVE_REGISTER = 3
 
 }
 
@@ -27,11 +26,10 @@ export class IORegister {
     public address: number;
     public registerType: IORegisterType;
     public value: number;
-    public resetValue: number;
     public operationSource: Subject<IORegisterOperation>;
 
     constructor(name: string, address: number,
-                resetValue: number = 0,
+                initialValue: number = 0,
                 registerType: IORegisterType = IORegisterType.READ_WRITE,
                 operationSource?: Subject<IORegisterOperation>,
                 description?: string) {
@@ -40,8 +38,7 @@ export class IORegister {
         this.description = description;
         this.address = address;
         this.registerType = registerType;
-        this.resetValue = resetValue;
-        this.value = resetValue;
+        this.value = initialValue;
         this.operationSource = operationSource;
 
     }
@@ -136,7 +133,7 @@ export class IORegMapService {
 
     }
 
-    public load(address: number): number {
+    public load(address: number, publish: boolean = true): number {
 
         const register = this.registersMap.get(address);
 
@@ -150,7 +147,7 @@ export class IORegMapService {
         parameters.set('address', address);
         parameters.set('value', register.value);
 
-        if (register.operationSource !== undefined) {
+        if (register.operationSource !== undefined && publish === true) {
 
             register.operationSource.next(new IORegisterOperation(IORegisterOperationType.READ, parameters));
 
@@ -162,7 +159,7 @@ export class IORegMapService {
 
     }
 
-    public store(address: number, value: number) {
+    public store(address: number, value: number, isInstruction: boolean = true, publish: boolean = true) {
 
         const register = this.registersMap.get(address);
 
@@ -170,7 +167,7 @@ export class IORegMapService {
             throw Error(`Invalid register address ${address}`);
         }
 
-        if (register.registerType === IORegisterType.READ_ONLY) {
+        if (register.registerType === IORegisterType.READ_ONLY && isInstruction === true) {
             throw Error(`Invalid storage into read-only register ${address}`);
         }
 
@@ -181,19 +178,13 @@ export class IORegMapService {
         parameters.set('address', address);
         parameters.set('value', value);
 
-        if (register.operationSource !== undefined) {
+        if (register.operationSource !== undefined && publish === true) {
 
             register.operationSource.next(new IORegisterOperation(IORegisterOperationType.WRITE, parameters));
 
         }
 
         this.ioRegisterOperationSource.next(new IORegisterOperation(IORegisterOperationType.WRITE, parameters));
-
-    }
-
-    public reset() {
-
-        this.registersMap.forEach((register) => this.store(register.address, register.resetValue));
 
     }
 

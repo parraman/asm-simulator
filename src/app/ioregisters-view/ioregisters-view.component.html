@@ -9,7 +9,7 @@
     </tr>
     </thead>
     <tbody class="source-code">
-    <tr *ngFor="let i of registerAddresses">
+    <tr *ngFor="let i of registerAddresses.sort()">
       <td>{{registersViewMap.get(i).strAddress}}</td>
       <td title="{{registersViewMap.get(i).description}}">{{registersViewMap.get(i).name}}</td>
       <td>{{registersViewMap.get(i).strValue}}</td>

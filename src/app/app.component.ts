@@ -8,6 +8,12 @@ import { Subscription } from 'rxjs/Subscription';
 import { Observable } from 'rxjs/Rx';
 import { CPURegisterIndex, CPURegisterOperation, CPURegisterOperationType, SRBit } from './cpuregs';
 import { IORegMapService } from './ioregmap.service';
+import { IrqCtrlService } from './ioregmap.service';
+import { TimerService } from './timer.service';
+import { KeypadComponent } from './keypad/keypad.component';
+import { VisualDisplayComponent } from './visual-display/visual-display.component';
+import { TextualDisplayComponent } from './textual-display/textual-display.component';
+import { ErrorBarComponent } from './error-bar/error-bar.component';
 
 @Component({
     selector: 'app-root',
@@ -43,6 +49,10 @@ export class AppComponent {
     public speed = 250;
 
     @ViewChild('codeTextArea') codeTextArea: ElementRef;
+    @ViewChild(KeypadComponent) keypadComponent: KeypadComponent;
+    @ViewChild(VisualDisplayComponent) visualDisplayComponent: VisualDisplayComponent;
+    @ViewChild(TextualDisplayComponent) textualDisplayComponent: TextualDisplayComponent;
+    @ViewChild(ErrorBarComponent) errorBar: ErrorBarComponent;
 
     private cpuRegisterOperationSubscription: Subscription;
     private timerSubscription: Subscription;
@@ -51,7 +61,9 @@ export class AppComponent {
                  private memoryService: MemoryService,
                  private errorBarService: ErrorBarService,
                  private ioRegMapService: IORegMapService,
-                 private cpuService: CPUService) {
+                 private cpuService: CPUService,
+                 private irqCtrlService: CPUService,
+                 private timerService: TimerService) {
 
         this.cpuRegisterOperationSubscription = this.cpuService.cpuRegisterOperation$.subscribe(
             (cpuRegisterOperation) => this.processCPURegisterOperation(cpuRegisterOperation)
@@ -99,7 +111,7 @@ export class AppComponent {
             this.mapping = result.mapping;
             this.labels = result.labels;
 
-            this.memoryService.storeBytes(0, this.code);
+            this.memoryService.storeBytes(0, this.code.length, this.code);
 
         }
     }
@@ -141,10 +153,6 @@ export class AppComponent {
 
     public executeStep() {
 
-        if (this.isCPUHalted === true) {
-            return;
-        }
-
         try {
 
             this.cpuService.step();
@@ -158,10 +166,6 @@ export class AppComponent {
     }
 
     public run() {
-
-        if (this.isCPUHalted === true) {
-            return;
-        }
 
         this.isRunning = true;
 
@@ -200,7 +204,13 @@ export class AppComponent {
         this.mapping = undefined;
         this.cpuService.reset();
         this.memoryService.reset();
-        this.ioRegMapService.reset();
+        this.irqCtrlService.reset();
+        this.timerService.reset();
+
+        this.keypadComponent.reset();
+        this.visualDisplayComponent.reset();
+        this.textualDisplayComponent.reset();
+        this.errorBar.reset();
 
     }
 

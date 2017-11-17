@@ -78,7 +78,7 @@ export class TextualDisplayComponent implements OnInit {
     ngOnInit() {
 
         this.memoryService.addMemoryRegion('TextualDisplayRegion', 0x2F0, 0x2FF,
-            MemoryCellType.READ_WRITE, 0, this.memoryOperationSource);
+            MemoryCellType.READ_WRITE, undefined, this.memoryOperationSource);
 
     }
 
@@ -101,14 +101,6 @@ export class TextualDisplayComponent implements OnInit {
 
     }
 
-    private operationReset() {
-
-        for (let i = 0; i < this.textCellViews.length; i++) {
-            this.textCellViews[i].value = 0;
-        }
-
-    }
-
     private processMemoryOperation(memoryOperation: MemoryOperation) {
 
         switch (memoryOperation.operationType) {
@@ -123,12 +115,19 @@ export class TextualDisplayComponent implements OnInit {
                     memoryOperation.data.get('address'),
                     memoryOperation.data.get('value'));
                 break;
-            case MemoryOperationType.RESET:
-                this.operationReset();
-                break;
             default:
                 break;
         }
+
+    }
+
+    public reset() {
+
+        for (let i = 0; i < this.textCellViews.length; i++) {
+            this.textCellViews[i].value = 0;
+        }
+
+        this.memoryService.storeBytes(0x2F0, 16);
 
     }
 

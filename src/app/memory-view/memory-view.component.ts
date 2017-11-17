@@ -14,6 +14,7 @@ class MemoryCellView {
     private _strValue: string;
 
     public style: string;
+    public isMemoryRegion = false;
     public memoryRegionStyle: string;
     public address: number;
     public isInstruction: boolean;
@@ -161,6 +162,7 @@ export class MemoryViewComponent implements OnInit, OnDestroy, OnChanges {
         for (let i = startAddress; i <= endAddress; i++) {
 
             this.memoryCellViews[i].value = initialValue;
+            this.memoryCellViews[i].isMemoryRegion = true;
             this.memoryCellViews[i].memoryRegionStyle =
                 name.replace(/([a-z])([A-Z])/g, '$1-$2').toLowerCase();
             this.updateCellStyle(i);
@@ -183,6 +185,7 @@ export class MemoryViewComponent implements OnInit, OnDestroy, OnChanges {
 
                 this.memoryCellViews[i].value = 0;
                 this.memoryCellViews[i].memoryRegionStyle = undefined;
+                this.memoryCellViews[i].isMemoryRegion = false;
                 this.updateCellStyle(i);
 
             }
@@ -207,11 +210,11 @@ export class MemoryViewComponent implements OnInit, OnDestroy, OnChanges {
     }
 
 
-    private operationWriteCells(initialAddress: number, values: Array<number>) {
+    private operationWriteCells(initialAddress: number, size: number, values: Array<number>) {
 
-        for (let i = initialAddress; i < initialAddress + values.length; i++) {
+        for (let i = initialAddress; i < initialAddress + size; i++) {
 
-            this.memoryCellViews[i].value = values[i];
+            this.memoryCellViews[i].value = values ? values[i] : 0;
 
         }
 
@@ -221,7 +224,9 @@ export class MemoryViewComponent implements OnInit, OnDestroy, OnChanges {
 
         for (let i = 0; i < this.size; i++) {
 
-            this.memoryCellViews[i].value = 0;
+            if (this.memoryCellViews[i].isMemoryRegion === false) {
+                this.memoryCellViews[i].value = 0;
+            }
 
         }
 
@@ -413,6 +418,7 @@ export class MemoryViewComponent implements OnInit, OnDestroy, OnChanges {
             case MemoryOperationType.STORE_BYTES:
                 this.operationWriteCells(
                     memoryOperation.data.get('initialAddress'),
+                    memoryOperation.data.get('size'),
                     memoryOperation.data.get('values'));
                 break;
             case MemoryOperationType.STORE_WORD:

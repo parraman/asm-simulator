@@ -23,8 +23,10 @@ export class CPUService {
     protected registersBank: Map<CPURegisterIndex, CPURegister> = new Map<CPURegisterIndex, CPURegister>();
 
     protected cpuRegisterOperationSource = new Subject<CPURegisterOperation>();
-
     public cpuRegisterOperation$: Observable<CPURegisterOperation>;
+
+    protected cpuConsumeTicksSource = new Subject<number>();
+    public cpuConsumeTicks$: Observable<number>;
 
     protected nextIP = 0;
 
@@ -129,6 +131,7 @@ export class CPUService {
                 this.cpuRegisterOperationSource, 'Status Register'));
 
         this.cpuRegisterOperation$ = this.cpuRegisterOperationSource.asObservable();
+        this.cpuConsumeTicks$ = this.cpuConsumeTicksSource.asObservable();
 
     }
 
@@ -272,11 +275,16 @@ export class CPUService {
         this.registersBank.get(CPURegisterIndex.SP).value = this.registersBank.get(CPURegisterIndex.SP).resetValue;
         this.registersBank.get(CPURegisterIndex.SR).value = this.registersBank.get(CPURegisterIndex.SR).resetValue;
 
+        this.nextIP = 0;
+        this.interruptInput = 0;
+
     }
 
     public step() {
 
         if (this.SR.halt === 1) {
+
+            this.cpuConsumeTicksSource.next(1);
 
             return;
 
@@ -369,6 +377,8 @@ export class CPUService {
         if (this[instruction.methodName].apply(this, args) === true) {
             this.IP.value = this.nextIP;
         }
+
+        this.cpuConsumeTicksSource.next(1);
 
     }
 

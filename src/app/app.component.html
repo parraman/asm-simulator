@@ -48,6 +48,9 @@
               <option [ngValue]="64">16 HZ</option>
               <option [ngValue]="32">32 HZ</option>
               <option [ngValue]="16">64 HZ</option>
+              <option [ngValue]="8">128 HZ</option>
+              <option [ngValue]="4">256 HZ</option>
+              <option [ngValue]="2">512 HZ</option>
             </select><span style="margin-left:5px;">Instructions: </span><a (click)="showInstructions = false" *ngIf="showInstructions === true">Hide</a><a (click)="showInstructions = true" *ngIf="showInstructions === false">Show</a></div>
           <div class="small" style="margin-bottom: 20px;"><span>Register addressing: </span>
             <span style="margin-left:5px;">A: </span>
@@ -68,5 +71,7 @@
       </div>
     </div>
   </div>
+  <hr style="margin-top:10px;margin-bottom:10px;"/>
+  <p><small>by Pablo Parra (2017) | MIT License</small></p>
 </div>
 <app-error-bar></app-error-bar>

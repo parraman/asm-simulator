@@ -73,8 +73,8 @@ class IORegisterView {
 })
 export class IORegistersViewComponent implements OnInit, OnDestroy {
 
-    private registersViewMap: Map<number, IORegisterView> = new Map<number, IORegisterView>();
-    private registerAddresses: Array<number> = [];
+    public registersViewMap: Map<number, IORegisterView> = new Map<number, IORegisterView>();
+    public registerAddresses: Array<number> = [];
 
     private ioRegisterOperationSubscription: Subscription;
 
@@ -162,8 +162,6 @@ export class IORegistersViewComponent implements OnInit, OnDestroy {
                 this.operationWriteRegister(
                     ioRegisterOperation.data.get('address'),
                     ioRegisterOperation.data.get('value'));
-                break;
-            case IORegisterOperationType.RESET:
                 break;
 
         }

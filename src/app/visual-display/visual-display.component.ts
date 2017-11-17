@@ -74,7 +74,7 @@ export class VisualDisplayComponent implements OnInit, AfterViewInit {
     ngOnInit() {
 
         this.memoryService.addMemoryRegion('VisualDisplayRegion', 0x300, 0x3FF,
-            MemoryCellType.READ_WRITE, 0, this.memoryOperationSource);
+            MemoryCellType.READ_WRITE, undefined, this.memoryOperationSource);
 
     }
 
@@ -108,9 +108,11 @@ export class VisualDisplayComponent implements OnInit, AfterViewInit {
 
     }
 
-    private operationReset() {
+    public reset() {
 
         this.context.clearRect(0, 0, this.canvas.width, this.canvas.height);
+
+        this.memoryService.storeBytes(0x300, 256);
 
     }
 
@@ -127,9 +129,6 @@ export class VisualDisplayComponent implements OnInit, AfterViewInit {
                 this.operationStoreByte(
                     memoryOperation.data.get('address'),
                     memoryOperation.data.get('value'));
-                break;
-            case MemoryOperationType.RESET:
-                this.operationReset();
                 break;
             default:
                 break;

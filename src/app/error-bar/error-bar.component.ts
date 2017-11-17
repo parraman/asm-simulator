@@ -1,4 +1,4 @@
-import {Component, OnDestroy, OnInit } from '@angular/core';
+import { Component, OnDestroy, OnInit } from '@angular/core';
 import { ErrorBarService } from '../error-bar.service';
 
 import { Subscription } from 'rxjs/Subscription';
@@ -29,6 +29,12 @@ export class ErrorBarComponent implements OnInit, OnDestroy {
     }
 
     closeErrorBar() {
+
+        this.errorMessage = undefined;
+
+    }
+
+    public reset() {
 
         this.errorMessage = undefined;
 

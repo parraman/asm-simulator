@@ -19,6 +19,7 @@ import { AutofocusDirective } from './autofocus.directive';
 import { IrqCtrlService } from './irqctrl.service';
 import { CPUService } from './cpu.service';
 import { PreventScrollDirective } from './prevent-scroll.directive';
+import { TimerService } from './timer.service';
 
 @NgModule({
     declarations: [
@@ -43,7 +44,8 @@ import { PreventScrollDirective } from './prevent-scroll.directive';
         AssemblerService,
         ErrorBarService,
         IrqCtrlService,
-        CPUService
+        CPUService,
+        TimerService
     ],
     bootstrap: [AppComponent]
 })

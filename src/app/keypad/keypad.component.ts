@@ -2,14 +2,13 @@ import { Component, OnInit } from '@angular/core';
 import { IrqCtrlService } from '../irqctrl.service';
 import { IORegMapService, IORegisterOperation, IORegisterType,
          IORegisterOperationType} from '../ioregmap.service';
-import { ErrorBarService } from '../error-bar.service';
 
 import { Subject } from 'rxjs/Subject';
 import { Observable } from 'rxjs/Observable';
 
 
-const KPDSTATUS_REGISTER_ADDRESS = 2;
-const KPDDATA_REGISTER_ADDRESS = 3;
+const KPDSTATUS_REGISTER_ADDRESS = 5;
+const KPDDATA_REGISTER_ADDRESS = 6;
 
 
 @Component({
@@ -28,8 +27,7 @@ export class KeypadComponent implements OnInit {
     private ioRegisterOperation$: Observable<IORegisterOperation>;
 
     constructor(private ioRegMapService: IORegMapService,
-                private irqCtrlService: IrqCtrlService,
-                private errorBarService: ErrorBarService) {
+                private irqCtrlService: IrqCtrlService) {
 
         this.ioRegisterOperation$ = this.ioRegisterOperationSource.asObservable();
 
@@ -42,35 +40,10 @@ export class KeypadComponent implements OnInit {
     ngOnInit() {
 
         this.ioRegMapService.addRegister('KPDSTATUS', KPDSTATUS_REGISTER_ADDRESS, 0,
-            IORegisterType.READ_WRITE, this.ioRegisterOperationSource, 'Keypad Status Register');
+            IORegisterType.READ_ONLY, this.ioRegisterOperationSource, 'Keypad Status Register');
         this.ioRegMapService.addRegister('KPDDATA', KPDDATA_REGISTER_ADDRESS, 0,
-            IORegisterType.READ_WRITE, this.ioRegisterOperationSource, 'Keypad Data Register');
+            IORegisterType.READ_ONLY, this.ioRegisterOperationSource, 'Keypad Data Register');
 
-    }
-
-    private processWriteOperation(address: number, value: number) {
-
-        switch (address) {
-
-            case KPDSTATUS_REGISTER_ADDRESS:
-                this.kpdStatusRegister = value;
-
-                if ((this.kpdStatusRegister & 0x1) !== 0) {
-
-                    if (this.interruptOutput === false) {
-                        this.interruptOutput = true;
-                        this.irqCtrlService.raiseHardwareInterrupt(0);
-                    }
-                } else if (this.interruptOutput === true) {
-                    this.interruptOutput = false;
-                    this.irqCtrlService.lowerHardwareInterrupt(0);
-                }
-
-                break;
-            case KPDDATA_REGISTER_ADDRESS:
-                this.kpdDataRegister = value;
-                break;
-        }
     }
 
     private processReadOperation(address: number) {
@@ -78,9 +51,17 @@ export class KeypadComponent implements OnInit {
         switch (address) {
 
             case KPDSTATUS_REGISTER_ADDRESS:
-                this.ioRegMapService.store(KPDSTATUS_REGISTER_ADDRESS, 0);
                 break;
             case KPDDATA_REGISTER_ADDRESS:
+                this.kpdStatusRegister = 0;
+
+                this.ioRegMapService.store(KPDSTATUS_REGISTER_ADDRESS, 0, false, false);
+
+                if (this.interruptOutput === true) {
+                    this.interruptOutput = false;
+                    this.irqCtrlService.lowerHardwareInterrupt(0);
+                }
+
                 break;
         }
 
@@ -94,9 +75,6 @@ export class KeypadComponent implements OnInit {
                     ioRegisterOperation.data.get('address'));
                 break;
             case IORegisterOperationType.WRITE:
-                this.processWriteOperation(
-                    ioRegisterOperation.data.get('address'),
-                    ioRegisterOperation.data.get('value'));
                 break;
         }
 
@@ -106,14 +84,35 @@ export class KeypadComponent implements OnInit {
 
         if (this.kpdStatusRegister === 0) {
 
-            this.ioRegMapService.store(KPDDATA_REGISTER_ADDRESS, key);
-            this.ioRegMapService.store(KPDSTATUS_REGISTER_ADDRESS, 1);
+            this.kpdDataRegister = key;
+            this.kpdStatusRegister = 1;
+
+            this.ioRegMapService.store(KPDDATA_REGISTER_ADDRESS, key, false, false);
+            this.ioRegMapService.store(KPDSTATUS_REGISTER_ADDRESS, 1, false, false);
 
         } else {
 
-            this.ioRegMapService.store(KPDSTATUS_REGISTER_ADDRESS, 3);
+            this.kpdStatusRegister = 3;
+
+            this.ioRegMapService.store(KPDSTATUS_REGISTER_ADDRESS, 3, false, false);
 
         }
+
+        if (((this.kpdStatusRegister & 0x1) !== 0) && (this.interruptOutput === false)) {
+            this.interruptOutput = true;
+            this.irqCtrlService.raiseHardwareInterrupt(0);
+        }
+
+    }
+
+    public reset() {
+
+        this.kpdStatusRegister = 0;
+        this.kpdDataRegister = 0;
+        this.interruptOutput = false;
+
+        this.ioRegMapService.store(KPDSTATUS_REGISTER_ADDRESS, 0, false, false);
+        this.ioRegMapService.store(KPDDATA_REGISTER_ADDRESS, 0, false, false);
 
     }
 

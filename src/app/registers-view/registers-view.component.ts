@@ -70,14 +70,14 @@ class CPURegisterView {
 })
 export class RegistersViewComponent implements OnInit, OnDestroy {
 
-    private A: CPURegisterView;
-    private B: CPURegisterView;
-    private C: CPURegisterView;
-    private D: CPURegisterView;
+    public A: CPURegisterView;
+    public B: CPURegisterView;
+    public C: CPURegisterView;
+    public D: CPURegisterView;
 
-    private SR: CPURegisterView;
-    private IP: CPURegisterView;
-    private SP: CPURegisterView;
+    public SR: CPURegisterView;
+    public IP: CPURegisterView;
+    public SP: CPURegisterView;
 
     @Input() displayA: boolean;
     @Input() displayB: boolean;
