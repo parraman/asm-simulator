@@ -102,7 +102,7 @@ export class CPUService {
         this.registersBank.set(CPURegisterIndex.AL, registerA);
 
         const registerB = new CPUGeneralPurposeRegister('B', CPURegisterIndex.B, 0,
-            this.cpuRegisterOperationSource, 'General Purpose Register B')
+            this.cpuRegisterOperationSource, 'General Purpose Register B');
         this.registersBank.set(CPURegisterIndex.B, registerB);
         this.registersBank.set(CPURegisterIndex.BH, registerB);
         this.registersBank.set(CPURegisterIndex.BL, registerB);
@@ -194,7 +194,7 @@ export class CPUService {
     protected pushByte(value: number) {
 
         const currentSP = this.SP.value;
-        this.memoryService.storeByte(currentSP, value);
+        this.memoryService.storeByte(currentSP, value, true, this.SR.supervisor === 1);
         this.SP.pushByte();
 
     }
@@ -210,7 +210,7 @@ export class CPUService {
     protected popByte(): number {
 
         const currentSP = this.SP.value;
-        const value = this.memoryService.loadByte(currentSP + 1);
+        const value = this.memoryService.loadByte(currentSP + 1, true, this.SR.supervisor === 1);
         this.SP.popByte();
 
         return value;
@@ -220,7 +220,7 @@ export class CPUService {
     protected popWord(): number {
 
         const currentSP = this.SP.value;
-        const value = this.memoryService.loadWord(currentSP + 1);
+        const value = this.memoryService.loadWord(currentSP + 1, true, this.SR.supervisor === 1);
         this.SP.popWord();
 
         return value;
@@ -296,89 +296,96 @@ export class CPUService {
 
         this.nextIP = this.IP.value;
 
-        const opcode = this.memoryService.loadByte(this.nextIP);
-        this.nextIP += 1;
+        try {
 
-        const instruction = instructionSet.getInstructionFromOpCode(opcode);
+            const opcode = this.memoryService.loadByte(this.nextIP, true, this.SR.supervisor === 1);
+            this.nextIP += 1;
 
-        if (instruction === undefined) {
+            const instruction = instructionSet.getInstructionFromOpCode(opcode);
+
+            if (instruction === undefined) {
+                this.SR.fault = 1;
+                throw Error(`Invalid opcode: ${opcode}`);
+            }
+
+            const args: Array<number> = [];
+
+            switch (instruction.operand1) {
+
+                case OperandType.BYTE:
+                    const byte = this.memoryService.loadByte(this.nextIP, true, this.SR.supervisor === 1);
+                    args.push(byte);
+                    this.nextIP += 1;
+                    break;
+                case OperandType.REGISTER_8BITS:
+                case OperandType.REGISTER_16BITS:
+                    let register = this.memoryService.loadByte(this.nextIP, true, this.SR.supervisor === 1);
+                    args.push(register);
+                    this.nextIP += 1;
+                    break;
+                case OperandType.WORD:
+                case OperandType.ADDRESS:
+                    const word = this.memoryService.loadWord(this.nextIP, true, this.SR.supervisor === 1);
+                    args.push(word);
+                    this.nextIP += 2;
+                    break;
+                case OperandType.REGADDRESS:
+                    const regaddress = this.memoryService.loadWord(this.nextIP, true, this.SR.supervisor === 1);
+                    let offset = (regaddress & 0xFF00) >>> 8;
+                    register = (regaddress & 0x00FF);
+                    if (offset > 127) {
+                        offset = offset - 256;
+                    }
+                    args.push(register);
+                    args.push(offset);
+                    this.nextIP += 2;
+                    break;
+                default:
+                    break;
+            }
+
+            switch (instruction.operand2) {
+
+                case OperandType.BYTE:
+                    const byte = this.memoryService.loadByte(this.nextIP, true, this.SR.supervisor === 1);
+                    args.push(byte);
+                    this.nextIP += 1;
+                    break;
+                case OperandType.REGISTER_8BITS:
+                case OperandType.REGISTER_16BITS:
+                    let register = this.memoryService.loadByte(this.nextIP, true, this.SR.supervisor === 1);
+                    args.push(register);
+                    this.nextIP += 1;
+                    break;
+                case OperandType.WORD:
+                case OperandType.ADDRESS:
+                    const word = this.memoryService.loadWord(this.nextIP, true, this.SR.supervisor === 1);
+                    args.push(word);
+                    this.nextIP += 2;
+                    break;
+                case OperandType.REGADDRESS:
+                    const regaddress = this.memoryService.loadWord(this.nextIP, true, this.SR.supervisor === 1);
+                    let offset = (regaddress & 0xFF00) >>> 8;
+                    register = (regaddress & 0x00FF);
+                    if (offset > 127) {
+                        offset = offset - 256;
+                    }
+                    args.push(register);
+                    args.push(offset);
+                    this.nextIP += 2;
+                    break;
+            }
+
+            if (this[instruction.methodName].apply(this, args) === true) {
+                this.IP.value = this.nextIP;
+            }
+
+            this.cpuConsumeTicksSource.next(1);
+        } catch (e) {
             this.SR.fault = 1;
-            throw Error(`Invalid opcode: ${opcode}`);
+            throw e;
         }
 
-        const args: Array<number> = [];
-
-        switch (instruction.operand1) {
-
-            case OperandType.BYTE:
-                const byte = this.memoryService.loadByte(this.nextIP);
-                args.push(byte);
-                this.nextIP += 1;
-                break;
-            case OperandType.REGISTER_8BITS:
-            case OperandType.REGISTER_16BITS:
-                let register = this.memoryService.loadByte(this.nextIP);
-                args.push(register);
-                this.nextIP += 1;
-                break;
-            case OperandType.WORD:
-            case OperandType.ADDRESS:
-                const word = this.memoryService.loadWord(this.nextIP);
-                args.push(word);
-                this.nextIP += 2;
-                break;
-            case OperandType.REGADDRESS:
-                const regaddress = this.memoryService.loadWord(this.nextIP);
-                let offset = (regaddress & 0xFF00) >>> 8;
-                register = (regaddress & 0x00FF);
-                if ( offset > 127 ) {
-                    offset = offset - 256;
-                }
-                args.push(register);
-                args.push(offset);
-                this.nextIP += 2;
-                break;
-            default:
-                break;
-        }
-
-        switch (instruction.operand2) {
-
-            case OperandType.BYTE:
-                const byte = this.memoryService.loadByte(this.nextIP);
-                args.push(byte);
-                this.nextIP += 1;
-                break;
-            case OperandType.REGISTER_8BITS:
-            case OperandType.REGISTER_16BITS:
-                let register = this.memoryService.loadByte(this.nextIP);
-                args.push(register);
-                this.nextIP += 1;
-                break;
-            case OperandType.WORD:
-            case OperandType.ADDRESS:
-                const word = this.memoryService.loadWord(this.nextIP);
-                args.push(word);
-                this.nextIP += 2;
-                break;
-            case OperandType.REGADDRESS:
-                const regaddress = this.memoryService.loadWord(this.nextIP);
-                let offset = (regaddress & 0xFF00) >>> 8;
-                register = (regaddress & 0x00FF);
-                if ( offset > 127 ) {
-                    offset = offset - 256;
-                }
-                args.push(register);
-                args.push(offset);
-                this.nextIP += 2;
-                break;
-        }
-
-        if (this[instruction.methodName].apply(this, args) === true) {
-            this.IP.value = this.nextIP;
-        }
-
-        this.cpuConsumeTicksSource.next(1);
 
     }
 
@@ -414,7 +421,7 @@ export class CPUService {
             throw Error(`Invalid first operand: register index ${toRegister} out of bounds`);
         }
 
-        this.registersBank.get(toRegister).value = this.memoryService.loadWord(fromAddress);
+        this.registersBank.get(toRegister).value = this.memoryService.loadWord(fromAddress, true, this.SR.supervisor === 1);
 
         return true;
 
@@ -432,7 +439,7 @@ export class CPUService {
 
         const address = this.registersBank.get(fromRegister).value + fromOffset;
 
-        this.registersBank.get(toRegister).value = this.memoryService.loadWord(address);
+        this.registersBank.get(toRegister).value = this.memoryService.loadWord(address, true, this.SR.supervisor === 1);
 
         return true;
 
@@ -533,7 +540,8 @@ export class CPUService {
 
         const byteToRegister = CPUService.getByteFrom8bitsGPR(toRegister);
 
-        this.registersBank.get(toRegister)[byteToRegister] = this.memoryService.loadByte(fromAddress);
+        this.registersBank.get(toRegister)[byteToRegister] =
+            this.memoryService.loadByte(fromAddress, true, this.SR.supervisor === 1);
 
         return true;
 
@@ -552,7 +560,8 @@ export class CPUService {
         const address = this.registersBank.get(fromRegister).value + fromOffset;
         const byteToRegister = CPUService.getByteFrom8bitsGPR(toRegister);
 
-        this.registersBank.get(toRegister)[byteToRegister] = this.memoryService.loadByte(address);
+        this.registersBank.get(toRegister)[byteToRegister] =
+            this.memoryService.loadByte(address, true, this.SR.supervisor === 1);
 
         return true;
 
@@ -567,7 +576,8 @@ export class CPUService {
 
         const byteFromRegister = CPUService.getByteFrom8bitsGPR(fromRegister);
 
-        this.memoryService.storeByte(toAddress, this.registersBank.get(fromRegister)[byteFromRegister]);
+        this.memoryService.storeByte(toAddress,
+            this.registersBank.get(fromRegister)[byteFromRegister], true, this.SR.supervisor === 1);
 
         return true;
 
@@ -588,7 +598,8 @@ export class CPUService {
         const address = this.registersBank.get(toRegister).value + toOffset;
         const byteFromRegister = CPUService.getByteFrom8bitsGPR(fromRegister);
 
-        this.memoryService.storeByte(address, this.registersBank.get(fromRegister)[byteFromRegister]);
+        this.memoryService.storeByte(address,
+            this.registersBank.get(fromRegister)[byteFromRegister], true, this.SR.supervisor === 1);
 
         return true;
 
@@ -612,7 +623,7 @@ export class CPUService {
     @Instruction(OpCode.MOVB_BYTE_TO_ADDRESS, 'MOVB', OperandType.ADDRESS, OperandType.BYTE)
     private instrMOVB_BYTE_TO_ADDRESS(toAddress: number, byte: number): boolean {
 
-        this.memoryService.storeByte(toAddress, byte);
+        this.memoryService.storeByte(toAddress, byte, true, this.SR.supervisor === 1);
 
         return true;
 
@@ -627,7 +638,7 @@ export class CPUService {
 
         const address = this.registersBank.get(toRegister).value + toOffset;
 
-        this.memoryService.storeByte(address, byte);
+        this.memoryService.storeByte(address, byte, true, this.SR.supervisor === 1);
 
         return true;
 
@@ -665,7 +676,7 @@ export class CPUService {
 
         this.registersBank.get(toRegister).value =
             this.check16bitOperation(this.registersBank.get(toRegister).value +
-                                     this.memoryService.loadWord(address));
+                                     this.memoryService.loadWord(address, true, this.SR.supervisor === 1));
 
         return true;
 
@@ -680,7 +691,7 @@ export class CPUService {
 
         this.registersBank.get(toRegister).value =
             this.check16bitOperation(this.registersBank.get(toRegister).value +
-                                     this.memoryService.loadWord(fromAddress));
+                                     this.memoryService.loadWord(fromAddress, true, this.SR.supervisor === 1));
 
         return true;
 
@@ -736,7 +747,7 @@ export class CPUService {
 
         this.registersBank.get(toRegister)[byteToRegister] =
             this.check8bitOperation(this.registersBank.get(toRegister)[byteToRegister] +
-                                    this.memoryService.loadByte(address));
+                                    this.memoryService.loadByte(address, true, this.SR.supervisor === 1));
 
         return true;
 
@@ -753,7 +764,7 @@ export class CPUService {
 
         this.registersBank.get(toRegister)[byteToRegister] =
             this.check8bitOperation(this.registersBank.get(toRegister)[byteToRegister] +
-                                this.memoryService.loadByte(fromAddress));
+                                this.memoryService.loadByte(fromAddress, true, this.SR.supervisor === 1));
 
         return true;
 
@@ -807,7 +818,7 @@ export class CPUService {
 
         this.registersBank.get(toRegister).value =
             this.check16bitOperation(this.registersBank.get(toRegister).value -
-                                     this.memoryService.loadWord(address));
+                                     this.memoryService.loadWord(address, true, this.SR.supervisor === 1));
 
         return true;
 
@@ -822,7 +833,7 @@ export class CPUService {
 
         this.registersBank.get(toRegister).value =
             this.check16bitOperation(this.registersBank.get(toRegister).value -
-                                     this.memoryService.loadWord(fromAddress));
+                                     this.memoryService.loadWord(fromAddress, true, this.SR.supervisor === 1));
 
         return true;
 
@@ -878,7 +889,7 @@ export class CPUService {
 
         this.registersBank.get(toRegister)[byteToRegister] =
             this.check8bitOperation(this.registersBank.get(toRegister)[byteToRegister] -
-                                    this.memoryService.loadByte(address));
+                                    this.memoryService.loadByte(address, true, this.SR.supervisor === 1));
 
         return true;
 
@@ -895,7 +906,7 @@ export class CPUService {
 
         this.registersBank.get(toRegister)[byteToRegister] =
             this.check8bitOperation(this.registersBank.get(toRegister)[byteToRegister] -
-                this.memoryService.loadByte(fromAddress));
+                this.memoryService.loadByte(fromAddress, true, this.SR.supervisor === 1));
 
         return true;
 
@@ -1007,7 +1018,7 @@ export class CPUService {
         const address = this.registersBank.get(fromRegister).value + fromOffset;
 
         this.check16bitOperation(this.registersBank.get(toRegister).value -
-            this.memoryService.loadWord(address));
+            this.memoryService.loadWord(address, true, this.SR.supervisor === 1));
 
         return true;
 
@@ -1021,7 +1032,7 @@ export class CPUService {
         }
 
         this.check16bitOperation(this.registersBank.get(toRegister).value -
-            this.memoryService.loadWord(fromAddress));
+            this.memoryService.loadWord(fromAddress, true, this.SR.supervisor === 1));
 
         return true;
 
@@ -1074,7 +1085,7 @@ export class CPUService {
         const byteToRegister = CPUService.getByteFrom8bitsGPR(toRegister);
 
         this.check8bitOperation(this.registersBank.get(toRegister)[byteToRegister] -
-            this.memoryService.loadByte(address));
+            this.memoryService.loadByte(address, true, this.SR.supervisor === 1));
 
         return true;
 
@@ -1090,7 +1101,7 @@ export class CPUService {
         const byteToRegister = CPUService.getByteFrom8bitsGPR(toRegister);
 
         this.check8bitOperation(this.registersBank.get(toRegister)[byteToRegister] -
-            this.memoryService.loadByte(fromAddress));
+            this.memoryService.loadByte(fromAddress, true, this.SR.supervisor === 1));
 
         return true;
 
@@ -1323,7 +1334,7 @@ export class CPUService {
 
         const address = this.registersBank.get(toRegister).value + toOffset;
 
-        this.pushWord(this.memoryService.loadWord(address));
+        this.pushWord(this.memoryService.loadWord(address, true, this.SR.supervisor === 1));
 
         return true;
 
@@ -1332,7 +1343,7 @@ export class CPUService {
     @Instruction(OpCode.PUSH_ADDRESS, 'PUSH', OperandType.ADDRESS)
     private instrPUSH_ADDRESS(toAddress: number): boolean {
 
-        this.pushWord(this.memoryService.loadWord(toAddress));
+        this.pushWord(this.memoryService.loadWord(toAddress, true, this.SR.supervisor === 1));
 
         return true;
 
@@ -1371,7 +1382,7 @@ export class CPUService {
 
         const address = this.registersBank.get(toRegister).value + toOffset;
 
-        this.pushByte(this.memoryService.loadByte(address));
+        this.pushByte(this.memoryService.loadByte(address, true, this.SR.supervisor === 1));
 
         return true;
 
@@ -1380,7 +1391,7 @@ export class CPUService {
     @Instruction(OpCode.PUSHB_ADDRESS, 'PUSHB', OperandType.ADDRESS)
     private instrPUSHB_ADDRESS(toAddress: number): boolean {
 
-        this.pushByte(this.memoryService.loadByte(toAddress));
+        this.pushByte(this.memoryService.loadByte(toAddress, true, this.SR.supervisor === 1));
 
         return true;
 
@@ -1484,7 +1495,7 @@ export class CPUService {
 
         this.registersBank.get(CPURegisterIndex.A).value =
             this.check16bitOperation(this.registersBank.get(CPURegisterIndex.A).value *
-                                     this.memoryService.loadWord(address));
+                                     this.memoryService.loadWord(address, true, this.SR.supervisor === 1));
 
         return true;
 
@@ -1495,7 +1506,7 @@ export class CPUService {
 
         this.registersBank.get(CPURegisterIndex.A).value =
             this.check16bitOperation(this.registersBank.get(CPURegisterIndex.A).value *
-                this.memoryService.loadWord(toAddress));
+                this.memoryService.loadWord(toAddress, true, this.SR.supervisor === 1));
 
         return true;
 
@@ -1516,7 +1527,7 @@ export class CPUService {
     @Instruction(OpCode.MULB_REG8, 'MULB', OperandType.REGISTER_8BITS)
     private instrMULB_REG8(toRegister: number): boolean {
 
-        if (CPUService.is16bitsGPRorSP(toRegister) === false) {
+        if (CPUService.is8bitsGPR(toRegister) === false) {
             throw Error(`Invalid first operand: register index ${toRegister} out of bounds`);
         }
 
@@ -1542,7 +1553,7 @@ export class CPUService {
 
         this.registersBank.get(CPURegisterIndex.A)['lsb'] =
             this.check8bitOperation(this.registersBank.get(CPURegisterIndex.A)['lsb'] *
-                this.memoryService.loadByte(address));
+                this.memoryService.loadByte(address, true, this.SR.supervisor === 1));
 
         return true;
 
@@ -1553,7 +1564,7 @@ export class CPUService {
 
         this.registersBank.get(CPURegisterIndex.A)['lsb'] =
             this.check8bitOperation(this.registersBank.get(CPURegisterIndex.A)['lsb'] *
-                this.memoryService.loadByte(toAddress));
+                this.memoryService.loadByte(toAddress, true, this.SR.supervisor === 1));
 
         return true;
 
@@ -1596,7 +1607,7 @@ export class CPUService {
 
         this.registersBank.get(CPURegisterIndex.A).value =
             this.check16bitOperation(CPUService.divideBy(this.registersBank.get(CPURegisterIndex.A).value,
-                this.memoryService.loadWord(address)));
+                this.memoryService.loadWord(address, true, this.SR.supervisor === 1)));
 
         return true;
 
@@ -1607,7 +1618,7 @@ export class CPUService {
 
         this.registersBank.get(CPURegisterIndex.A).value =
             this.check16bitOperation(CPUService.divideBy(this.registersBank.get(CPURegisterIndex.A).value,
-                this.memoryService.loadWord(toAddress)));
+                this.memoryService.loadWord(toAddress, true, this.SR.supervisor === 1)));
 
         return true;
 
@@ -1651,7 +1662,7 @@ export class CPUService {
 
         this.registersBank.get(CPURegisterIndex.A)['lsb'] =
             this.check8bitOperation(CPUService.divideBy(this.registersBank.get(CPURegisterIndex.A)['lsb'],
-                this.memoryService.loadByte(address)));
+                this.memoryService.loadByte(address, true, this.SR.supervisor === 1)));
 
         return true;
 
@@ -1662,7 +1673,7 @@ export class CPUService {
 
         this.registersBank.get(CPURegisterIndex.A)['lsb'] =
             this.check8bitOperation(CPUService.divideBy(this.registersBank.get(CPURegisterIndex.A)['lsb'],
-                this.memoryService.loadByte(toAddress)));
+                this.memoryService.loadByte(toAddress, true, this.SR.supervisor === 1)));
 
         return true;
 
@@ -1712,7 +1723,7 @@ export class CPUService {
 
         this.registersBank.get(toRegister).value =
             this.check16bitOperation(this.registersBank.get(toRegister).value &
-                this.memoryService.loadWord(address));
+                this.memoryService.loadWord(address, true, this.SR.supervisor === 1));
 
         return true;
 
@@ -1727,7 +1738,7 @@ export class CPUService {
 
         this.registersBank.get(toRegister).value =
             this.check16bitOperation(this.registersBank.get(toRegister).value &
-                this.memoryService.loadWord(fromAddress));
+                this.memoryService.loadWord(fromAddress, true, this.SR.supervisor === 1));
 
         return true;
 
@@ -1783,7 +1794,7 @@ export class CPUService {
 
         this.registersBank.get(toRegister)[byteToRegister] =
             this.check8bitOperation(this.registersBank.get(toRegister)[byteToRegister] &
-                this.memoryService.loadByte(address));
+                this.memoryService.loadByte(address, true, this.SR.supervisor === 1));
 
         return true;
 
@@ -1800,7 +1811,7 @@ export class CPUService {
 
         this.registersBank.get(toRegister)[byteToRegister] =
             this.check8bitOperation(this.registersBank.get(toRegister)[byteToRegister] &
-                this.memoryService.loadByte(fromAddress));
+                this.memoryService.loadByte(fromAddress, true, this.SR.supervisor === 1));
 
         return true;
 
@@ -1854,7 +1865,7 @@ export class CPUService {
 
         this.registersBank.get(toRegister).value =
             this.check16bitOperation(this.registersBank.get(toRegister).value |
-                this.memoryService.loadWord(address));
+                this.memoryService.loadWord(address, true, this.SR.supervisor === 1));
 
         return true;
 
@@ -1869,7 +1880,7 @@ export class CPUService {
 
         this.registersBank.get(toRegister).value =
             this.check16bitOperation(this.registersBank.get(toRegister).value |
-                this.memoryService.loadWord(fromAddress));
+                this.memoryService.loadWord(fromAddress, true, this.SR.supervisor === 1));
 
         return true;
 
@@ -1925,7 +1936,7 @@ export class CPUService {
 
         this.registersBank.get(toRegister)[byteToRegister] =
             this.check8bitOperation(this.registersBank.get(toRegister)[byteToRegister] |
-                this.memoryService.loadByte(address));
+                this.memoryService.loadByte(address, true, this.SR.supervisor === 1));
 
         return true;
 
@@ -1942,7 +1953,7 @@ export class CPUService {
 
         this.registersBank.get(toRegister)[byteToRegister] =
             this.check8bitOperation(this.registersBank.get(toRegister)[byteToRegister] |
-                this.memoryService.loadByte(fromAddress));
+                this.memoryService.loadByte(fromAddress, true, this.SR.supervisor === 1));
 
         return true;
 
@@ -1996,7 +2007,7 @@ export class CPUService {
 
         this.registersBank.get(toRegister).value =
             this.check16bitOperation(this.registersBank.get(toRegister).value ^
-                this.memoryService.loadWord(address));
+                this.memoryService.loadWord(address, true, this.SR.supervisor === 1));
 
         return true;
 
@@ -2011,7 +2022,7 @@ export class CPUService {
 
         this.registersBank.get(toRegister).value =
             this.check16bitOperation(this.registersBank.get(toRegister).value ^
-                this.memoryService.loadWord(fromAddress));
+                this.memoryService.loadWord(fromAddress, true, this.SR.supervisor === 1));
 
         return true;
 
@@ -2067,7 +2078,7 @@ export class CPUService {
 
         this.registersBank.get(toRegister)[byteToRegister] =
             this.check8bitOperation(this.registersBank.get(toRegister)[byteToRegister] ^
-                this.memoryService.loadByte(address));
+                this.memoryService.loadByte(address, true, this.SR.supervisor === 1));
 
         return true;
 
@@ -2084,7 +2095,7 @@ export class CPUService {
 
         this.registersBank.get(toRegister)[byteToRegister] =
             this.check8bitOperation(this.registersBank.get(toRegister)[byteToRegister] ^
-                this.memoryService.loadByte(fromAddress));
+                this.memoryService.loadByte(fromAddress, true, this.SR.supervisor === 1));
 
         return true;
 
@@ -2166,7 +2177,7 @@ export class CPUService {
 
         this.registersBank.get(toRegister).value =
             this.check16bitOperation(this.registersBank.get(toRegister).value <<
-                this.memoryService.loadWord(address));
+                this.memoryService.loadWord(address, true, this.SR.supervisor === 1));
 
         return true;
 
@@ -2181,7 +2192,7 @@ export class CPUService {
 
         this.registersBank.get(toRegister).value =
             this.check16bitOperation(this.registersBank.get(toRegister).value <<
-                this.memoryService.loadWord(fromAddress));
+                this.memoryService.loadWord(fromAddress, true, this.SR.supervisor === 1));
 
         return true;
 
@@ -2237,7 +2248,7 @@ export class CPUService {
 
         this.registersBank.get(toRegister)[byteToRegister] =
             this.check8bitOperation(this.registersBank.get(toRegister)[byteToRegister] <<
-                this.memoryService.loadByte(address));
+                this.memoryService.loadByte(address, true, this.SR.supervisor === 1));
 
         return true;
 
@@ -2254,7 +2265,7 @@ export class CPUService {
 
         this.registersBank.get(toRegister)[byteToRegister] =
             this.check8bitOperation(this.registersBank.get(toRegister)[byteToRegister] <<
-                this.memoryService.loadByte(fromAddress));
+                this.memoryService.loadByte(fromAddress, true, this.SR.supervisor === 1));
 
         return true;
 
@@ -2308,7 +2319,7 @@ export class CPUService {
 
         this.registersBank.get(toRegister).value =
             this.check16bitOperation(this.registersBank.get(toRegister).value >>>
-                this.memoryService.loadWord(address));
+                this.memoryService.loadWord(address, true, this.SR.supervisor === 1));
 
         return true;
 
@@ -2323,7 +2334,7 @@ export class CPUService {
 
         this.registersBank.get(toRegister).value =
             this.check16bitOperation(this.registersBank.get(toRegister).value >>>
-                this.memoryService.loadWord(fromAddress));
+                this.memoryService.loadWord(fromAddress, true, this.SR.supervisor === 1));
 
         return true;
 
@@ -2379,7 +2390,7 @@ export class CPUService {
 
         this.registersBank.get(toRegister)[byteToRegister] =
             this.check8bitOperation(this.registersBank.get(toRegister)[byteToRegister] >>>
-                this.memoryService.loadByte(address));
+                this.memoryService.loadByte(address, true, this.SR.supervisor === 1));
 
         return true;
 
@@ -2396,7 +2407,7 @@ export class CPUService {
 
         this.registersBank.get(toRegister)[byteToRegister] =
             this.check8bitOperation(this.registersBank.get(toRegister)[byteToRegister] >>>
-                this.memoryService.loadByte(fromAddress));
+                this.memoryService.loadByte(fromAddress, true, this.SR.supervisor === 1));
 
         return true;
 
@@ -2470,15 +2481,17 @@ export class CPUService {
 
     }
 
-    @Instruction(OpCode.SYSCALL, 'SYSCALL')
-    private instrSYSCALL(): boolean {
+    @Instruction(OpCode.SVC, 'SVC')
+    private instrSVC(): boolean {
 
         if (this.SR.supervisor === 1) {
             this.SR.fault = 1;
-            throw Error(`Invalid use of SYSCALL when in supervisor mode`);
+            throw Error(`Invalid use of SVC when in supervisor mode`);
         }
 
         this.pushWord(this.nextIP);
+
+        this.SR.supervisor = 1;
 
         this.IP.value = SYSCALL_VECTOR_ADDRESS;
 
@@ -2486,15 +2499,16 @@ export class CPUService {
 
     }
 
-    @Instruction(OpCode.SYSRET, 'SYSRET')
-    private instrSYSRET(): boolean {
+    @Instruction(OpCode.SRET, 'SRET')
+    private instrSRET(): boolean {
 
         if (this.SR.supervisor === 0) {
             this.SR.fault = 1;
-            throw Error(`Invalid use of SYSRET when not in supervisor mode`);
+            throw Error(`Invalid use of SRET when not in supervisor mode`);
         }
 
         this.SR.supervisor = 0;
+
         this.IP.value = this.popWord();
 
         return false;
@@ -2524,7 +2538,7 @@ export class CPUService {
         }
 
         const address = this.registersBank.get(toRegister).value + toOffset;
-        const register_address = this.memoryService.loadWord(address);
+        const register_address = this.memoryService.loadWord(address, true, this.SR.supervisor === 1);
 
         this.registersBank.get(CPURegisterIndex.A).value =
             this.ioRegMapService.load(register_address);
@@ -2536,7 +2550,7 @@ export class CPUService {
     @Instruction(OpCode.IN_ADDRESS, 'IN', OperandType.ADDRESS)
     private instrIN_ADDRESS(toAddress: number) {
 
-        const register_address = this.memoryService.loadWord(toAddress);
+        const register_address = this.memoryService.loadWord(toAddress, true, this.SR.supervisor === 1);
 
         this.registersBank.get(CPURegisterIndex.A).value =
             this.ioRegMapService.load(register_address);
@@ -2578,7 +2592,7 @@ export class CPUService {
         }
 
         const address = this.registersBank.get(toRegister).value + toOffset;
-        const register_address = this.memoryService.loadWord(address);
+        const register_address = this.memoryService.loadWord(address, true, this.SR.supervisor === 1);
         const value = this.registersBank.get(CPURegisterIndex.A).value;
 
         this.ioRegMapService.store(register_address, value);
@@ -2590,7 +2604,7 @@ export class CPUService {
     @Instruction(OpCode.OUT_ADDRESS, 'OUT', OperandType.ADDRESS)
     private instrOUT_ADDRESS(toAddress: number) {
 
-        const register_address = this.memoryService.loadWord(toAddress);
+        const register_address = this.memoryService.loadWord(toAddress, true, this.SR.supervisor === 1);
         const value = this.registersBank.get(CPURegisterIndex.A).value;
 
         this.ioRegMapService.store(register_address, value);

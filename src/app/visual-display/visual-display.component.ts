@@ -4,7 +4,7 @@ import { Subject } from 'rxjs/Subject';
 import { Observable } from 'rxjs/Observable';
 
 import { MemoryOperation, MemoryService,
-         MemoryCellType, MemoryOperationType } from '../memory.service';
+         MemoryCellAccessPermission, MemoryOperationType } from '../memory.service';
 
 const COLOR_PALETTE = [
 
@@ -74,7 +74,8 @@ export class VisualDisplayComponent implements OnInit, AfterViewInit {
     ngOnInit() {
 
         this.memoryService.addMemoryRegion('VisualDisplayRegion', 0x300, 0x3FF,
-            MemoryCellType.READ_WRITE, undefined, this.memoryOperationSource);
+            MemoryCellAccessPermission.READ_WRITE, MemoryCellAccessPermission.NO_ACCESS, undefined,
+            this.memoryOperationSource);
 
     }
 

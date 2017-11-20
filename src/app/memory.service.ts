@@ -4,8 +4,9 @@ import { Subject } from 'rxjs/Subject';
 import { Observable } from 'rxjs/Observable';
 
 
-export enum MemoryCellType {
+export enum MemoryCellAccessPermission {
 
+    NO_ACCESS = 0,
     READ_WRITE = 1,
     READ_ONLY = 2
 
@@ -28,15 +29,19 @@ export enum MemoryOperationType {
 class MemoryCell {
 
     public address: number;
-    public cellType: MemoryCellType;
+    public supervisorPermissions: MemoryCellAccessPermission;
+    public userPermissions: MemoryCellAccessPermission;
     public dataValue: number;
     public memoryRegion: MemoryRegion;
 
-    constructor(address: number, cellType: MemoryCellType = MemoryCellType.READ_WRITE,
+    constructor(address: number,
+                supervisorPermissions: MemoryCellAccessPermission = MemoryCellAccessPermission.READ_WRITE,
+                userPermissions: MemoryCellAccessPermission = MemoryCellAccessPermission.READ_WRITE,
                 initialValue: number = 0, memoryRegion?: MemoryRegion) {
 
         this.address = address;
-        this.cellType = cellType;
+        this.supervisorPermissions = supervisorPermissions;
+        this.userPermissions = userPermissions;
         this.dataValue = initialValue;
         this.memoryRegion = memoryRegion;
 
@@ -76,9 +81,14 @@ export class MemoryRegion {
     public endAddress: number;
 
     /**
-     * Type of memory cells within the region (Read/write or Read-only).
+     * Access permissions when in supervisor mode (Read/write or Read-only).
      */
-    public cellType: MemoryCellType;
+    public supervisorPermissions: MemoryCellAccessPermission;
+
+    /**
+     * Access permissions when in user mode (Read/write or Read-only).
+     */
+    public userPermissions: MemoryCellAccessPermission;
 
     /**
      * Size in bytes of the memory region.
@@ -98,14 +108,16 @@ export class MemoryRegion {
     public lastAccess = -1;
 
     constructor(regionID: string, name: string, startAddress: number, endAddress: number,
-                cellType: MemoryCellType = MemoryCellType.READ_WRITE,
+                supervisorPermissions: MemoryCellAccessPermission = MemoryCellAccessPermission.READ_WRITE,
+                userPermissions: MemoryCellAccessPermission = MemoryCellAccessPermission.READ_WRITE,
                 operationSource?: Subject<MemoryOperation>) {
 
         this.regionID = regionID;
         this.name = name;
         this.startAddress = startAddress;
         this.endAddress = endAddress;
-        this.cellType = cellType;
+        this.supervisorPermissions = supervisorPermissions;
+        this.userPermissions = userPermissions;
         this.operationSource = operationSource;
         this.size = endAddress - startAddress + 1;
 
@@ -146,7 +158,8 @@ export class MemoryService {
     }
 
     public addMemoryRegion(name: string, startAddress: number, endAddress: number,
-                           cellType: MemoryCellType = MemoryCellType.READ_WRITE,
+                           supervisorPermissions: MemoryCellAccessPermission = MemoryCellAccessPermission.READ_WRITE,
+                           userPermissions: MemoryCellAccessPermission = MemoryCellAccessPermission.READ_WRITE,
                            initialValues?: Array<number>, operationSource?: Subject<MemoryOperation>): string {
 
         /* We need to first check that startAddress and endAddress are valid, i.e.:
@@ -160,7 +173,7 @@ export class MemoryService {
 
         }
 
-        if (initialValues && (initialValues.length != (endAddress - startAddress + 1))) {
+        if (initialValues && (initialValues.length !== (endAddress - startAddress + 1))) {
 
             throw Error(`Invalid size of the array of initial values: ${initialValues.length}`);
 
@@ -211,11 +224,12 @@ export class MemoryService {
 
         /* Now we can insert the new memory region */
         const newMemoryRegion = new MemoryRegion(newID, name, startAddress, endAddress,
-            cellType, operationSource);
+            supervisorPermissions, userPermissions, operationSource);
         this.memoryRegions.set(newID, newMemoryRegion);
 
         for (let i = startAddress; i <= endAddress; i++) {
-            this.memoryCells[i].cellType = cellType;
+            this.memoryCells[i].supervisorPermissions = supervisorPermissions;
+            this.memoryCells[i].userPermissions = userPermissions;
             this.memoryCells[i].dataValue = initialValues ? initialValues[i] : 0;
             this.memoryCells[i].memoryRegion = newMemoryRegion;
         }
@@ -225,7 +239,8 @@ export class MemoryService {
         parameters.set('name', name);
         parameters.set('startAddress', startAddress);
         parameters.set('endAddress', endAddress);
-        parameters.set('cellType', cellType);
+        parameters.set('supervisorPermissions', supervisorPermissions);
+        parameters.set('userPermissions', userPermissions);
         parameters.set('initialValues', initialValues);
 
         this.memoryOperationSource.next(new MemoryOperation(MemoryOperationType.ADD_REGION, parameters));
@@ -243,7 +258,8 @@ export class MemoryService {
             for (let i = memoryRegion.startAddress; i <= memoryRegion.endAddress; i++) {
 
                 this.memoryCells[i].memoryRegion = undefined;
-                this.memoryCells[i].cellType = MemoryCellType.READ_WRITE;
+                this.memoryCells[i].supervisorPermissions = MemoryCellAccessPermission.READ_WRITE;
+                this.memoryCells[i].userPermissions = MemoryCellAccessPermission.READ_WRITE;
                 this.memoryCells[i].dataValue = 0;
 
             }
@@ -279,10 +295,23 @@ export class MemoryService {
 
     }
 
-    public loadByte(address: number, publish: boolean = true): number {
+    public loadByte(address: number, isInstruction: boolean = true,
+                    isSupervisorMode: boolean = true, publish: boolean = true): number {
 
         if (address < 0 || address > this.size) {
             throw Error('Memory access violation at ' + address);
+        }
+
+        if (isInstruction === true) {
+
+            if (isSupervisorMode === true &&
+                (this.memoryCells[address].supervisorPermissions === MemoryCellAccessPermission.NO_ACCESS)) {
+                throw Error(`Invalid access to cell ${address} in supervisor mode`);
+            } else if (isSupervisorMode === false &&
+                (this.memoryCells[address].userPermissions === MemoryCellAccessPermission.NO_ACCESS)) {
+                throw Error(`Invalid access to cell ${address} in user mode`);
+            }
+
         }
 
         this.lastAccess = address;
@@ -310,7 +339,8 @@ export class MemoryService {
 
     }
 
-    public storeByte(address: number, value: number, isInstruction: boolean = true, publish: boolean = true) {
+    public storeByte(address: number, value: number, isInstruction: boolean = true, isSupervisorMode: boolean = true,
+                     publish: boolean = true) {
 
         if (address < 0 || address > this.size) {
             throw Error(`Memory access violation at ${address}`);
@@ -324,8 +354,16 @@ export class MemoryService {
             throw Error(`Invalid data value ${value}`);
         }
 
-        if (isInstruction === true && (this.memoryCells[address].cellType === MemoryCellType.READ_ONLY)) {
-            throw Error(`Invalid storage into read-only cell ${address}`);
+        if (isInstruction === true) {
+
+            if (isSupervisorMode === true &&
+                (this.memoryCells[address].supervisorPermissions === MemoryCellAccessPermission.READ_ONLY)) {
+                throw Error(`Invalid storage into read-only cell ${address} in supervisor mode`);
+            } else if (isSupervisorMode === false &&
+                (this.memoryCells[address].userPermissions === MemoryCellAccessPermission.READ_ONLY)) {
+                throw Error(`Invalid storage into read-only cell ${address} in user mode`);
+            }
+
         }
 
         this.lastAccess = address;
@@ -386,10 +424,25 @@ export class MemoryService {
 
     }
 
-    public loadWord(address: number, publish: boolean = true): number {
+    public loadWord(address: number, isInstruction: boolean = true,
+                    isSupervisorMode: boolean = true, publish: boolean = true): number {
 
         if (address < 0 || address >= this.size) {
             throw Error('Memory access violation at ' + address);
+        }
+
+        if (isInstruction === true) {
+
+            if (isSupervisorMode === true &&
+                (this.memoryCells[address].supervisorPermissions === MemoryCellAccessPermission.NO_ACCESS ||
+                    this.memoryCells[address + 1].supervisorPermissions === MemoryCellAccessPermission.NO_ACCESS)) {
+                throw Error(`Invalid access to cell ${address} in supervisor mode`);
+            } else if (isSupervisorMode === false &&
+                (this.memoryCells[address].userPermissions === MemoryCellAccessPermission.NO_ACCESS ||
+                    this.memoryCells[address + 1].userPermissions === MemoryCellAccessPermission.NO_ACCESS)) {
+                throw Error(`Invalid access to cell ${address} in user mode`);
+            }
+
         }
 
         this.lastAccess = address;
@@ -420,7 +473,8 @@ export class MemoryService {
 
     }
 
-    public storeWord(address: number, value: number, isInstruction: boolean = true, publish: boolean = true) {
+    public storeWord(address: number, value: number, isInstruction: boolean = true, isSupervisorMode: boolean = true,
+                     publish: boolean = true) {
 
         if (address < 0 || address >= this.size) {
             throw Error(`Memory access violation at ${address}`);
@@ -434,9 +488,18 @@ export class MemoryService {
             throw Error(`Invalid data value ${value}`);
         }
 
-        if (isInstruction && (this.memoryCells[address].cellType === MemoryCellType.READ_ONLY ||
-            this.memoryCells[address + 1].cellType === MemoryCellType.READ_ONLY)) {
-            throw Error(`Invalid storage into read-only cell ${address}`);
+        if (isInstruction === true) {
+
+            if (isSupervisorMode === true &&
+                (this.memoryCells[address].supervisorPermissions === MemoryCellAccessPermission.READ_ONLY ||
+                    this.memoryCells[address + 1].supervisorPermissions === MemoryCellAccessPermission.READ_ONLY)) {
+                throw Error(`Invalid storage into read-only cell ${address}`);
+            } else if (isSupervisorMode === true &&
+                (this.memoryCells[address].userPermissions === MemoryCellAccessPermission.READ_ONLY ||
+                    this.memoryCells[address + 1].userPermissions === MemoryCellAccessPermission.READ_ONLY)) {
+                throw Error(`Invalid storage into read-only cell ${address}`);
+            }
+
         }
 
         this.lastAccess = address;

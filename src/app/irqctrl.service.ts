@@ -51,7 +51,7 @@ export class IrqCtrlService {
             case IRQSTATUS_REGISTER_ADDRESS:
                 break;
             case IRQEOI_REGISTER_ADDRESS:
-                this.irqStatusRegister &= ~value;
+                this.irqStatusRegister = 0;
                 this.irqStatusRegister |= this.irqLevelRegister;
                 this.ioRegMapService.store(IRQSTATUS_REGISTER_ADDRESS, this.irqStatusRegister, false, false);
                 break;

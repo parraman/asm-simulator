@@ -4,12 +4,29 @@ import { isNumeric } from 'rxjs/util/isNumeric';
 import { OperandType, instructionSet } from './instrset';
 import { CPURegisterIndex, getRegisterSize } from './cpuregs';
 
+/**
+ * This regular expression is used to parse the lines of code. The original
+ * expression was defined by Marco Schweighauser. This version includes the
+ * capability of using escape characters (e.g. \t \x12 \n) within the
+ * definition of a string.
+ */
 const REGEX = /^[\t ]*(?:([.A-Za-z]\w*)[:])?(?:[\t ]*([A-Za-z]{2,4})(?:[\t ]+(\[(\w+((\+|-)\d+)?)\]|\"(?:[^\\"]|\\.)+?\"|\'.+?\'|[.A-Za-z0-9]\w*)(?:[\t ]*[,][\t ]*(\[(\w+((\+|-)\d+)?)\]|\"(?:[^\\"]|\\.)+?\"|\'.+?\'|[.A-Za-z0-9]\w*))?)?)?/;
+
 const OP1_GROUP = 3;
 const OP2_GROUP = 7;
 
 // MATCHES: "(+|-)DECIMAL"
-const REGEX_NUM = /^[-+]?[0-9]+$/;
+const REGEX_DECIMAL = /^[-+]?[0-9]+$/;
+
+// MATCHES: "HEXADECIMAL"
+const REGEX_HEXADECIMAL = /^[0-9A-Fa-f]+$/;
+
+// MATCHES: "OCTAL"
+const REGEX_OCTAL = /^[0-7]+$/;
+
+// MATCHES: "BINARY"
+const REGEX_BINARY = /^[0-1]+$/;
+
 // MATCHES: "(.L)abel"
 const REGEX_LABEL = /^[.A-Za-z]\w*$/;
 
@@ -24,17 +41,33 @@ export class AssemblerService {
     private static parseNumber(input: string): number {
 
         if (input.slice(0, 2) === '0x') {
-            return parseInt(input.slice(2), 16);
+            if (REGEX_HEXADECIMAL.test(input.slice(2)) === true) {
+                return parseInt(input.slice(2), 16);
+            } else {
+                throw Error(`Invalid hexadecimal number: ${input}`);
+            }
         } else if (input.slice(0, 2) === '0o') {
-            return parseInt(input.slice(2), 8);
+            if (REGEX_OCTAL.test(input.slice(2)) === true) {
+                return parseInt(input.slice(2), 8);
+            } else {
+                throw Error(`Invalid octal number: ${input}`);
+            }
         } else if (input.slice(input.length - 1) === 'b') {
-            return parseInt(input.slice(0, input.length - 1), 2);
+            if (REGEX_BINARY.test(input.slice(0, input.length - 1)) === true) {
+                return parseInt(input.slice(0, input.length - 1), 2);
+            } else {
+                throw Error(`Invalid binary number: ${input}`);
+            }
         } else if (input.slice(input.length - 1) === 'd') {
-            return parseInt(input.slice(0, input.length - 1), 10);
-        } else if (REGEX_NUM.exec(input)) {
+            if (REGEX_DECIMAL.test(input.slice(0, input.length - 1)) === true) {
+                return parseInt(input.slice(0, input.length - 1), 10);
+            } else {
+                throw Error(`Invalid decimal number: ${input}`);
+            }
+        } else if (REGEX_DECIMAL.test(input)) {
             return parseInt(input, 10);
         } else {
-            throw Error('Invalid number format');
+            throw Error(`Invalid number format: ${input}`);
         }
 
     }
@@ -252,7 +285,7 @@ export class AssemblerService {
                 const character = input.slice(1, input.length - 1);
                 if (character.length > 1) {
 
-                    throw Error('Only one character is allowed. Use String instead');
+                    throw Error('Only one character is allowed. Use a string instead');
 
                 }
 
@@ -362,7 +395,11 @@ export class AssemblerService {
 
                 if (instr === 'DB') {
 
-                    p1 = AssemblerService.getValue(match[OP1_GROUP]);
+                    try {
+                        p1 = AssemblerService.getValue(match[OP1_GROUP]);
+                    } catch (e) {
+                        throw {error: e.toString(), line: i};
+                    }
 
                     if (p1.type === OperandType.NUMBER) {
                         this.code.push(p1.value);
@@ -381,11 +418,19 @@ export class AssemblerService {
 
                 if (match[OP1_GROUP] !== undefined) {
 
-                    p1 = AssemblerService.getValue(match[OP1_GROUP]);
+                    try {
+                        p1 = AssemblerService.getValue(match[OP1_GROUP]);
+                    } catch (e) {
+                        throw {error: e.toString(), line: i};
+                    }
 
                     if (match[OP2_GROUP] !== undefined) {
 
-                        p2 = AssemblerService.getValue(match[OP2_GROUP]);
+                        try {
+                            p2 = AssemblerService.getValue(match[OP2_GROUP]);
+                        } catch (e) {
+                            throw {error: e.toString(), line: i};
+                        }
 
                     }
 
