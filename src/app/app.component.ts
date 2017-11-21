@@ -201,7 +201,7 @@ export class AppComponent {
 
         } catch (e) {
 
-            this.errorBarService.setErrorMessage(e.toString());
+            this.errorBarService.setErrorMessage(e.message);
 
         }
 

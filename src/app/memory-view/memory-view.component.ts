@@ -84,14 +84,18 @@ export class MemoryViewComponent implements OnInit, OnDestroy, OnChanges {
     public editingCell = [-1, -1];
     public newCellValue: string;
 
-    private stackedCells: Array<number> = [];
+    private sspCells: Array<number> = [];
+    private uspCells: Array<number> = [];
 
     private registerAPointer: number;
     private registerBPointer: number;
     private registerCPointer: number;
     private registerDPointer: number;
     private registerIPPointer: number;
-    private registerSPPointer: number;
+    private registerSSPPointer: number;
+    private registerUSPPointer: number;
+
+    private registerSR: number;
 
     constructor(private memoryService: MemoryService,
                 private cpuService: CPUService,
@@ -115,11 +119,14 @@ export class MemoryViewComponent implements OnInit, OnDestroy, OnChanges {
         this.registerBPointer = registerBank.get(CPURegisterIndex.B).value;
         this.registerCPointer = registerBank.get(CPURegisterIndex.C).value;
         this.registerDPointer = registerBank.get(CPURegisterIndex.D).value;
-        this.registerSPPointer = registerBank.get(CPURegisterIndex.SP).value;
+        this.registerSSPPointer = registerBank.get(CPURegisterIndex.SSP).value;
+        this.registerUSPPointer = registerBank.get(CPURegisterIndex.USP).value;
         this.registerIPPointer = registerBank.get(CPURegisterIndex.IP).value;
+        this.registerSR = registerBank.get(CPURegisterIndex.SR).value;
 
         this.updateCellStyle(this.registerIPPointer);
-        this.updateCellStyle(this.registerSPPointer);
+        this.updateCellStyle(this.registerSSPPointer);
+        this.updateCellStyle(this.registerUSPPointer);
 
         this.memoryOperationSubscription = this.memoryService.memoryOperation$.subscribe(
             (memoryOperation) => this.processMemoryOperation(memoryOperation)
@@ -232,55 +239,105 @@ export class MemoryViewComponent implements OnInit, OnDestroy, OnChanges {
 
     }
 
-    private operationPushWord(value: number) {
+    private operationPushWord(index: CPURegisterIndex, value: number) {
 
-        const previousRegisterSPPointer = this.registerSPPointer;
-        this.registerSPPointer = value;
+        let previousRegisterSPPointer;
 
-        this.stackedCells.push(previousRegisterSPPointer);
-        this.stackedCells.push(previousRegisterSPPointer - 1);
+        switch (index) {
+
+            case CPURegisterIndex.SSP:
+                previousRegisterSPPointer = this.registerSSPPointer;
+                this.registerSSPPointer = value;
+                this.sspCells.push(previousRegisterSPPointer);
+                this.sspCells.push(previousRegisterSPPointer - 1);
+                break;
+            case CPURegisterIndex.USP:
+                previousRegisterSPPointer = this.registerUSPPointer;
+                this.registerUSPPointer = value;
+                this.uspCells.push(previousRegisterSPPointer);
+                this.uspCells.push(previousRegisterSPPointer - 1);
+                break;
+
+        }
 
         this.updateCellStyle(previousRegisterSPPointer);
         this.updateCellStyle(previousRegisterSPPointer - 1);
-        this.updateCellStyle(this.registerSPPointer);
+        this.updateCellStyle(value);
 
     }
 
-    private operationPushByte(value: number) {
+    private operationPushByte(index: CPURegisterIndex, value: number) {
 
-        const previousRegisterSPPointer = this.registerSPPointer;
-        this.registerSPPointer = value;
+        let previousRegisterSPPointer;
 
-        this.stackedCells.push(previousRegisterSPPointer);
+        switch (index) {
+
+            case CPURegisterIndex.SSP:
+                previousRegisterSPPointer = this.registerSSPPointer;
+                this.registerSSPPointer = value;
+                this.sspCells.push(previousRegisterSPPointer);
+                break;
+            case CPURegisterIndex.USP:
+                previousRegisterSPPointer = this.registerUSPPointer;
+                this.registerUSPPointer = value;
+                this.uspCells.push(previousRegisterSPPointer);
+                break;
+
+        }
 
         this.updateCellStyle(previousRegisterSPPointer);
-        this.updateCellStyle(this.registerSPPointer);
+        this.updateCellStyle(value);
 
     }
 
-    private operationPopByte(value: number) {
+    private operationPopByte(index: CPURegisterIndex, value: number) {
 
-        const previousRegisterSPPointer = this.registerSPPointer;
-        this.registerSPPointer = value;
+        let previousRegisterSPPointer;
 
-        this.stackedCells.splice(this.stackedCells.indexOf(previousRegisterSPPointer + 1), 1);
+        switch (index) {
+
+            case CPURegisterIndex.SSP:
+                previousRegisterSPPointer = this.registerSSPPointer;
+                this.registerSSPPointer = value;
+                this.sspCells.splice(this.sspCells.indexOf(previousRegisterSPPointer + 1), 1);
+                break;
+            case CPURegisterIndex.USP:
+                previousRegisterSPPointer = this.registerUSPPointer;
+                this.registerUSPPointer = value;
+                this.uspCells.splice(this.uspCells.indexOf(previousRegisterSPPointer + 1), 1);
+                break;
+
+        }
 
         this.updateCellStyle(previousRegisterSPPointer);
-        this.updateCellStyle(this.registerSPPointer);
+        this.updateCellStyle(value);
 
     }
 
-    private operationPopWord(value: number) {
+    private operationPopWord(index: CPURegisterIndex, value: number) {
 
-        const previousRegisterSPPointer = this.registerSPPointer;
-        this.registerSPPointer = value;
+        let previousRegisterSPPointer;
 
-        this.stackedCells.splice(this.stackedCells.indexOf(previousRegisterSPPointer + 1), 1);
-        this.stackedCells.splice(this.stackedCells.indexOf(previousRegisterSPPointer + 2), 1);
+        switch (index) {
+
+            case CPURegisterIndex.SSP:
+                previousRegisterSPPointer = this.registerSSPPointer;
+                this.registerSSPPointer = value;
+                this.sspCells.splice(this.sspCells.indexOf(previousRegisterSPPointer + 1), 1);
+                this.sspCells.splice(this.sspCells.indexOf(previousRegisterSPPointer + 2), 1);
+                break;
+            case CPURegisterIndex.USP:
+                previousRegisterSPPointer = this.registerUSPPointer;
+                this.registerUSPPointer = value;
+                this.uspCells.splice(this.uspCells.indexOf(previousRegisterSPPointer + 1), 1);
+                this.uspCells.splice(this.uspCells.indexOf(previousRegisterSPPointer + 2), 1);
+                break;
+
+        }
 
         this.updateCellStyle(previousRegisterSPPointer);
         this.updateCellStyle(previousRegisterSPPointer + 1);
-        this.updateCellStyle(this.registerSPPointer);
+        this.updateCellStyle(value);
 
     }
 
@@ -352,17 +409,42 @@ export class MemoryViewComponent implements OnInit, OnDestroy, OnChanges {
 
                 break;
 
-            case CPURegisterIndex.SP:
+            case CPURegisterIndex.SR:
 
-                const previousRegisterSPPointer = this.registerSPPointer;
-                this.registerSPPointer = value;
+                this.registerSR = value;
+
+                this.updateCellStyle(this.registerSSPPointer);
+                this.updateCellStyle(this.registerUSPPointer);
+
+
+                break;
+
+            case CPURegisterIndex.SSP:
+
+                let previousRegisterSPPointer = this.registerSSPPointer;
+                this.registerSSPPointer = value;
 
                 this.updateCellStyle(previousRegisterSPPointer);
-                this.updateCellStyle(this.registerSPPointer);
+                this.updateCellStyle(this.registerSSPPointer);
 
                 // And we have to flush the stack
-                const previousStackedCells = this.stackedCells;
-                this.stackedCells = [];
+                let previousStackedCells = this.sspCells;
+                this.sspCells = [];
+                previousStackedCells.forEach((cell) => this.updateCellStyle(cell));
+
+                break;
+
+            case CPURegisterIndex.USP:
+
+                previousRegisterSPPointer = this.registerUSPPointer;
+                this.registerUSPPointer = value;
+
+                this.updateCellStyle(previousRegisterSPPointer);
+                this.updateCellStyle(this.registerUSPPointer);
+
+                // And we have to flush the stack
+                previousStackedCells = this.uspCells;
+                this.uspCells = [];
                 previousStackedCells.forEach((cell) => this.updateCellStyle(cell));
 
                 break;
@@ -379,16 +461,16 @@ export class MemoryViewComponent implements OnInit, OnDestroy, OnChanges {
                 this.operationWriteRegister(cpuRegisterOperation.index, cpuRegisterOperation.value);
                 break;
             case CPURegisterOperationType.PUSH_WORD:
-                this.operationPushWord(cpuRegisterOperation.value);
+                this.operationPushWord(cpuRegisterOperation.index, cpuRegisterOperation.value);
                 break;
             case CPURegisterOperationType.PUSH_BYTE:
-                this.operationPushByte(cpuRegisterOperation.value);
+                this.operationPushByte(cpuRegisterOperation.index, cpuRegisterOperation.value);
                 break;
             case CPURegisterOperationType.POP_WORD:
-                this.operationPopWord(cpuRegisterOperation.value);
+                this.operationPopWord(cpuRegisterOperation.index, cpuRegisterOperation.value);
                 break;
             case CPURegisterOperationType.POP_BYTE:
-                this.operationPopByte(cpuRegisterOperation.value);
+                this.operationPopByte(cpuRegisterOperation.index, cpuRegisterOperation.value);
                 break;
         }
 
@@ -458,6 +540,12 @@ export class MemoryViewComponent implements OnInit, OnDestroy, OnChanges {
 
     }
 
+    private isSupervisorMode(): boolean {
+
+        return ((this.registerSR & 0x8000) !== 0);
+
+    }
+
     private updateCellStyle(address: number) {
 
         /* Order of styling:
@@ -487,8 +575,12 @@ export class MemoryViewComponent implements OnInit, OnDestroy, OnChanges {
             this.memoryCellViews[address].style = 'instr-bg';
         }
 
-        if (this.stackedCells.indexOf(address) !== -1) {
-            this.memoryCellViews[address].style = 'stack-bg';
+        if (this.uspCells.indexOf(address) !== -1) {
+            this.memoryCellViews[address].style = 'usp-stack-bg';
+        }
+
+        if (this.sspCells.indexOf(address) !== -1) {
+            this.memoryCellViews[address].style = 'ssp-stack-bg';
         }
 
         if (this.displayD === true &&
@@ -511,8 +603,12 @@ export class MemoryViewComponent implements OnInit, OnDestroy, OnChanges {
             this.memoryCellViews[address].style = 'marker marker-a';
         }
 
-        if (this.registerSPPointer === address) {
-            this.memoryCellViews[address].style = 'marker marker-sp';
+        if (this.registerUSPPointer === address && !this.isSupervisorMode()) {
+            this.memoryCellViews[address].style = 'marker marker-usp';
+        }
+
+        if (this.registerSSPPointer === address && this.isSupervisorMode()) {
+            this.memoryCellViews[address].style = 'marker marker-ssp';
         }
 
         if (this.registerIPPointer === address) {

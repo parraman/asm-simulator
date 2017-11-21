@@ -77,7 +77,8 @@ export class RegistersViewComponent implements OnInit, OnDestroy {
 
     public SR: CPURegisterView;
     public IP: CPURegisterView;
-    public SP: CPURegisterView;
+    public SSP: CPURegisterView;
+    public USP: CPURegisterView;
 
     @Input() displayA: boolean;
     @Input() displayB: boolean;
@@ -112,9 +113,13 @@ export class RegistersViewComponent implements OnInit, OnDestroy {
         this.IP = new CPURegisterView(register.name, register.value, register.description);
         this.registersMap.set(CPURegisterIndex.IP, this.IP);
 
-        register = registerBank.get(CPURegisterIndex.SP);
-        this.SP = new CPURegisterView(register.name, register.value, register.description);
-        this.registersMap.set(CPURegisterIndex.SP, this.SP);
+        register = registerBank.get(CPURegisterIndex.SSP);
+        this.SSP = new CPURegisterView(register.name, register.value, register.description);
+        this.registersMap.set(CPURegisterIndex.SSP, this.SSP);
+
+        register = registerBank.get(CPURegisterIndex.USP);
+        this.USP = new CPURegisterView(register.name, register.value, register.description);
+        this.registersMap.set(CPURegisterIndex.USP, this.USP);
 
         register = registerBank.get(CPURegisterIndex.SR);
         this.SR = new CPURegisterView(register.name, register.value, register.description);
@@ -131,6 +136,12 @@ export class RegistersViewComponent implements OnInit, OnDestroy {
     ngOnDestroy() {
 
         this.cpuRegisterOperationSubscription.unsubscribe();
+
+    }
+
+    public isSupervisorMode(): boolean {
+
+        return ((this.SR.value & 0x8000) !== 0);
 
     }
 

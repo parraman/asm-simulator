@@ -269,7 +269,7 @@ export class InstructionSet {
         throw Error(`${mnemonic} does not support these operands`);
     }
 
-    public getInstructionFromOpCode(opcode: number) {
+    public getInstructionFromOpCode(opcode: number): InstructionSpec {
 
         return this.instructionsMap.get(opcode);
 

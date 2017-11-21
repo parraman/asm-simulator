@@ -78,7 +78,7 @@ export class TextualDisplayComponent implements OnInit {
     ngOnInit() {
 
         this.memoryService.addMemoryRegion('TextualDisplayRegion', 0x2F0, 0x2FF,
-            MemoryCellAccessPermission.READ_WRITE, MemoryCellAccessPermission.NO_ACCESS,
+            MemoryCellAccessPermission.READ_WRITE,
             undefined, this.memoryOperationSource);
 
     }

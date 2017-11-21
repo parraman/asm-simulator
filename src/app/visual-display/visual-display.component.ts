@@ -74,7 +74,7 @@ export class VisualDisplayComponent implements OnInit, AfterViewInit {
     ngOnInit() {
 
         this.memoryService.addMemoryRegion('VisualDisplayRegion', 0x300, 0x3FF,
-            MemoryCellAccessPermission.READ_WRITE, MemoryCellAccessPermission.NO_ACCESS, undefined,
+            MemoryCellAccessPermission.READ_WRITE, undefined,
             this.memoryOperationSource);
 
     }
@@ -127,7 +127,7 @@ export class VisualDisplayComponent implements OnInit, AfterViewInit {
                     memoryOperation.data.get('value'));
                 break;
             case MemoryOperationType.STORE_WORD:
-                this.operationStoreByte(
+                this.operationStoreWord(
                     memoryOperation.data.get('address'),
                     memoryOperation.data.get('value'));
                 break;

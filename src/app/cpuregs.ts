@@ -18,16 +18,18 @@ export enum CPURegisterIndex {
     C = 2,
     D = 3,
     SP = 4,
-    IP = 5,
-    SR = 6,
-    AH = 10,
-    AL = 11,
-    BH = 12,
-    BL = 13,
-    CH = 14,
-    CL = 15,
-    DH = 16,
-    DL = 17
+    USP = 5,
+    SSP = 6,
+    IP = 7,
+    SR = 8,
+    AH = 9,
+    AL = 10,
+    BH = 11,
+    BL = 12,
+    CH = 13,
+    CL = 14,
+    DH = 15,
+    DL = 16
 
 }
 
@@ -42,6 +44,8 @@ export function getRegisterSize(index: CPURegisterIndex): number {
         case CPURegisterIndex.C:
         case CPURegisterIndex.D:
         case CPURegisterIndex.SP:
+        case CPURegisterIndex.USP:
+        case CPURegisterIndex.SSP:
         case CPURegisterIndex.IP:
         case CPURegisterIndex.SR:
             size = 16;
