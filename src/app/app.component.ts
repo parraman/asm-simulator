@@ -5,7 +5,9 @@ import { ErrorBarService } from './error-bar.service';
 import { CPUService } from './cpu.service';
 
 import { Subscription } from 'rxjs/Subscription';
-import { Observable } from 'rxjs/Rx';
+import { Observable } from 'rxjs/Observable';
+import 'rxjs/add/observable/timer'
+
 import { CPURegisterIndex, CPURegisterOperation, CPURegisterOperationType, SRBit } from './cpuregs';
 import { IrqCtrlService } from './irqctrl.service';
 import { TimerService } from './timer.service';
