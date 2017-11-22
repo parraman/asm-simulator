@@ -7,7 +7,6 @@ import { CPUService } from './cpu.service';
 import { Subscription } from 'rxjs/Subscription';
 import { Observable } from 'rxjs/Rx';
 import { CPURegisterIndex, CPURegisterOperation, CPURegisterOperationType, SRBit } from './cpuregs';
-import { IORegMapService } from './ioregmap.service';
 import { IrqCtrlService } from './irqctrl.service';
 import { TimerService } from './timer.service';
 import { KeypadComponent } from './keypad/keypad.component';
@@ -24,7 +23,7 @@ export class AppComponent {
 
     title = 'asm-simulator';
 
-    public sample1 = '; Example 1:\n; Writes "Hello World" to the textual display\n\n\tJMP start\n' +
+    private sample1 = '; Example 1:\n; Writes "Hello World" to the textual display\n\n\tJMP start\n' +
         'hello:\tDB \"Hello World!\"\t; Output string\n\tDB 0\t\t\t; String terminator\n\n' +
         'start:\n\tMOV SP, 255\t; Set SP\n\tMOV C, hello\t; Point register C to string\n\tMOV D, 0x2F0\t' +
         '; Point register D to output\n\tCALL print\n' +
@@ -33,7 +32,44 @@ export class AppComponent {
         '\tINCB CL\n\tINCB DL\n\tCMPB BL, [C]\t; Check if string terminator\n\tJNZ .loop\t' +
         '; Jump back to loop if not\n\n\tPOP B\n\tPOP A\n\tRET';
 
-    public sample3 = '; Example 3:\n; Draws a sprite in the visual display that can be\n; moved using ' +
+    private sample2 = '; Example 2:\n; Prints a 16x16 sprite into the visual display\n\n\tJMP ' +
+        'start\n\nsprite: \n\tDB "\\x0F\\x0F\\x0F\\x0F\\x0F\\x45\\x45\\x45"\n\tDB ' +
+        '"\\x45\\x45\\x0F\\x0F\\x0F\\x0F\\x0F\\x0F"\n\tDB ' +
+        '"\\x0F\\x0F\\x0F\\x0F\\x45\\x45\\x45\\x45"\n\tDB ' +
+        '"\\x45\\x45\\x45\\x45\\x45\\x0F\\x0F\\x0F"\n\tDB ' +
+        '"\\x0F\\x0F\\x0F\\x0F\\xE4\\xE4\\xE4\\x17"\n\tDB ' +
+        '"\\x17\\xE4\\x17\\x0F\\x0F\\x0F\\x0F\\x0F"\n\tDB ' +
+        '"\\x0F\\x0F\\x0F\\xE4\\x17\\xE4\\x17\\x17"\n\tDB ' +
+        '"\\x17\\xE4\\x17\\x17\\x17\\x0F\\x0F\\x0F"\n\tDB ' +
+        '"\\x0F\\x0F\\x0F\\xE4\\x17\\xE4\\xE4\\x17"\n\tDB ' +
+        '"\\x17\\x17\\xE4\\x17\\x17\\x17\\x0F\\x0F"\n\tDB ' +
+        '"\\x0F\\x0F\\x0F\\xE4\\xE4\\x17\\x17\\x17"\n\tDB ' +
+        '"\\x17\\xE4\\xE4\\xE4\\xE4\\x0F\\x0F\\x0F"\n\tDB ' +
+        '"\\x0F\\x0F\\x0F\\x0F\\x0F\\x17\\x17\\x17"\n\tDB ' +
+        '"\\x17\\x17\\x17\\x17\\x0F\\x0F\\x0F\\x0F"\n\tDB ' +
+        '"\\x0F\\x0F\\x0F\\x0F\\xE4\\xE4\\x45\\xE4"\n\tDB ' +
+        '"\\xE4\\xE4\\x0F\\x0F\\x0F\\x0F\\x0F\\x0F"\n\tDB ' +
+        '"\\x0F\\x0F\\x0F\\xE4\\xE4\\xE4\\x45\\xE4"\n\tDB ' +
+        '"\\xE4\\x45\\xE4\\xE4\\xE4\\x0F\\x0F\\x0F"\n\tDB ' +
+        '"\\x0F\\x0F\\xE4\\xE4\\xE4\\xE4\\x45\\x45"\n\tDB ' +
+        '"\\x45\\x45\\xE4\\xE4\\xE4\\xE4\\x0F\\x0F"\n\tDB ' +
+        '"\\x0F\\x0F\\x17\\x17\\xE4\\x45\\x17\\x45"\n\tDB ' +
+        '"\\x45\\x17\\x45\\xE4\\x17\\x17\\x0F\\x0F"\n\tDB ' +
+        '"\\x0F\\x0F\\x17\\x17\\x17\\x45\\x45\\x45"\n\tDB ' +
+        '"\\x45\\x45\\x45\\x17\\x17\\x17\\x0F\\x0F"\n\tDB ' +
+        '"\\x0F\\x0F\\x17\\x17\\x45\\x45\\x45\\x45"\n\tDB ' +
+        '"\\x45\\x45\\x45\\x45\\x17\\x17\\x0F\\x0F"\n\tDB ' +
+        '"\\x0F\\x0F\\x0F\\x0F\\x45\\x45\\x45\\x0F"\n\tDB ' +
+        '"\\x0F\\x45\\x45\\x45\\x0F\\x0F\\x0F\\x0F"\n\tDB ' +
+        '"\\x0F\\x0F\\x0F\\xE4\\xE4\\xE4\\x0F\\x0F"\n\tDB ' +
+        '"\\x0F\\x0F\\xE4\\xE4\\xE4\\x0F\\x0F\\x0F"\n\tDB ' +
+        '"\\x0F\\x0F\\xE4\\xE4\\xE4\\xE4\\x0F\\x0F"\n\tDB ' +
+        '"\\x0F\\x0F\\xE4\\xE4\\xE4\\xE4\\x0F\\x0F"\n\nstart:  MOV C, sprite\t; C points to the ' +
+        'sprite\n\tMOV D, 0x300\t; D points to the fb\n\n.loop:  MOVB AL, [C]\t; Print ' +
+        'all the pixels\n\tMOVB [D], AL\n\tINC C\n\tINC D\n\tCMP D, 0x400\n\tJNZ ' +
+        '.loop\n\tHLT\n';
+
+    private sample3 = '; Example 3:\n; Draws a sprite in the visual display that can be\n; moved using ' +
         'the keypad:\n; 2: UP, 4: LEFT; 6: RIGHT; 8: DOWN\n\n\tJMP start\n\tJMP ' +
         'isr\n\nsprite:\tDB "\\x45\\x0F\\x0F\\x45"\t; Sprite line 0\n\tDB ' +
         '"\\x0F\\x45\\x45\\x0F"\t; Sprite line 1\n\tDB "\\x0F\\x45\\x45\\x0F"\t; Sprite line ' +
@@ -70,6 +106,43 @@ export class AppComponent {
         'D, 12\t; Pixel + 12 === CRLF\n\tCMPB CH, 16\t; End of sprite?\n\tJNZ .line\t; ' +
         'Jump back to .line if not\n\tPOP D\n\tPOP C\n\tPOP B\n\tPOP A\n\tRET';
 
+    private sample4 = '; Example 4:\n; Program a periodic interrupt that increments\n; a counter [0 to ' +
+        '99] and prints its value into\n; the textual display\n \n\tJMP start\n\tJMP ' +
+        'isr\n\ncounter:\t\t; the counter\n\tDB 0\n\tDB 0\n\nstart:\n\tMOV SP, 255\t; ' +
+        'Set SP\n\tMOV A, 2\t; Set bit 1 of IRQMASK\n\tOUT 0\t\t; Unmask timer ' +
+        'IRQ\n\tMOV A, 0x20\t; Set timer preload\n\tOUT 3\n\tSTI\n\tHLT\n\nisr:\n\tPUSH ' +
+        'A\n\tPUSH B\n\tPUSH C\n\tMOV A, [counter]\t; Increment the\n\tINC A\t\t\t; ' +
+        'counter\n\tCMP A, 100\t\t; [0 to 99]\n\tJNZ .print\n\tMOV A, 0\n\n.print:\tMOV ' +
+        '[counter], A\t; Print the\n\tMOV B, A\t\t; decimal value\n\tDIV 10\t\t\t; of ' +
+        'the counter\n\tMOV C, A\n\tMUL 10\n\tSUB B, A\n\tADDB CL, 0x30\n\tADDB BL, ' +
+        '0x30\n\tMOVB [0x2F0], CL\n\tMOVB [0x2F1], BL\n\tOUT 2\t\t; Write to signal ' +
+        'IRQEOI\n\tPOP C\n\tPOP B\n\tPOP A\n\tIRET';
+
+    private sample5 = '; Example 5:\n; A user mode task accesses the keypad\n; registers using two ' +
+        'system calls. It polls\n; the keypad until a key has been pressed and\n; prints ' +
+        'the value on the textual display.\n\n\tJMP start\n\tJMP isr\t\t; Interrupt ' +
+        'vector\n\tJMP svc\t\t; System call vector\n\nkeypressed:\t\t; 1 = key ' +
+        'pressed\n\tDB 0\t\t; 0 = No key pressed\n\nvalue:\t\t\t; The number of ' +
+        'the\n\tDB 0\t\t; key pressed in ASCII\n\nstart:\n\tMOV SP, 0xFF\t; Set ' +
+        'Supervisor SP\n\tMOV A, 1\t; Set bit 0 of IRQMASK\n\tOUT 0\t\t; Unmask keypad ' +
+        'IRQ\n\tSTI\t\t; Enable interrupts\n\tPUSH 0xCF\t; Setup User SP\n\tPUSH task\t; ' +
+        'Setup initial user IP\n\tSRET\t\t; Jump to user mode\n\tHLT\t\t; ' +
+        'Parachute\n\nreadchar:\t\t; User space wrapper\n\tMOV A, 0\t; for readchar ' +
+        'syscall\n\tSVC\t\t; Syscall #0\n\tRET\t\t; A -> syscall number\n\nputchar:\t\t; ' +
+        'User space wrapper\n\tPUSH A\t\t; for putchar syscall\n\tMOV A, 1\t; Syscall ' +
+        '#1\n\tSVC\t\t; A -> syscall number\n\tPOP A\t\t; BL -> char to ' +
+        'print\n\tRET\n\ntask:\t\t\t; The user task\n\tMOV A, 0\n\tMOV B, 0\nloop:\tCALL ' +
+        'readchar\t; Polls the keypad\n\tCMPB AH, 1\t; using readchar\n\tJNZ ' +
+        'loop\n\tMOVB BL, AL\t; If key was pressed use\n\tCALL putchar\t; putchar to ' +
+        'print it\n\tJMP loop \n\nisr:\t\t\t\n\tPUSH A\t\t; Read the key pressed\n\tIN ' +
+        '6\t\t; and store the ASCII\n\tADDB AL, 0x30\n\tMOVB [value], AL\n\tMOVB AL, ' +
+        '1\n\tMOVB [keypressed], AL\n\tOUT 2\n\tPOP A\n\tIRET\n\nsvc:\t\t\t; Supervisor ' +
+        'call\n\tCMP A, 0\t; A = syscall number\n\tJNZ .not0\t; 0 -> ' +
+        'readchar\n\tCLI\n\tMOV A, [keypressed]\t; Write vars\n\tPUSH B\t\t\t; with ' +
+        'IRQs\n\tMOV B, 0\t\t; disabled\n\tMOV [keypressed], B\n\tPOP B\n\tSTI\n\tJMP ' +
+        '.return\n.not0:\tCMP A, 1\t; 1 -> putchar\n\tJNZ .return\n\tMOVB [0x2F0], ' +
+        'BL\n.return:\n\tSRET\t\t; Return to user space\n';
+
     public codeText = '';
 
     public code: Array<number>;
@@ -101,7 +174,6 @@ export class AppComponent {
     constructor (private assemblerService: AssemblerService,
                  private memoryService: MemoryService,
                  private errorBarService: ErrorBarService,
-                 private ioRegMapService: IORegMapService,
                  private cpuService: CPUService,
                  private irqCtrlService: IrqCtrlService,
                  private timerService: TimerService) {
@@ -282,8 +354,17 @@ export class AppComponent {
             case 1:
                 this.codeText = this.sample1;
                 break;
+            case 2:
+                this.codeText = this.sample2;
+                break;
             case 3:
                 this.codeText = this.sample3;
+                break;
+            case 4:
+                this.codeText = this.sample4;
+                break;
+            case 5:
+                this.codeText = this.sample5;
                 break;
             default:
                 break;
