@@ -1,12 +1,13 @@
 # 16-bit Assembler Simulator
 
-A simulator of a x86-like 16-bit CPU. This project has been developed for
-educational purposes and it is based on a [previous
+A simulator of a 16-bit CPU. This project has been developed for educational
+purposes and it is based on a [previous
 project](https://github.com/Schweigi/assembler-simulator) made by Marco
-Schweighauser. This project reuses the original page layout and the instruction parsing mechanism,
-based on the use of regular expressions; and extends the full instruction set
-with new instructions to handle byte-mode accesses and interrupts and system
-calls. It has been written in Typescript using Angular 2+ and Bootstrap.
+Schweighauser. It project reuses the original page layout and the instruction
+parsing mechanism, based on the use of regular expressions; and extends the
+full instruction set with new instructions to handle byte-mode accesses and
+interrupts and system calls. It has been written in Typescript using Angular 2+
+and Bootstrap.
 
 
 ## Features
