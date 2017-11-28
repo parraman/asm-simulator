@@ -268,9 +268,18 @@ export class AppComponent implements AfterViewInit {
                 const line = this.mapping.get(cpuRegisterOperation.value);
                 this.markLine(line);
 
-                const top = this.instance.charCoords({line: line, ch: 0}, 'local').top;
-                const offsetHeight = this.instance.getScrollerElement().offsetHeight;
-                this.instance.scrollTo(null, top - offsetHeight + 50);
+                const clientHeight = this.instance.getScrollInfo().clientHeight;
+                const scrollTop = this.instance.getScrollInfo().top;
+                const lineCoordinates = this.instance.charCoords({line: line, ch: 0}, 'local');
+                const topLine = this.instance.coordsChar({left: 0, top: scrollTop}, 'local').line;
+                const bottomLine =
+                    this.instance.coordsChar({left: 0, top: (scrollTop + clientHeight)}, 'local').line;
+
+                if (line <= topLine) {
+                    this.instance.scrollTo(null, lineCoordinates.top);
+                } else if (line >= bottomLine) {
+                    this.instance.scrollTo(null, lineCoordinates.top - clientHeight + 20);
+                }
 
             }
 
@@ -291,7 +300,7 @@ export class AppComponent implements AfterViewInit {
             result = this.assemblerService.go(this.codeText);
         } catch (e) {
             if (e.line) {
-                this.errorBarService.setErrorMessage(`${e.line + 1}: ${e.error}`);
+                this.errorBarService.setErrorMessage(`${e.line}: ${e.error}`);
             } else if (e.error) {
                 this.errorBarService.setErrorMessage(e.error);
             } else {
@@ -340,9 +349,9 @@ export class AppComponent implements AfterViewInit {
             const line = this.mapping.get(address);
             this.markLine(line);
 
-            const top = this.instance.charCoords({line: line, ch: 0}, 'local').top;
-            const middleHeight = this.instance.getScrollerElement().offsetHeight / 2;
-            this.instance.scrollTo(null, top - middleHeight + 30);
+            const coordinates = this.instance.charCoords({line: line, ch: 0}, 'local');
+            const clientHeight = this.instance.getScrollInfo().clientHeight;
+            this.instance.scrollTo(null, (coordinates.top + coordinates.bottom - clientHeight) / 2);
 
         }
 

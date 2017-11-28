@@ -377,7 +377,7 @@ export class AssemblerService {
                 // Check if line starts with a comment otherwise the line contains an error and can not be parsed
                 const line = lines[i].trim();
                 if (line !== '' && line.slice(0, 1) !== ';') {
-                    throw {error: 'Syntax error', line: i};
+                    throw {error: 'Syntax error', line: i + 1};
                 }
                 continue;
             }
@@ -398,7 +398,7 @@ export class AssemblerService {
                     try {
                         p1 = AssemblerService.getValue(match[OP1_GROUP]);
                     } catch (e) {
-                        throw {error: e.toString(), line: i};
+                        throw {error: e.toString(), line: i + 1};
                     }
 
                     if (p1.type === OperandType.NUMBER) {
@@ -408,7 +408,7 @@ export class AssemblerService {
                             this.code.push(p1.value[j]);
                         }
                     } else {
-                        throw {error: 'DB does not support this operand', line: i};
+                        throw {error: 'DB does not support this operand', line: i + 1};
                     }
 
                     continue;
@@ -421,7 +421,7 @@ export class AssemblerService {
                     try {
                         p1 = AssemblerService.getValue(match[OP1_GROUP]);
                     } catch (e) {
-                        throw {error: e.toString(), line: i};
+                        throw {error: e.toString(), line: i + 1};
                     }
 
                     if (match[OP2_GROUP] !== undefined) {
@@ -429,7 +429,7 @@ export class AssemblerService {
                         try {
                             p2 = AssemblerService.getValue(match[OP2_GROUP]);
                         } catch (e) {
-                            throw {error: e.toString(), line: i};
+                            throw {error: e.toString(), line: i + 1};
                         }
 
                     }
@@ -447,7 +447,7 @@ export class AssemblerService {
                         p2.type = AssemblerService.checkOperandTypeValue(instructionSpec.operand2, p2.value);
                     }
                 } catch (e) {
-                    throw {error: e.toString(), line: i};
+                    throw {error: e.toString(), line: i + 1};
                 }
 
                 this.code.push(instructionSpec.opcode);
