@@ -7,7 +7,8 @@ Schweighauser. It project reuses the original page layout and the instruction
 parsing mechanism, based on the use of regular expressions; and extends the
 full instruction set with new instructions to handle byte-mode accesses and
 interrupts and system calls. It has been written in Typescript using Angular 2+
-and Bootstrap.
+and Bootstrap and uses
+[CodeMirror](https://codemirror.net) as a component for code editing.
 
 You can try it online [here](https://parraman.github.io/asm-simulator/)
 

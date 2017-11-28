@@ -18,7 +18,7 @@
         <div class="panel-body">
           <h4>Code <small>(<a style="cursor: pointer" (click)="setCodeSample(1)">Sample 1</a>, <a style="cursor: pointer" (click)="setCodeSample(2)">Sample 2</a>, <a style="cursor: pointer" (click)="setCodeSample(3)">Sample 3</a>, <a style="cursor: pointer" (click)="setCodeSample(4)">Sample 4</a>, <a style="cursor: pointer" (click)="setCodeSample(5)">Sample 5</a>)</small></h4>
           <form>
-            <textarea (keydown.tab)="textAreaKeyDown($event);false" #codeTextArea name="code" [(ngModel)]="codeText" class="form-control source-code" rows="35" style="margin-bottom:10px;resize:none;"></textarea>
+            <textarea #codeTextArea name="code" class="source-code"></textarea>
             <button class="btn btn-default btn-secondary" type="button" style="background-image:none;" (click)="assemble()">Assemble </button>
           </form>
         </div>
@@ -50,7 +50,6 @@
               <option [ngValue]="16">64 HZ</option>
               <option [ngValue]="8">128 HZ</option>
               <option [ngValue]="4">256 HZ</option>
-              <option [ngValue]="2">512 HZ</option>
             </select><span style="margin-left:5px;">Instructions: </span><a (click)="showInstructions = false" *ngIf="showInstructions === true">Hide</a><a (click)="showInstructions = true" *ngIf="showInstructions === false">Show</a></div>
           <div class="small" style="margin-bottom: 20px;"><span>Register addressing: </span>
             <span style="margin-left:5px;">A: </span>

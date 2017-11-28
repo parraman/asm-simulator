@@ -244,6 +244,12 @@ export class InstructionSet {
 
     }
 
+    public getMnemonics(): Array<string> {
+
+        return Array.from(this.mnemonicsMap.keys());
+
+    }
+
     public getInstruction(mnemonic: string, operand1: OperandType, operand2: OperandType): InstructionSpec {
 
         const mnemonicInstructions = this.mnemonicsMap.get(mnemonic);

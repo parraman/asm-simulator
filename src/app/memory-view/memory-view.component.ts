@@ -237,6 +237,15 @@ export class MemoryViewComponent implements OnInit, OnDestroy, OnChanges {
 
         }
 
+        // And we have to flush the stack
+        let previousStackedCells = this.sspCells;
+        this.sspCells = [];
+        previousStackedCells.forEach((cell) => this.updateCellStyle(cell));
+
+        previousStackedCells = this.uspCells;
+        this.uspCells = [];
+        previousStackedCells.forEach((cell) => this.updateCellStyle(cell));
+
     }
 
     private operationPushWord(index: CPURegisterIndex, value: number) {
@@ -427,11 +436,6 @@ export class MemoryViewComponent implements OnInit, OnDestroy, OnChanges {
                 this.updateCellStyle(previousRegisterSPPointer);
                 this.updateCellStyle(this.registerSSPPointer);
 
-                // And we have to flush the stack
-                let previousStackedCells = this.sspCells;
-                this.sspCells = [];
-                previousStackedCells.forEach((cell) => this.updateCellStyle(cell));
-
                 break;
 
             case CPURegisterIndex.USP:
@@ -441,11 +445,6 @@ export class MemoryViewComponent implements OnInit, OnDestroy, OnChanges {
 
                 this.updateCellStyle(previousRegisterSPPointer);
                 this.updateCellStyle(this.registerUSPPointer);
-
-                // And we have to flush the stack
-                previousStackedCells = this.uspCells;
-                this.uspCells = [];
-                previousStackedCells.forEach((cell) => this.updateCellStyle(cell));
 
                 break;
 
