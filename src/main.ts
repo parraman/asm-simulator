@@ -12,9 +12,16 @@ if (environment.production) {
 
 CodeMirror.defineOption('scrollEditorOnly', false, function(cm) {
 
-    const preventScroll = function(event) {
+    const preventScrollPropagation = function(event) {
+        event.stopPropagation();
+        event.preventDefault();
+        event.returnValue = false;
+        return false;
+    };
 
-        const delta = 'wheelDelta' in event ? event.wheelDelta : 40 * event.detail;
+    const mouseWheelEventHandler = function(event) {
+
+        const delta = event.wheelDelta;
 
         const scroll = cm.display.scroller;
         const scrollTop = scroll.scrollTop;
@@ -24,13 +31,30 @@ CodeMirror.defineOption('scrollEditorOnly', false, function(cm) {
         const up = delta > 0;
 
         if (!up && ((scrollHeight - height - scrollTop) === 0)) {
-            CodeMirror.e_stop(event);
+            preventScrollPropagation(event);
         }
 
     };
 
-    CodeMirror.on(cm.getScrollerElement(), 'mousewheel', preventScroll);
-    CodeMirror.on(cm.getScrollerElement(), 'DOMMouseScroll', preventScroll);
+    const DOMMouseScrollEventHandler = function(event) {
+
+        const delta = event.detail * -40;
+
+        const scroll = cm.display.scroller;
+        const scrollTop = scroll.scrollTop;
+        const scrollHeight = scroll.scrollHeight;
+        const height = scroll.clientHeight;
+
+        const up = delta > 0;
+
+        if (!up && ((scrollHeight - height - scrollTop) === 0)) {
+            preventScrollPropagation(event);
+        }
+
+    };
+
+    CodeMirror.on(cm.getScrollerElement(), 'mousewheel', mouseWheelEventHandler);
+    CodeMirror.on(cm.getScrollerElement(), 'DOMMouseScroll', DOMMouseScrollEventHandler);
 });
 
 
