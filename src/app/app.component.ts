@@ -1,4 +1,4 @@
-import { Component, ElementRef, ViewChild, AfterViewInit } from '@angular/core';
+import {Component, ElementRef, ViewChild, AfterViewInit, Renderer2 } from '@angular/core';
 import { AssemblerService } from './assembler.service';
 import { MemoryService } from './memory.service';
 import { ErrorBarService } from './error-bar.service';
@@ -173,6 +173,8 @@ export class AppComponent implements AfterViewInit {
 
     public speed = 250;
 
+    private currentIP = 0;
+
     @ViewChild('codeTextArea') codeTextArea: ElementRef;
     @ViewChild(KeypadComponent) keypadComponent: KeypadComponent;
     @ViewChild(VisualDisplayComponent) visualDisplayComponent: VisualDisplayComponent;
@@ -187,11 +189,30 @@ export class AppComponent implements AfterViewInit {
                  private errorBarService: ErrorBarService,
                  private cpuService: CPUService,
                  private irqCtrlService: IrqCtrlService,
-                 private timerService: TimerService) {
+                 private timerService: TimerService,
+                 private renderer: Renderer2) {
 
         this.cpuRegisterOperationSubscription = this.cpuService.cpuRegisterOperation$.subscribe(
             (cpuRegisterOperation) => this.processCPURegisterOperation(cpuRegisterOperation)
         );
+
+    }
+
+    private setGutterMarker(lineNumber: number) {
+
+        const info = this.instance.lineInfo(lineNumber);
+        if (info.gutterMarkers) {
+            this.instance.setGutterMarker(lineNumber, 'breakpoints', null);
+        } else {
+            const marker = this.renderer.createElement('div');
+            this.renderer.setStyle(marker, 'color', '#822');
+            this.renderer.setStyle(marker, 'vertical-align', 'middle');
+            this.renderer.setStyle(marker, 'text-align', 'center');
+            this.renderer.setStyle(marker, 'line-height', '20px');
+            this.renderer.setStyle(marker, 'font-size', '80%');
+            this.renderer.appendChild(marker, this.renderer.createText('●'));
+            this.instance.setGutterMarker(lineNumber, 'breakpoints', marker);
+        }
 
     }
 
@@ -233,8 +254,11 @@ export class AppComponent implements AfterViewInit {
         this.instance = CodeMirror.fromTextArea(element, {
             lineNumbers: true,
             scrollEditorOnly: true,
-            mode: 'asm-mode'
+            mode: 'asm-mode',
+            gutters: ['CodeMirror-linenumbers', 'breakpoints']
         });
+
+        this.instance.on('gutterClick', (cm, n) => this.setGutterMarker(n));
 
         this.instance.state.activeLine = undefined;
         this.instance.on('beforeSelectionChange', () => {
@@ -260,27 +284,51 @@ export class AppComponent implements AfterViewInit {
     private processCPURegisterOperation(cpuRegisterOperation: CPURegisterOperation) {
 
         if (cpuRegisterOperation.index === CPURegisterIndex.IP &&
-            cpuRegisterOperation.operationType === CPURegisterOperationType.WRITE &&
-            this.isRunning === false) {
+            cpuRegisterOperation.operationType === CPURegisterOperationType.WRITE) {
 
-            if (this.mapping && this.mapping.has(cpuRegisterOperation.value) && this.codeTextArea) {
+            this.currentIP = cpuRegisterOperation.value;
 
-                const line = this.mapping.get(cpuRegisterOperation.value);
-                this.markLine(line);
+            if (this.isRunning === true) {
 
-                const clientHeight = this.instance.getScrollInfo().clientHeight;
-                const scrollTop = this.instance.getScrollInfo().top;
-                const lineCoordinates = this.instance.charCoords({line: line, ch: 0}, 'local');
-                const topLine = this.instance.coordsChar({left: 0, top: scrollTop}, 'local').line;
-                const bottomLine =
-                    this.instance.coordsChar({left: 0, top: (scrollTop + clientHeight)}, 'local').line;
+                if (this.mapping && this.mapping.has(cpuRegisterOperation.value)) {
 
-                if (line <= topLine) {
-                    this.instance.scrollTo(null, lineCoordinates.top);
-                } else if (line >= bottomLine) {
-                    this.instance.scrollTo(null, lineCoordinates.top - clientHeight + 20);
+                    const lineNumber = this.mapping.get(cpuRegisterOperation.value);
+                    const info = this.instance.lineInfo(lineNumber);
+
+                    if (info.gutterMarkers) {
+
+                        this.isRunning = false;
+                        if (this.timerSubscription && this.timerSubscription.closed === false) {
+                            this.timerSubscription.unsubscribe();
+                        }
+
+                    }
+
                 }
 
+            }
+
+            if (this.isRunning === false) {
+
+                if (this.mapping && this.mapping.has(cpuRegisterOperation.value)) {
+
+                    const line = this.mapping.get(cpuRegisterOperation.value);
+                    this.markLine(line);
+
+                    const clientHeight = this.instance.getScrollInfo().clientHeight;
+                    const scrollTop = this.instance.getScrollInfo().top;
+                    const lineCoordinates = this.instance.charCoords({line: line, ch: 0}, 'local');
+                    const topLine = this.instance.coordsChar({left: 0, top: scrollTop}, 'local').line;
+                    const bottomLine =
+                        this.instance.coordsChar({left: 0, top: (scrollTop + clientHeight)}, 'local').line;
+
+                    if (line <= topLine) {
+                        this.instance.scrollTo(null, lineCoordinates.top);
+                    } else if (line >= bottomLine) {
+                        this.instance.scrollTo(null, lineCoordinates.top - clientHeight + 20);
+                    }
+
+                }
             }
 
         } else if (cpuRegisterOperation.index === CPURegisterIndex.SR &&

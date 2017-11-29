@@ -285,6 +285,10 @@ body {
   font-family:'Source Code Pro', monospace;
   margin-bottom:10px;
   border: 1px solid #cccccc;
-  height: 648px;
+  height: 608px;
   position: relative;
+}
+
+.breakpoints {
+  width: 12px;
 }
