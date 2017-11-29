@@ -1533,7 +1533,7 @@ export class CPUService {
 
     }
 
-    @Instruction(OpCode.JC_REGADDRESS, 'JC', OperandType.REGADDRESS)
+    @Instruction(OpCode.JC_REGADDRESS, 'JC', OperandType.REGADDRESS, undefined, ['JB', 'JNAE'])
     private instrJC_REGADDRESS(toRegister: number, toOffset: number): boolean {
 
         if (CPUService.is16bitsGPRorSP(toRegister) === false) {
@@ -1551,7 +1551,7 @@ export class CPUService {
 
     }
 
-    @Instruction(OpCode.JC_ADDRESS, 'JC', OperandType.WORD)
+    @Instruction(OpCode.JC_ADDRESS, 'JC', OperandType.WORD, undefined, ['JB', 'JNAE'])
     private instrJC_ADDRESS(toAddress: number): boolean {
 
         if (this.SR.carry === 1) {
@@ -1563,7 +1563,7 @@ export class CPUService {
 
     }
 
-    @Instruction(OpCode.JNC_REGADDRESS, 'JNC', OperandType.REGADDRESS)
+    @Instruction(OpCode.JNC_REGADDRESS, 'JNC', OperandType.REGADDRESS, undefined, ['JNB', 'JAE'])
     private instrJNC_REGADDRESS(toRegister: number, toOffset: number): boolean {
 
         if (CPUService.is16bitsGPRorSP(toRegister) === false) {
@@ -1581,7 +1581,7 @@ export class CPUService {
 
     }
 
-    @Instruction(OpCode.JNC_ADDRESS, 'JNC', OperandType.WORD)
+    @Instruction(OpCode.JNC_ADDRESS, 'JNC', OperandType.WORD, undefined, ['JNB', 'JAE'])
     private instrJNC_ADDRESS(toAddress: number): boolean {
 
         if (this.SR.carry === 0) {
@@ -1593,7 +1593,7 @@ export class CPUService {
 
     }
 
-    @Instruction(OpCode.JZ_REGADDRESS, 'JZ', OperandType.REGADDRESS)
+    @Instruction(OpCode.JZ_REGADDRESS, 'JZ', OperandType.REGADDRESS, undefined, ['JE'])
     private instrJZ_REGADDRESS(toRegister: number, toOffset: number): boolean {
 
         if (CPUService.is16bitsGPRorSP(toRegister) === false) {
@@ -1611,7 +1611,7 @@ export class CPUService {
 
     }
 
-    @Instruction(OpCode.JZ_ADDRESS, 'JZ', OperandType.WORD)
+    @Instruction(OpCode.JZ_ADDRESS, 'JZ', OperandType.WORD, undefined, ['JE'])
     private instrJZ_ADDRESS(toAddress: number): boolean {
 
         if (this.SR.zero === 1) {
@@ -1623,7 +1623,7 @@ export class CPUService {
 
     }
 
-    @Instruction(OpCode.JNZ_REGADDRESS, 'JNZ', OperandType.REGADDRESS)
+    @Instruction(OpCode.JNZ_REGADDRESS, 'JNZ', OperandType.REGADDRESS, undefined, ['JNE'])
     private instrJNZ_REGADDRESS(toRegister: number, toOffset: number): boolean {
 
         if (CPUService.is16bitsGPRorSP(toRegister) === false) {
@@ -1641,7 +1641,7 @@ export class CPUService {
 
     }
 
-    @Instruction(OpCode.JNZ_ADDRESS, 'JNZ', OperandType.WORD)
+    @Instruction(OpCode.JNZ_ADDRESS, 'JNZ', OperandType.WORD, undefined, ['JNE'])
     private instrJNZ_ADDRESS(toAddress: number): boolean {
 
         if (this.SR.zero === 0) {
@@ -1653,7 +1653,7 @@ export class CPUService {
 
     }
 
-    @Instruction(OpCode.JA_REGADDRESS, 'JA', OperandType.REGADDRESS)
+    @Instruction(OpCode.JA_REGADDRESS, 'JA', OperandType.REGADDRESS, undefined, ['JNBE'])
     private instrJA_REGADDRESS(toRegister: number, toOffset: number): boolean {
 
         if (CPUService.is16bitsGPRorSP(toRegister) === false) {
@@ -1671,7 +1671,7 @@ export class CPUService {
 
     }
 
-    @Instruction(OpCode.JA_ADDRESS, 'JA', OperandType.WORD)
+    @Instruction(OpCode.JA_ADDRESS, 'JA', OperandType.WORD, undefined, ['JNBE'])
     private instrJA_ADDRESS(toAddress: number): boolean {
 
         if ((this.SR.carry === 0) && (this.SR.zero === 0)) {
@@ -1683,7 +1683,7 @@ export class CPUService {
 
     }
 
-    @Instruction(OpCode.JNA_REGADDRESS, 'JNA', OperandType.REGADDRESS)
+    @Instruction(OpCode.JNA_REGADDRESS, 'JNA', OperandType.REGADDRESS, undefined, ['JBE'])
     private instrJNA_REGADDRESS(toRegister: number, toOffset: number): boolean {
 
         if (CPUService.is16bitsGPRorSP(toRegister) === false) {
@@ -1701,7 +1701,7 @@ export class CPUService {
 
     }
 
-    @Instruction(OpCode.JNA_ADDRESS, 'JNA', OperandType.WORD)
+    @Instruction(OpCode.JNA_ADDRESS, 'JNA', OperandType.WORD, undefined, ['JBE'])
     private instrJNA_ADDRESS(toAddress: number): boolean {
 
         if ((this.SR.carry === 1) || (this.SR.zero === 1)) {

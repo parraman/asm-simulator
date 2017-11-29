@@ -171,15 +171,18 @@ export class InstructionSpec {
     public operand2: OperandType;
     public methodName: string;
     public bytes: number;
+    public aliases: Array<string>;
 
     constructor(opcode: OpCode, mnemonic: string, methodName: string,
-                operand1?: OperandType, operand2?: OperandType) {
+                operand1?: OperandType, operand2?: OperandType,
+                aliases?: Array<string>) {
 
         this.opcode = opcode;
         this.mnemonic = mnemonic;
         this.methodName = methodName;
         this.operand1 = operand1;
         this.operand2 = operand2;
+        this.aliases = aliases;
 
         this.bytes = 1;
 
@@ -282,7 +285,8 @@ export class InstructionSet {
     }
 
     public addInstruction(opcode: OpCode, mnemonic: string, methodName: string,
-                          operand1: OperandType, operand2: OperandType) {
+                          operand1: OperandType, operand2: OperandType,
+                          aliases: Array<string>) {
 
         if (this.instructionsMap.has(opcode)) {
             throw Error(`OPCODE ${OpCode[opcode]} was already in the instruction set`);
@@ -298,36 +302,47 @@ export class InstructionSet {
                 `Operand type (${OperandType[operand2]}) is not valid`);
         }
 
-        const newInstruction = new InstructionSpec(opcode, mnemonic, methodName, operand1, operand2);
+        const newInstruction = new InstructionSpec(opcode, mnemonic, methodName, operand1, operand2, aliases);
 
-        let mnemonicInstructions = this.mnemonicsMap.get(mnemonic);
+        const mnemonics: Array<string> = [mnemonic];
 
-        if (mnemonicInstructions === undefined) {
-
-            mnemonicInstructions = [];
-            this.mnemonicsMap.set(mnemonic, mnemonicInstructions);
-
-        } else {
-
-            for (const instr of mnemonicInstructions) {
-
-                const newOperand1 = InstructionSet.normalizeOperand(newInstruction.operand1);
-                const newOperand2 = InstructionSet.normalizeOperand(newInstruction.operand2);
-                const instrOperand1 = InstructionSet.normalizeOperand(instr.operand1);
-                const instrOperand2 = InstructionSet.normalizeOperand(instr.operand2);
-
-                if (instrOperand1 === newOperand1 &&
-                    instrOperand2 === newOperand2) {
-                    throw Error(
-                        `Instruction ${mnemonic} with operands ` +
-                        `(${OperandType[instrOperand1]}) (${OperandType[instrOperand2]}) is already in the set`);
-                }
+        if (aliases) {
+            for (const mn of aliases) {
+                mnemonics.push(mn);
             }
-
         }
 
-        this.instructionsMap.set(opcode, newInstruction);
-        mnemonicInstructions.push(newInstruction);
+        for (const mn of mnemonics) {
+
+            let mnemonicInstructions = this.mnemonicsMap.get(mn);
+
+            if (mnemonicInstructions === undefined) {
+
+                mnemonicInstructions = [];
+                this.mnemonicsMap.set(mn, mnemonicInstructions);
+
+            } else {
+
+                for (const instr of mnemonicInstructions) {
+
+                    const newOperand1 = InstructionSet.normalizeOperand(newInstruction.operand1);
+                    const newOperand2 = InstructionSet.normalizeOperand(newInstruction.operand2);
+                    const instrOperand1 = InstructionSet.normalizeOperand(instr.operand1);
+                    const instrOperand2 = InstructionSet.normalizeOperand(instr.operand2);
+
+                    if (instrOperand1 === newOperand1 &&
+                        instrOperand2 === newOperand2) {
+                        throw Error(
+                            `Instruction ${mn} with operands ` +
+                            `(${OperandType[instrOperand1]}) (${OperandType[instrOperand2]}) is already in the set`);
+                    }
+                }
+
+            }
+
+            this.instructionsMap.set(opcode, newInstruction);
+            mnemonicInstructions.push(newInstruction);
+        }
 
     }
 }
@@ -335,7 +350,8 @@ export class InstructionSet {
 export const instructionSet: InstructionSet = new InstructionSet();
 
 
-export function Instruction(opcode: OpCode, mnemonic: string, operand1?: OperandType, operand2?: OperandType) {
+export function Instruction(opcode: OpCode, mnemonic: string, operand1?: OperandType,
+                            operand2?: OperandType, aliases?: Array<string>) {
 
     let instructionArguments = 0;
 
@@ -378,7 +394,7 @@ export function Instruction(opcode: OpCode, mnemonic: string, operand1?: Operand
             throw Error(`Invalid number of arguments of function ${propertyKey}(): ` +
                 `${instructionArguments} where required and ${target[propertyKey].length} where provided`);
         }
-        instructionSet.addInstruction(opcode, mnemonic, propertyKey, operand1, operand2);
+        instructionSet.addInstruction(opcode, mnemonic, propertyKey, operand1, operand2, aliases);
     }
     return installInstruction;
 
