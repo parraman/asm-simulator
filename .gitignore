@@ -41,6 +41,7 @@ testem.log
 .DS_Store
 Thumbs.db
 
+docs/Makefile
 docs/_build
 docs/_static
 docs/_templates

@@ -3,7 +3,7 @@ Instruction Set
 
 The assembler simulator supports the following instructions:
 
-+---------- +-----------+------------+-----------+
++-----------+-----------+------------+-----------+
 | ``ADD``   | ``ADDB``  | ``AND``    | ``ANDB``  |
 +-----------+-----------+------------+-----------+
 | ``CALL``  | ``CLI``   | ``CMP``    | ``CMPB``  |
