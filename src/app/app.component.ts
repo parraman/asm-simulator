@@ -283,16 +283,16 @@ export class AppComponent implements AfterViewInit {
 
     private processCPURegisterOperation(cpuRegisterOperation: CPURegisterOperation) {
 
-        if (cpuRegisterOperation.index === CPURegisterIndex.IP &&
-            cpuRegisterOperation.operationType === CPURegisterOperationType.WRITE) {
+        if (cpuRegisterOperation.operationType === CPURegisterOperationType.WRITE &&
+            cpuRegisterOperation.data.get('index') === CPURegisterIndex.IP) {
 
-            this.currentIP = cpuRegisterOperation.value;
+            this.currentIP = cpuRegisterOperation.data.get('value');
 
             if (this.isRunning === true) {
 
-                if (this.mapping && this.mapping.has(cpuRegisterOperation.value)) {
+                if (this.mapping && this.mapping.has(this.currentIP)) {
 
-                    const lineNumber = this.mapping.get(cpuRegisterOperation.value);
+                    const lineNumber = this.mapping.get(this.currentIP);
                     const info = this.instance.lineInfo(lineNumber);
 
                     if (info.gutterMarkers) {
@@ -310,9 +310,9 @@ export class AppComponent implements AfterViewInit {
 
             if (this.isRunning === false) {
 
-                if (this.mapping && this.mapping.has(cpuRegisterOperation.value)) {
+                if (this.mapping && this.mapping.has(this.currentIP)) {
 
-                    const line = this.mapping.get(cpuRegisterOperation.value);
+                    const line = this.mapping.get(this.currentIP);
                     this.markLine(line);
 
                     const clientHeight = this.instance.getScrollInfo().clientHeight;
@@ -331,10 +331,16 @@ export class AppComponent implements AfterViewInit {
                 }
             }
 
-        } else if (cpuRegisterOperation.index === CPURegisterIndex.SR &&
-            cpuRegisterOperation.operationType === CPURegisterOperationType.WRITE) {
+        } else if (cpuRegisterOperation.operationType === CPURegisterOperationType.WRITE && 
+                   cpuRegisterOperation.data.get('index') === CPURegisterIndex.SR) {
 
-            this.isCPUHalted = (cpuRegisterOperation.value & (1 << SRBit.HALT)) !== 0;
+            this.isCPUHalted = (cpuRegisterOperation.data.get('value') & (1 << SRBit.HALT)) !== 0;
+
+        } else if (cpuRegisterOperation.operationType === CPURegisterOperationType.WRITE_BIT && 
+                   cpuRegisterOperation.data.get('index') === CPURegisterIndex.SR &&
+                   cpuRegisterOperation.data.get('bitNumber') === SRBit.HALT) {
+
+            this.isCPUHalted = cpuRegisterOperation.data.get('value') === 1;
 
         }
 

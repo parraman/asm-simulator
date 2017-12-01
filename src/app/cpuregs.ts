@@ -70,24 +70,28 @@ export enum CPURegisterOperationType {
 
     READ = 1,
     WRITE = 2,
-    PUSH_WORD = 3, /* Stack pointer specific operation: push 2 bytes to stack */
-    PUSH_BYTE = 4, /* Stack pointer specific operation: push 1 byte to stack */
-    POP_WORD = 5, /* Stack pointer specific operation: pop 2 bytes from stack */
-    POP_BYTE = 6 /* Stack pointer specific operation: pop 2 bytes from stack */
+    READ_BIT = 3,
+    WRITE_BIT = 4,
+    READ_LSB = 5,
+    WRITE_LSB = 6,
+    READ_MSB = 7,
+    WRITE_MSB = 8,
+    PUSH_WORD = 9, /* Stack pointer specific operation: push 2 bytes to stack */
+    PUSH_BYTE = 10, /* Stack pointer specific operation: push 1 byte to stack */
+    POP_WORD = 11, /* Stack pointer specific operation: pop 2 bytes from stack */
+    POP_BYTE = 12 /* Stack pointer specific operation: pop 2 bytes from stack */
 
 }
 
 export class CPURegisterOperation {
 
     public operationType: CPURegisterOperationType;
-    public index: number;
-    public value: number;
+    public data: Map<string, any>;
 
-    constructor(operationType: CPURegisterOperationType, index: number, value: number) {
+    constructor(operationType: CPURegisterOperationType, data?: Map<string, any>) {
 
         this.operationType = operationType;
-        this.index = index;
-        this.value = value;
+        this.data = data;
 
     }
 
@@ -117,12 +121,48 @@ export class CPURegister {
 
     }
 
+    protected pushWriteBit(bitNumber: number, newBitValue: number) {
+
+        if (this.operationSource) {
+
+            const parameters: Map<string, any> = new Map<string, any>();
+            parameters.set('index', this.index);
+            parameters.set('bitNumber', bitNumber);
+            parameters.set('value', newBitValue);
+
+            this.operationSource.next(new CPURegisterOperation(CPURegisterOperationType.WRITE_BIT,
+                parameters));
+
+        }
+
+    }
+
+    protected pushReadBit(bitNumber: number) {
+
+        if (this.operationSource) {
+
+            const parameters: Map<string, any> = new Map<string, any>();
+            parameters.set('index', this.index);
+            parameters.set('bitNumber', bitNumber);
+            parameters.set('value', ((this._value & (1 << bitNumber)) !== 0) ? 1 : 0);
+
+            this.operationSource.next(new CPURegisterOperation(CPURegisterOperationType.READ_BIT,
+                parameters));
+
+        }
+
+    }
+
     protected pushWriteValue(newValue: number) {
 
         if (this.operationSource) {
 
+            const parameters: Map<string, any> = new Map<string, any>();
+            parameters.set('index', this.index);
+            parameters.set('value', newValue);
+
             this.operationSource.next(new CPURegisterOperation(CPURegisterOperationType.WRITE,
-                this.index, newValue));
+                parameters));
 
         }
 
@@ -132,8 +172,72 @@ export class CPURegister {
 
         if (this.operationSource) {
 
+            const parameters: Map<string, any> = new Map<string, any>();
+            parameters.set('index', this.index);
+            parameters.set('value', this._value);
+
             this.operationSource.next(new CPURegisterOperation(CPURegisterOperationType.READ,
-                this.index, this._value));
+                parameters));
+
+        }
+
+    }
+
+    protected pushWriteLSB(newValue: number) {
+
+        if (this.operationSource) {
+
+            const parameters: Map<string, any> = new Map<string, any>();
+            parameters.set('index', this.index);
+            parameters.set('value', newValue);
+
+            this.operationSource.next(new CPURegisterOperation(CPURegisterOperationType.WRITE_LSB,
+                parameters));
+
+        }
+
+    }
+
+    protected pushReadLSB() {
+
+        if (this.operationSource) {
+
+            const parameters: Map<string, any> = new Map<string, any>();
+            parameters.set('index', this.index);
+            parameters.set('value', (this._value & 0x00FF));
+
+            this.operationSource.next(new CPURegisterOperation(CPURegisterOperationType.READ_LSB,
+                parameters));
+
+        }
+
+    }
+
+    protected pushWriteMSB(newValue: number) {
+
+        if (this.operationSource) {
+
+            const parameters: Map<string, any> = new Map<string, any>();
+            parameters.set('index', this.index);
+            parameters.set('value', newValue);
+
+            this.operationSource.next(new CPURegisterOperation(CPURegisterOperationType.WRITE_MSB,
+                parameters));
+
+        }
+
+    }
+
+    protected pushReadMSB() {
+
+        if (this.operationSource) {
+
+            const parameters: Map<string, any> = new Map<string, any>();
+            parameters.set('index', this.index);
+            parameters.set('value', ((this._value & 0xFF00) >>> 8));
+
+            this.operationSource.next(new CPURegisterOperation(CPURegisterOperationType.READ_MSB,
+                parameters));
 
         }
 
@@ -153,7 +257,6 @@ export class CPURegister {
 
     }
 
-
 }
 
 export class CPUGeneralPurposeRegister extends CPURegister {
@@ -169,13 +272,13 @@ export class CPUGeneralPurposeRegister extends CPURegister {
     set lsb(newValue: number) {
 
         this._value = (this._value & 0xFF00) + newValue;
-        this.pushWriteValue(this._value);
+        this.pushWriteLSB(newValue);
 
     }
 
     get lsb() {
 
-        this.pushReadValue();
+        this.pushReadLSB();
 
         return (this._value & 0x00FF);
 
@@ -184,13 +287,13 @@ export class CPUGeneralPurposeRegister extends CPURegister {
     set msb(newValue: number) {
 
         this._value = (this._value & 0x00FF) + (newValue << 8);
-        this.pushWriteValue(this._value);
+        this.pushWriteMSB(newValue);
 
     }
 
     get msb() {
 
-        this.pushReadValue();
+        this.pushReadMSB();
 
         return ((this._value & 0xFF00) >>> 8);
 
@@ -213,8 +316,12 @@ export class CPUStackPointerRegister extends CPURegister {
 
         if (this.operationSource) {
 
+            const parameters: Map<string, any> = new Map<string, any>();
+            parameters.set('index', this.index);
+            parameters.set('value', this._value);
+
             this.operationSource.next(new CPURegisterOperation(CPURegisterOperationType.PUSH_WORD,
-                this.index, this._value));
+                parameters));
 
         }
 
@@ -226,8 +333,12 @@ export class CPUStackPointerRegister extends CPURegister {
 
         if (this.operationSource) {
 
+            const parameters: Map<string, any> = new Map<string, any>();
+            parameters.set('index', this.index);
+            parameters.set('value', this._value);
+
             this.operationSource.next(new CPURegisterOperation(CPURegisterOperationType.POP_WORD,
-                this.index, this._value));
+                parameters));
 
         }
 
@@ -239,8 +350,12 @@ export class CPUStackPointerRegister extends CPURegister {
 
         if (this.operationSource) {
 
+            const parameters: Map<string, any> = new Map<string, any>();
+            parameters.set('index', this.index);
+            parameters.set('value', this._value);
+
             this.operationSource.next(new CPURegisterOperation(CPURegisterOperationType.PUSH_BYTE,
-                this.index, this._value));
+                parameters));
 
         }
 
@@ -252,8 +367,12 @@ export class CPUStackPointerRegister extends CPURegister {
 
         if (this.operationSource) {
 
+            const parameters: Map<string, any> = new Map<string, any>();
+            parameters.set('index', this.index);
+            parameters.set('value', this._value);
+
             this.operationSource.next(new CPURegisterOperation(CPURegisterOperationType.POP_BYTE,
-                this.index, this._value));
+                parameters));
 
         }
 
@@ -353,13 +472,13 @@ export class CPUStatusRegister extends CPURegister {
             this._value |= (1 << SRBit.HALT);
         }
 
-        this.pushWriteValue(this._value);
+        this.pushWriteBit(SRBit.HALT, this._halt);
 
     }
 
     get halt(): number {
 
-        this.pushReadValue();
+        this.pushReadBit(SRBit.HALT);
         return this._halt;
     }
 
@@ -373,13 +492,13 @@ export class CPUStatusRegister extends CPURegister {
             this._value |= (1 << SRBit.FAULT);
         }
 
-        this.pushWriteValue(this._value);
+        this.pushWriteBit(SRBit.FAULT, this._fault);
 
     }
 
     get fault(): number {
 
-        this.pushReadValue();
+        this.pushReadBit(SRBit.FAULT);
         return this._fault;
     }
 
@@ -393,13 +512,13 @@ export class CPUStatusRegister extends CPURegister {
             this._value |= (1 << SRBit.ZERO);
         }
 
-        this.pushWriteValue(this._value);
+        this.pushWriteBit(SRBit.ZERO, this._zero);
 
     }
 
     get zero(): number {
 
-        this.pushReadValue();
+        this.pushReadBit(SRBit.ZERO);
         return this._zero;
     }
 
@@ -413,13 +532,13 @@ export class CPUStatusRegister extends CPURegister {
             this._value |= (1 << SRBit.CARRY);
         }
 
-        this.pushWriteValue(this._value);
+        this.pushWriteBit(SRBit.CARRY, this._carry);
 
     }
 
     get carry(): number {
 
-        this.pushReadValue();
+        this.pushReadBit(SRBit.CARRY);
         return this._carry;
     }
 
@@ -433,13 +552,13 @@ export class CPUStatusRegister extends CPURegister {
             this._value |= (1 << SRBit.IRQMASK);
         }
 
-        this.pushWriteValue(this._value);
+        this.pushWriteBit(SRBit.IRQMASK, this._irqMask);
 
     }
 
     get irqMask(): number {
 
-        this.pushReadValue();
+        this.pushReadBit(SRBit.IRQMASK);
         return this._irqMask;
     }
 
@@ -453,13 +572,13 @@ export class CPUStatusRegister extends CPURegister {
             this._value |= (1 << SRBit.SUPERVISOR);
         }
 
-        this.pushWriteValue(this._value);
+        this.pushWriteBit(SRBit.SUPERVISOR, this._supervisor);
 
     }
 
     get supervisor(): number {
 
-        this.pushReadValue();
+        this.pushReadBit(SRBit.SUPERVISOR);
         return this._supervisor;
     }
 

@@ -166,17 +166,20 @@ export class CPUService {
 
     protected check8bitOperation(value: number): number {
 
-        this.SR.carry = 0;
-        this.SR.zero = 0;
-
         if (value >= 256) {
             this.SR.carry = 1;
             value = value % 256;
-        } else if (value === 0) {
-            this.SR.zero = 1;
         } else if (value < 0) {
             this.SR.carry = 1;
             value = 256 - (-value) % 256;
+        } else {
+            this.SR.carry = 0;
+        }
+
+        if (value === 0) {
+            this.SR.zero = 1;
+        } else {
+            this.SR.zero = 0;
         }
 
         return value;
@@ -185,17 +188,20 @@ export class CPUService {
 
     protected check16bitOperation(value: number): number {
 
-        this.SR.carry = 0;
-        this.SR.zero = 0;
-
         if (value >= 65536) {
             this.SR.carry = 1;
             value = value % 65536;
-        } else if (value === 0) {
-            this.SR.zero = 1;
         } else if (value < 0) {
             this.SR.carry = 1;
             value = 65536 - (-value) % 65536;
+        } else {
+            this.SR.carry = 0;
+        }
+
+        if (value === 0) {
+            this.SR.zero = 1;
+        } else {
+            this.SR.zero = 0;
         }
 
         return value;

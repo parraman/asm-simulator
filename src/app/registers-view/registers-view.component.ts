@@ -157,6 +157,46 @@ export class RegistersViewComponent implements OnInit, OnDestroy {
 
     }
 
+    private operationWriteLSB(index: number, value: number) {
+
+        const registerView = this.registersMap.get(index);
+
+        if (registerView) {
+
+            registerView.value = (registerView.value & 0xFF00) + value;
+
+        }
+
+    }
+
+    private operationWriteMSB(index: number, value: number) {
+
+        const registerView = this.registersMap.get(index);
+
+        if (registerView) {
+
+            registerView.value = (registerView.value & 0x00FF) + (value << 8);
+
+        }
+
+    }
+
+    private operationWriteBit(index: number, bitNumber: number, value: number) {
+
+        const registerView = this.registersMap.get(index);
+
+        if (registerView) {
+
+            if (value === 0) {
+                registerView.value &= ~(1 << bitNumber);
+            } else {
+                registerView.value |= (1 << bitNumber);
+            }
+
+        }
+
+    }
+
     private processCPURegisterOperation(cpuRegisterOperation: CPURegisterOperation) {
 
         switch (cpuRegisterOperation.operationType) {
@@ -167,9 +207,24 @@ export class RegistersViewComponent implements OnInit, OnDestroy {
             case CPURegisterOperationType.POP_WORD:
             case CPURegisterOperationType.POP_BYTE:
                 this.operationWriteRegister(
-                    cpuRegisterOperation.index,
-                    cpuRegisterOperation.value);
+                    cpuRegisterOperation.data.get('index'),
+                    cpuRegisterOperation.data.get('value'));
                 break;
+            case CPURegisterOperationType.WRITE_LSB:
+                this.operationWriteLSB(
+                    cpuRegisterOperation.data.get('index'),
+                    cpuRegisterOperation.data.get('value'));
+                break;
+            case CPURegisterOperationType.WRITE_MSB:
+                this.operationWriteMSB(
+                    cpuRegisterOperation.data.get('index'),
+                    cpuRegisterOperation.data.get('value'));
+                break;
+            case CPURegisterOperationType.WRITE_BIT:
+                this.operationWriteBit(
+                    cpuRegisterOperation.data.get('index'),
+                    cpuRegisterOperation.data.get('bitNumber'),
+                    cpuRegisterOperation.data.get('value'));
             default:
                 break;
 

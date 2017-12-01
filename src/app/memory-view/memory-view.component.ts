@@ -457,22 +457,31 @@ export class MemoryViewComponent implements OnInit, OnDestroy, OnChanges {
         switch (cpuRegisterOperation.operationType) {
 
             case CPURegisterOperationType.WRITE:
-                this.operationWriteRegister(cpuRegisterOperation.index, cpuRegisterOperation.value);
+                this.operationWriteRegister(
+                    cpuRegisterOperation.data.get('index'), 
+                    cpuRegisterOperation.data.get('value'));
                 break;
             case CPURegisterOperationType.PUSH_WORD:
-                this.operationPushWord(cpuRegisterOperation.index, cpuRegisterOperation.value);
+                this.operationPushWord(
+                    cpuRegisterOperation.data.get('index'), 
+                    cpuRegisterOperation.data.get('value'));
                 break;
             case CPURegisterOperationType.PUSH_BYTE:
-                this.operationPushByte(cpuRegisterOperation.index, cpuRegisterOperation.value);
+                this.operationPushByte(
+                    cpuRegisterOperation.data.get('index'), 
+                    cpuRegisterOperation.data.get('value'));
                 break;
             case CPURegisterOperationType.POP_WORD:
-                this.operationPopWord(cpuRegisterOperation.index, cpuRegisterOperation.value);
+                this.operationPopWord(
+                    cpuRegisterOperation.data.get('index'), 
+                    cpuRegisterOperation.data.get('value'));
                 break;
             case CPURegisterOperationType.POP_BYTE:
-                this.operationPopByte(cpuRegisterOperation.index, cpuRegisterOperation.value);
+                this.operationPopByte(
+                    cpuRegisterOperation.data.get('index'), 
+                    cpuRegisterOperation.data.get('value'));
                 break;
         }
-
 
     }
 
