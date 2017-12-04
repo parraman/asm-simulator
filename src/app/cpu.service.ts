@@ -13,6 +13,8 @@ import {
     CPUGeneralPurposeRegister, CPUStackPointerRegister
 } from './cpuregs';
 
+import { ArithmeticLogicUnit, ALUOperation } from './alu';
+
 
 const IRQ_VECTOR_ADDRESS = 0x0003;
 const SYSCALL_VECTOR_ADDRESS = 0x0006;
@@ -27,6 +29,9 @@ export class CPUService {
     protected cpuRegisterOperationSource = new Subject<CPURegisterOperation>();
     public cpuRegisterOperation$: Observable<CPURegisterOperation>;
 
+    protected aluOperationSource = new Subject<ALUOperation>();
+    public aluOperation$: Observable<ALUOperation>;
+
     protected cpuConsumeTicksSource = new Subject<number>();
     public cpuConsumeTicks$: Observable<number>;
 
@@ -34,6 +39,8 @@ export class CPUService {
 
     protected userSP: CPURegister;
     protected supervisorSP: CPURegister;
+
+    protected alu: ArithmeticLogicUnit;
 
     private interruptInput = 0;
 
@@ -74,13 +81,13 @@ export class CPUService {
             case CPURegisterIndex.BH:
             case CPURegisterIndex.CH:
             case CPURegisterIndex.DH:
-                byte = 'msb';
+                byte = 'high';
                 break;
             case CPURegisterIndex.AL:
             case CPURegisterIndex.BL:
             case CPURegisterIndex.CL:
             case CPURegisterIndex.DL:
-                byte = 'lsb';
+                byte = 'low';
                 break;
         }
         return byte;
@@ -90,34 +97,38 @@ export class CPUService {
     constructor(protected memoryService: MemoryService,
                 protected ioRegMapService: IORegMapService) {
 
-        const registerA = new CPUGeneralPurposeRegister('A', CPURegisterIndex.A, 0,
-            this.cpuRegisterOperationSource, 'General Purpose Register A');
+        const registerA = new CPUGeneralPurposeRegister('A', CPURegisterIndex.A,
+            CPURegisterIndex.AH, CPURegisterIndex.AL, 0,
+            this.publishRegisterOperation, 'General Purpose Register A');
         this.registersBank.set(CPURegisterIndex.A, registerA);
         this.registersBank.set(CPURegisterIndex.AH, registerA);
         this.registersBank.set(CPURegisterIndex.AL, registerA);
 
-        const registerB = new CPUGeneralPurposeRegister('B', CPURegisterIndex.B, 0,
-            this.cpuRegisterOperationSource, 'General Purpose Register B');
+        const registerB = new CPUGeneralPurposeRegister('B', CPURegisterIndex.B,
+            CPURegisterIndex.BH, CPURegisterIndex.BL, 0,
+            this.publishRegisterOperation, 'General Purpose Register B');
         this.registersBank.set(CPURegisterIndex.B, registerB);
         this.registersBank.set(CPURegisterIndex.BH, registerB);
         this.registersBank.set(CPURegisterIndex.BL, registerB);
 
-        const registerC = new CPUGeneralPurposeRegister('C', CPURegisterIndex.C, 0,
-            this.cpuRegisterOperationSource, 'General Purpose Register C');
+        const registerC = new CPUGeneralPurposeRegister('C', CPURegisterIndex.C,
+            CPURegisterIndex.CH, CPURegisterIndex.CL, 0,
+            this.publishRegisterOperation, 'General Purpose Register C');
         this.registersBank.set(CPURegisterIndex.C, registerC);
         this.registersBank.set(CPURegisterIndex.CH, registerC);
         this.registersBank.set(CPURegisterIndex.CL, registerC);
 
-        const registerD = new CPUGeneralPurposeRegister('D', CPURegisterIndex.D, 0,
-            this.cpuRegisterOperationSource, 'General Purpose Register D');
+        const registerD = new CPUGeneralPurposeRegister('D', CPURegisterIndex.D,
+            CPURegisterIndex.DH, CPURegisterIndex.DL, 0,
+            this.publishRegisterOperation, 'General Purpose Register D');
         this.registersBank.set(CPURegisterIndex.D, registerD);
         this.registersBank.set(CPURegisterIndex.DH, registerD);
         this.registersBank.set(CPURegisterIndex.DL, registerD);
 
         this.userSP = new CPUStackPointerRegister('USP', CPURegisterIndex.USP, 0,
-            this.cpuRegisterOperationSource, 'User Stack Pointer Register');
+            this.publishRegisterOperation, 'User Stack Pointer Register');
         this.supervisorSP = new CPUStackPointerRegister('SSP', CPURegisterIndex.SSP, 0,
-            this.cpuRegisterOperationSource, 'Supervisor Stack Pointer Register');
+            this.publishRegisterOperation, 'Supervisor Stack Pointer Register');
 
         this.registersBank.set(CPURegisterIndex.SP, this.supervisorSP);
         this.registersBank.set(CPURegisterIndex.USP, this.userSP);
@@ -125,25 +136,31 @@ export class CPUService {
 
         this.registersBank.set(CPURegisterIndex.IP,
             new CPURegister('IP', CPURegisterIndex.IP, 0,
-                this.cpuRegisterOperationSource, 'Instruction Pointer Register'));
+                this.publishRegisterOperation, 'Instruction Pointer Register'));
 
-        this.registersBank.set(CPURegisterIndex.SR,
-            new CPUStatusRegister('SR', CPURegisterIndex.SR, 0x8000,
-                this.cpuRegisterOperationSource, 'Status Register'));
+        const statusRegister = new CPUStatusRegister('SR', CPURegisterIndex.SR, 0x8000,
+            this.publishRegisterOperation, 'Status Register');
+        this.registersBank.set(CPURegisterIndex.SR, statusRegister);
 
         this.cpuRegisterOperation$ = this.cpuRegisterOperationSource.asObservable();
+        this.aluOperation$ = this.aluOperationSource.asObservable();
+
         this.cpuConsumeTicks$ = this.cpuConsumeTicksSource.asObservable();
+
+        this.alu = new ArithmeticLogicUnit(statusRegister, this.publishALUOperation);
 
     }
 
-    protected divideBy(dividend: number, divisor: number) {
+    protected publishRegisterOperation(operation: CPURegisterOperation) {
 
-        if (divisor === 0) {
-            throw new Exception(ExceptionType.DIVIDE_BY_ZERO,
-                `Divide by zero error`, this.IP.value, this.SP.value);
-        }
+        this.cpuRegisterOperationSource.next(operation);
 
-        return Math.floor(dividend / divisor);
+    }
+
+    protected publishALUOperation(operation: ALUOperation) {
+
+        this.aluOperationSource.next(operation);
+
     }
 
     public getRegistersBank(): Map<CPURegisterIndex, CPURegister> {
@@ -162,44 +179,6 @@ export class CPUService {
 
     protected get SR(): CPUStatusRegister {
         return <CPUStatusRegister>this.registersBank.get(CPURegisterIndex.SR);
-    }
-
-    protected check8bitOperation(value: number): number {
-
-        this.SR.carry = 0;
-        this.SR.zero = 0;
-
-        if (value >= 256) {
-            this.SR.carry = 1;
-            value = value % 256;
-        } else if (value === 0) {
-            this.SR.zero = 1;
-        } else if (value < 0) {
-            this.SR.carry = 1;
-            value = 256 - (-value) % 256;
-        }
-
-        return value;
-
-    }
-
-    protected check16bitOperation(value: number): number {
-
-        this.SR.carry = 0;
-        this.SR.zero = 0;
-
-        if (value >= 65536) {
-            this.SR.carry = 1;
-            value = value % 65536;
-        } else if (value === 0) {
-            this.SR.zero = 1;
-        } else if (value < 0) {
-            this.SR.carry = 1;
-            value = 65536 - (-value) % 65536;
-        }
-
-        return value;
-
     }
 
     protected pushByte(value: number) {
@@ -870,8 +849,8 @@ export class CPUService {
         }
 
         this.registersBank.get(toRegister).value =
-            this.check16bitOperation(this.registersBank.get(toRegister).value +
-                                     this.registersBank.get(fromRegister).value);
+            this.alu.performAddition16Bits(this.registersBank.get(toRegister).value,
+                                           this.registersBank.get(fromRegister).value);
 
         return true;
 
@@ -903,7 +882,7 @@ export class CPUService {
         }
 
         this.registersBank.get(toRegister).value =
-            this.check16bitOperation(this.registersBank.get(toRegister).value + word);
+            this.alu.performAddition16Bits(this.registersBank.get(toRegister).value, word);
 
         return true;
 
@@ -928,7 +907,7 @@ export class CPUService {
         }
 
         this.registersBank.get(toRegister).value =
-            this.check16bitOperation(this.registersBank.get(toRegister).value + word);
+            this.alu.performAddition16Bits(this.registersBank.get(toRegister).value, word);
 
         return true;
 
@@ -944,7 +923,7 @@ export class CPUService {
         }
 
         this.registersBank.get(toRegister).value =
-            this.check16bitOperation(this.registersBank.get(toRegister).value + word);
+            this.alu.performAddition16Bits(this.registersBank.get(toRegister).value, word);
 
         return true;
 
@@ -968,7 +947,7 @@ export class CPUService {
         const byteFromRegister = CPUService.getByteFrom8bitsGPR(fromRegister);
 
         this.registersBank.get(toRegister)[byteToRegister] =
-            this.check8bitOperation(this.registersBank.get(toRegister)[byteToRegister] +
+            this.alu.performAddition8Bits(this.registersBank.get(toRegister)[byteToRegister],
                 this.registersBank.get(fromRegister)[byteFromRegister]);
 
         return true;
@@ -1002,7 +981,7 @@ export class CPUService {
         }
 
         this.registersBank.get(toRegister)[byteToRegister] =
-            this.check8bitOperation(this.registersBank.get(toRegister)[byteToRegister] + byte);
+            this.alu.performAddition8Bits(this.registersBank.get(toRegister)[byteToRegister], byte);
 
         return true;
 
@@ -1029,7 +1008,7 @@ export class CPUService {
         }
 
         this.registersBank.get(toRegister)[byteToRegister] =
-            this.check8bitOperation(this.registersBank.get(toRegister)[byteToRegister] + byte);
+            this.alu.performAddition8Bits(this.registersBank.get(toRegister)[byteToRegister], byte);
 
         return true;
 
@@ -1047,7 +1026,7 @@ export class CPUService {
         const byteToRegister = CPUService.getByteFrom8bitsGPR(toRegister);
 
         this.registersBank.get(toRegister)[byteToRegister] =
-            this.check8bitOperation(this.registersBank.get(toRegister)[byteToRegister] + byte);
+            this.alu.performAddition8Bits(this.registersBank.get(toRegister)[byteToRegister], byte);
 
         return true;
 
@@ -1068,7 +1047,7 @@ export class CPUService {
         }
 
         this.registersBank.get(toRegister).value =
-            this.check16bitOperation(this.registersBank.get(toRegister).value -
+            this.alu.performSubstraction16Bits(this.registersBank.get(toRegister).value,
                                      this.registersBank.get(fromRegister).value);
 
         return true;
@@ -1101,7 +1080,7 @@ export class CPUService {
         }
 
         this.registersBank.get(toRegister).value =
-            this.check16bitOperation(this.registersBank.get(toRegister).value - word);
+            this.alu.performSubstraction16Bits(this.registersBank.get(toRegister).value, word);
 
         return true;
 
@@ -1126,7 +1105,7 @@ export class CPUService {
         }
 
         this.registersBank.get(toRegister).value =
-            this.check16bitOperation(this.registersBank.get(toRegister).value - word);
+            this.alu.performSubstraction16Bits(this.registersBank.get(toRegister).value, word);
 
         return true;
 
@@ -1142,7 +1121,7 @@ export class CPUService {
         }
 
         this.registersBank.get(toRegister).value =
-            this.check16bitOperation(this.registersBank.get(toRegister).value - word);
+            this.alu.performSubstraction16Bits(this.registersBank.get(toRegister).value, word);
 
         return true;
 
@@ -1166,7 +1145,7 @@ export class CPUService {
         const byteFromRegister = CPUService.getByteFrom8bitsGPR(fromRegister);
 
         this.registersBank.get(toRegister)[byteToRegister] =
-            this.check8bitOperation(this.registersBank.get(toRegister)[byteToRegister] -
+            this.alu.performSubstraction8Bits(this.registersBank.get(toRegister)[byteToRegister],
                 this.registersBank.get(fromRegister)[byteFromRegister]);
 
         return true;
@@ -1200,7 +1179,7 @@ export class CPUService {
         }
 
         this.registersBank.get(toRegister)[byteToRegister] =
-            this.check8bitOperation(this.registersBank.get(toRegister)[byteToRegister] - byte);
+            this.alu.performSubstraction8Bits(this.registersBank.get(toRegister)[byteToRegister], byte);
 
         return true;
 
@@ -1227,7 +1206,7 @@ export class CPUService {
         }
 
         this.registersBank.get(toRegister)[byteToRegister] =
-            this.check8bitOperation(this.registersBank.get(toRegister)[byteToRegister] - byte);
+            this.alu.performSubstraction8Bits(this.registersBank.get(toRegister)[byteToRegister], byte);
 
         return true;
 
@@ -1245,7 +1224,7 @@ export class CPUService {
         const byteToRegister = CPUService.getByteFrom8bitsGPR(toRegister);
 
         this.registersBank.get(toRegister)[byteToRegister] =
-            this.check8bitOperation(this.registersBank.get(toRegister)[byteToRegister] - byte);
+            this.alu.performSubstraction8Bits(this.registersBank.get(toRegister)[byteToRegister], byte);
 
         return true;
 
@@ -1261,7 +1240,7 @@ export class CPUService {
         }
 
         this.registersBank.get(toRegister).value =
-            this.check16bitOperation(this.registersBank.get(toRegister).value + 1);
+            this.alu.performAddition16Bits(this.registersBank.get(toRegister).value, 1);
 
         return true;
 
@@ -1279,7 +1258,7 @@ export class CPUService {
         const byteToRegister = CPUService.getByteFrom8bitsGPR(toRegister);
 
         this.registersBank.get(toRegister)[byteToRegister] =
-            this.check8bitOperation(this.registersBank.get(toRegister)[byteToRegister] + 1);
+            this.alu.performAddition8Bits(this.registersBank.get(toRegister)[byteToRegister], 1);
 
         return true;
 
@@ -1295,7 +1274,7 @@ export class CPUService {
         }
 
         this.registersBank.get(toRegister).value =
-            this.check16bitOperation(this.registersBank.get(toRegister).value - 1);
+            this.alu.performSubstraction16Bits(this.registersBank.get(toRegister).value, 1);
 
         return true;
 
@@ -1313,7 +1292,7 @@ export class CPUService {
         const byteToRegister = CPUService.getByteFrom8bitsGPR(toRegister);
 
         this.registersBank.get(toRegister)[byteToRegister] =
-            this.check8bitOperation(this.registersBank.get(toRegister)[byteToRegister] - 1);
+            this.alu.performSubstraction8Bits(this.registersBank.get(toRegister)[byteToRegister], 1);
 
         return true;
 
@@ -1333,7 +1312,7 @@ export class CPUService {
                 this.IP.value, this.SP.value);
         }
 
-        this.check16bitOperation(this.registersBank.get(toRegister).value -
+        this.alu.performSubstraction16Bits(this.registersBank.get(toRegister).value,
             this.registersBank.get(fromRegister).value);
 
         return true;
@@ -1365,7 +1344,7 @@ export class CPUService {
                 e.message, this.IP.value, this.SP.value, address);
         }
 
-        this.check16bitOperation(this.registersBank.get(toRegister).value - word);
+        this.alu.performSubstraction16Bits(this.registersBank.get(toRegister).value, word);
 
         return true;
 
@@ -1389,7 +1368,7 @@ export class CPUService {
                 e.message, this.IP.value, this.SP.value, fromAddress);
         }
 
-        this.check16bitOperation(this.registersBank.get(toRegister).value - word);
+        this.alu.performSubstraction16Bits(this.registersBank.get(toRegister).value, word);
 
         return true;
 
@@ -1404,7 +1383,7 @@ export class CPUService {
                 this.IP.value, this.SP.value);
         }
 
-        this.check16bitOperation(this.registersBank.get(toRegister).value - word);
+        this.alu.performSubstraction16Bits(this.registersBank.get(toRegister).value, word);
 
         return true;
 
@@ -1427,7 +1406,7 @@ export class CPUService {
         const byteToRegister = CPUService.getByteFrom8bitsGPR(toRegister);
         const byteFromRegister = CPUService.getByteFrom8bitsGPR(fromRegister);
 
-        this.check8bitOperation(this.registersBank.get(toRegister)[byteToRegister] -
+        this.alu.performSubstraction8Bits(this.registersBank.get(toRegister)[byteToRegister],
             this.registersBank.get(fromRegister)[byteFromRegister]);
 
         return true;
@@ -1460,7 +1439,7 @@ export class CPUService {
                 e.message, this.IP.value, this.SP.value, address);
         }
 
-        this.check8bitOperation(this.registersBank.get(toRegister)[byteToRegister] - byte);
+        this.alu.performSubstraction8Bits(this.registersBank.get(toRegister)[byteToRegister], byte);
 
         return true;
 
@@ -1486,7 +1465,7 @@ export class CPUService {
                 e.message, this.IP.value, this.SP.value, fromAddress);
         }
 
-        this.check8bitOperation(this.registersBank.get(toRegister)[byteToRegister] - byte);
+        this.alu.performSubstraction8Bits(this.registersBank.get(toRegister)[byteToRegister], byte);
 
         return true;
 
@@ -1503,7 +1482,7 @@ export class CPUService {
 
         const byteToRegister = CPUService.getByteFrom8bitsGPR(toRegister);
 
-        this.check8bitOperation(this.registersBank.get(toRegister)[byteToRegister] - byte);
+        this.alu.performSubstraction8Bits(this.registersBank.get(toRegister)[byteToRegister], byte);
 
         return true;
 
@@ -2007,7 +1986,7 @@ export class CPUService {
         }
 
         this.registersBank.get(CPURegisterIndex.A).value =
-            this.check16bitOperation(this.registersBank.get(CPURegisterIndex.A).value *
+            this.alu.performMultiplication16Bits(this.registersBank.get(CPURegisterIndex.A).value,
                                      this.registersBank.get(toRegister).value);
 
         return true;
@@ -2035,7 +2014,7 @@ export class CPUService {
         }
 
         this.registersBank.get(CPURegisterIndex.A).value =
-            this.check16bitOperation(this.registersBank.get(CPURegisterIndex.A).value * word);
+            this.alu.performMultiplication16Bits(this.registersBank.get(CPURegisterIndex.A).value, word);
 
         return true;
 
@@ -2054,7 +2033,7 @@ export class CPUService {
         }
 
         this.registersBank.get(CPURegisterIndex.A).value =
-            this.check16bitOperation(this.registersBank.get(CPURegisterIndex.A).value * word);
+            this.alu.performMultiplication16Bits(this.registersBank.get(CPURegisterIndex.A).value, word);
 
         return true;
 
@@ -2065,7 +2044,7 @@ export class CPUService {
 
 
         this.registersBank.get(CPURegisterIndex.A).value =
-            this.check16bitOperation(this.registersBank.get(CPURegisterIndex.A).value *
+            this.alu.performMultiplication16Bits(this.registersBank.get(CPURegisterIndex.A).value,
                 word);
 
         return true;
@@ -2084,7 +2063,7 @@ export class CPUService {
         const byteToRegister = CPUService.getByteFrom8bitsGPR(toRegister);
 
         this.registersBank.get(CPURegisterIndex.A)['lsb'] =
-            this.check8bitOperation(this.registersBank.get(CPURegisterIndex.A)['lsb'] *
+            this.alu.performMultiplication8Bits(this.registersBank.get(CPURegisterIndex.A)['lsb'],
                 this.registersBank.get(toRegister)[byteToRegister]);
 
         return true;
@@ -2113,7 +2092,7 @@ export class CPUService {
         }
 
         this.registersBank.get(CPURegisterIndex.A)['lsb'] =
-            this.check8bitOperation(this.registersBank.get(CPURegisterIndex.A)['lsb'] * byte);
+            this.alu.performMultiplication8Bits(this.registersBank.get(CPURegisterIndex.A)['lsb'], byte);
 
         return true;
 
@@ -2132,7 +2111,7 @@ export class CPUService {
         }
 
         this.registersBank.get(CPURegisterIndex.A)['lsb'] =
-            this.check8bitOperation(this.registersBank.get(CPURegisterIndex.A)['lsb'] * byte);
+            this.alu.performMultiplication8Bits(this.registersBank.get(CPURegisterIndex.A)['lsb'], byte);
 
         return true;
 
@@ -2142,7 +2121,7 @@ export class CPUService {
     private instrMULB_WORD(byte: number): boolean {
 
         this.registersBank.get(CPURegisterIndex.A)['lsb'] =
-            this.check8bitOperation(this.registersBank.get(CPURegisterIndex.A)['lsb'] *
+            this.alu.performMultiplication8Bits(this.registersBank.get(CPURegisterIndex.A)['lsb'],
                 byte);
 
         return true;
@@ -2158,9 +2137,15 @@ export class CPUService {
                 this.IP.value, this.SP.value);
         }
 
-        this.registersBank.get(CPURegisterIndex.A).value =
-            this.check16bitOperation(this.divideBy(this.registersBank.get(CPURegisterIndex.A).value,
-                this.registersBank.get(toRegister).value));
+        try {
+            this.registersBank.get(CPURegisterIndex.A).value =
+                this.alu.performDivision16Bits(this.registersBank.get(CPURegisterIndex.A).value,
+                    this.registersBank.get(toRegister).value);
+        } catch (error) {
+            /* There is only one type of ALU error */
+            throw new Exception(ExceptionType.DIVIDE_BY_ZERO,
+                error.message, this.IP.value, this.SP.value);
+        }
 
         return true;
 
@@ -2186,8 +2171,14 @@ export class CPUService {
                 e.message, this.IP.value, this.SP.value, address);
         }
 
-        this.registersBank.get(CPURegisterIndex.A).value =
-            this.check16bitOperation(this.divideBy(this.registersBank.get(CPURegisterIndex.A).value, word));
+        try {
+            this.registersBank.get(CPURegisterIndex.A).value =
+                this.alu.performDivision16Bits(this.registersBank.get(CPURegisterIndex.A).value, word);
+        } catch (error) {
+            /* There is only one type of ALU error */
+            throw new Exception(ExceptionType.DIVIDE_BY_ZERO,
+                error.message, this.IP.value, this.SP.value);
+        }
 
         return true;
 
@@ -2205,8 +2196,14 @@ export class CPUService {
                 e.message, this.IP.value, this.SP.value, toAddress);
         }
 
-        this.registersBank.get(CPURegisterIndex.A).value =
-            this.check16bitOperation(this.divideBy(this.registersBank.get(CPURegisterIndex.A).value, word));
+        try {
+            this.registersBank.get(CPURegisterIndex.A).value =
+                this.alu.performDivision16Bits(this.registersBank.get(CPURegisterIndex.A).value, word);
+        } catch (error) {
+            /* There is only one type of ALU error */
+            throw new Exception(ExceptionType.DIVIDE_BY_ZERO,
+                error.message, this.IP.value, this.SP.value);
+        }
 
         return true;
 
@@ -2215,8 +2212,14 @@ export class CPUService {
     @Instruction(OpCode.DIV_WORD, 'DIV', OperandType.WORD)
     private instrDIV_WORD(word: number): boolean {
 
-        this.registersBank.get(CPURegisterIndex.A).value =
-            this.check16bitOperation(this.divideBy(this.registersBank.get(CPURegisterIndex.A).value, word));
+        try {
+            this.registersBank.get(CPURegisterIndex.A).value =
+                this.alu.performDivision16Bits(this.registersBank.get(CPURegisterIndex.A).value, word);
+        } catch (error) {
+            /* There is only one type of ALU error */
+            throw new Exception(ExceptionType.DIVIDE_BY_ZERO,
+                error.message, this.IP.value, this.SP.value);
+        }
 
         return true;
 
@@ -2233,9 +2236,15 @@ export class CPUService {
 
         const byteToRegister = CPUService.getByteFrom8bitsGPR(toRegister);
 
-        this.registersBank.get(CPURegisterIndex.A)['lsb'] =
-            this.check8bitOperation(this.divideBy(this.registersBank.get(CPURegisterIndex.A)['lsb'],
-                this.registersBank.get(toRegister)[byteToRegister]));
+        try {
+            this.registersBank.get(CPURegisterIndex.A)['lsb'] =
+                this.alu.performDivision8Bits(this.registersBank.get(CPURegisterIndex.A)['lsb'],
+                    this.registersBank.get(toRegister)[byteToRegister]);
+        } catch (error) {
+            /* There is only one type of ALU error */
+            throw new Exception(ExceptionType.DIVIDE_BY_ZERO,
+                error.message, this.IP.value, this.SP.value);
+        }
 
         return true;
 
@@ -2261,8 +2270,14 @@ export class CPUService {
                 e.message, this.IP.value, this.SP.value, address);
         }
 
-        this.registersBank.get(CPURegisterIndex.A)['lsb'] =
-            this.check8bitOperation(this.divideBy(this.registersBank.get(CPURegisterIndex.A)['lsb'], byte));
+        try {
+            this.registersBank.get(CPURegisterIndex.A)['lsb'] =
+                this.alu.performDivision8Bits(this.registersBank.get(CPURegisterIndex.A)['lsb'], byte);
+        } catch (error) {
+            /* There is only one type of ALU error */
+            throw new Exception(ExceptionType.DIVIDE_BY_ZERO,
+                error.message, this.IP.value, this.SP.value);
+        }
 
         return true;
 
@@ -2280,8 +2295,14 @@ export class CPUService {
                 e.message, this.IP.value, this.SP.value, toAddress);
         }
 
-        this.registersBank.get(CPURegisterIndex.A)['lsb'] =
-            this.check8bitOperation(this.divideBy(this.registersBank.get(CPURegisterIndex.A)['lsb'], byte));
+        try {
+            this.registersBank.get(CPURegisterIndex.A)['lsb'] =
+                this.alu.performDivision8Bits(this.registersBank.get(CPURegisterIndex.A)['lsb'], byte);
+        } catch (error) {
+            /* There is only one type of ALU error */
+            throw new Exception(ExceptionType.DIVIDE_BY_ZERO,
+                error.message, this.IP.value, this.SP.value);
+        }
 
         return true;
 
@@ -2290,8 +2311,14 @@ export class CPUService {
     @Instruction(OpCode.DIVB_BYTE, 'DIVB', OperandType.BYTE)
     private instrDIV_BYTE(byte: number): boolean {
 
-        this.registersBank.get(CPURegisterIndex.A)['lsb'] =
-            this.check8bitOperation(this.divideBy(this.registersBank.get(CPURegisterIndex.A)['lsb'], byte));
+        try {
+            this.registersBank.get(CPURegisterIndex.A)['lsb'] =
+                this.alu.performDivision8Bits(this.registersBank.get(CPURegisterIndex.A)['lsb'], byte);
+        } catch (error) {
+            /* There is only one type of ALU error */
+            throw new Exception(ExceptionType.DIVIDE_BY_ZERO,
+                error.message, this.IP.value, this.SP.value);
+        }
 
         return true;
 
@@ -2313,7 +2340,7 @@ export class CPUService {
         }
 
         this.registersBank.get(toRegister).value =
-            this.check16bitOperation(this.registersBank.get(toRegister).value &
+            this.alu.performBitwiseAND16Bits(this.registersBank.get(toRegister).value,
                 this.registersBank.get(fromRegister).value);
 
         return true;
@@ -2347,7 +2374,7 @@ export class CPUService {
         }
 
         this.registersBank.get(toRegister).value =
-            this.check16bitOperation(this.registersBank.get(toRegister).value & word);
+            this.alu.performBitwiseAND16Bits(this.registersBank.get(toRegister).value, word);
 
         return true;
 
@@ -2372,7 +2399,7 @@ export class CPUService {
         }
 
         this.registersBank.get(toRegister).value =
-            this.check16bitOperation(this.registersBank.get(toRegister).value & word);
+            this.alu.performBitwiseAND16Bits(this.registersBank.get(toRegister).value, word);
 
         return true;
 
@@ -2388,7 +2415,7 @@ export class CPUService {
         }
 
         this.registersBank.get(toRegister).value =
-            this.check16bitOperation(this.registersBank.get(toRegister).value & word);
+            this.alu.performBitwiseAND16Bits(this.registersBank.get(toRegister).value, word);
 
         return true;
 
@@ -2412,7 +2439,7 @@ export class CPUService {
         const byteFromRegister = CPUService.getByteFrom8bitsGPR(fromRegister);
 
         this.registersBank.get(toRegister)[byteToRegister] =
-            this.check8bitOperation(this.registersBank.get(toRegister)[byteToRegister] &
+            this.alu.performBitwiseAND8Bits(this.registersBank.get(toRegister)[byteToRegister],
                 this.registersBank.get(fromRegister)[byteFromRegister]);
 
         return true;
@@ -2446,7 +2473,7 @@ export class CPUService {
         }
 
         this.registersBank.get(toRegister)[byteToRegister] =
-            this.check8bitOperation(this.registersBank.get(toRegister)[byteToRegister] & byte);
+            this.alu.performBitwiseAND8Bits(this.registersBank.get(toRegister)[byteToRegister], byte);
 
         return true;
 
@@ -2473,7 +2500,7 @@ export class CPUService {
         }
 
         this.registersBank.get(toRegister)[byteToRegister] =
-            this.check8bitOperation(this.registersBank.get(toRegister)[byteToRegister] & byte);
+            this.alu.performBitwiseAND8Bits(this.registersBank.get(toRegister)[byteToRegister], byte);
 
         return true;
 
@@ -2491,7 +2518,7 @@ export class CPUService {
         const byteToRegister = CPUService.getByteFrom8bitsGPR(toRegister);
 
         this.registersBank.get(toRegister)[byteToRegister] =
-            this.check8bitOperation(this.registersBank.get(toRegister)[byteToRegister] & byte);
+            this.alu.performBitwiseAND8Bits(this.registersBank.get(toRegister)[byteToRegister], byte);
 
         return true;
 
@@ -2512,7 +2539,7 @@ export class CPUService {
         }
 
         this.registersBank.get(toRegister).value =
-            this.check16bitOperation(this.registersBank.get(toRegister).value |
+            this.alu.performBitwiseOR16Bits(this.registersBank.get(toRegister).value,
                 this.registersBank.get(fromRegister).value);
 
         return true;
@@ -2545,7 +2572,7 @@ export class CPUService {
         }
 
         this.registersBank.get(toRegister).value =
-            this.check16bitOperation(this.registersBank.get(toRegister).value | word);
+            this.alu.performBitwiseOR16Bits(this.registersBank.get(toRegister).value, word);
 
         return true;
 
@@ -2570,7 +2597,7 @@ export class CPUService {
         }
 
         this.registersBank.get(toRegister).value =
-            this.check16bitOperation(this.registersBank.get(toRegister).value | word);
+            this.alu.performBitwiseOR16Bits(this.registersBank.get(toRegister).value, word);
 
         return true;
 
@@ -2586,7 +2613,7 @@ export class CPUService {
         }
 
         this.registersBank.get(toRegister).value =
-            this.check16bitOperation(this.registersBank.get(toRegister).value | word);
+            this.alu.performBitwiseOR16Bits(this.registersBank.get(toRegister).value, word);
 
         return true;
 
@@ -2610,7 +2637,7 @@ export class CPUService {
         const byteFromRegister = CPUService.getByteFrom8bitsGPR(fromRegister);
 
         this.registersBank.get(toRegister)[byteToRegister] =
-            this.check8bitOperation(this.registersBank.get(toRegister)[byteToRegister] |
+            this.alu.performBitwiseOR8Bits(this.registersBank.get(toRegister)[byteToRegister],
                 this.registersBank.get(fromRegister)[byteFromRegister]);
 
         return true;
@@ -2644,7 +2671,7 @@ export class CPUService {
         }
 
         this.registersBank.get(toRegister)[byteToRegister] =
-            this.check8bitOperation(this.registersBank.get(toRegister)[byteToRegister] | byte);
+            this.alu.performBitwiseOR8Bits(this.registersBank.get(toRegister)[byteToRegister], byte);
 
         return true;
 
@@ -2671,7 +2698,7 @@ export class CPUService {
         }
 
         this.registersBank.get(toRegister)[byteToRegister] =
-            this.check8bitOperation(this.registersBank.get(toRegister)[byteToRegister] | byte);
+            this.alu.performBitwiseOR8Bits(this.registersBank.get(toRegister)[byteToRegister], byte);
 
         return true;
 
@@ -2689,7 +2716,7 @@ export class CPUService {
         const byteToRegister = CPUService.getByteFrom8bitsGPR(toRegister);
 
         this.registersBank.get(toRegister)[byteToRegister] =
-            this.check8bitOperation(this.registersBank.get(toRegister)[byteToRegister] | byte);
+            this.alu.performBitwiseOR8Bits(this.registersBank.get(toRegister)[byteToRegister], byte);
 
         return true;
 
@@ -2710,7 +2737,7 @@ export class CPUService {
         }
 
         this.registersBank.get(toRegister).value =
-            this.check16bitOperation(this.registersBank.get(toRegister).value ^
+            this.alu.performBitwiseXOR16Bits(this.registersBank.get(toRegister).value,
                 this.registersBank.get(fromRegister).value);
 
         return true;
@@ -2743,7 +2770,7 @@ export class CPUService {
         }
 
         this.registersBank.get(toRegister).value =
-            this.check16bitOperation(this.registersBank.get(toRegister).value ^ word);
+            this.alu.performBitwiseXOR16Bits(this.registersBank.get(toRegister).value, word);
 
         return true;
 
@@ -2768,7 +2795,7 @@ export class CPUService {
         }
 
         this.registersBank.get(toRegister).value =
-            this.check16bitOperation(this.registersBank.get(toRegister).value ^ word);
+            this.alu.performBitwiseXOR16Bits(this.registersBank.get(toRegister).value, word);
 
         return true;
 
@@ -2784,7 +2811,7 @@ export class CPUService {
         }
 
         this.registersBank.get(toRegister).value =
-            this.check16bitOperation(this.registersBank.get(toRegister).value ^ word);
+            this.alu.performBitwiseXOR16Bits(this.registersBank.get(toRegister).value, word);
 
         return true;
 
@@ -2808,7 +2835,7 @@ export class CPUService {
         const byteFromRegister = CPUService.getByteFrom8bitsGPR(fromRegister);
 
         this.registersBank.get(toRegister)[byteToRegister] =
-            this.check8bitOperation(this.registersBank.get(toRegister)[byteToRegister] ^
+            this.alu.performBitwiseXOR8Bits(this.registersBank.get(toRegister)[byteToRegister],
                 this.registersBank.get(fromRegister)[byteFromRegister]);
 
         return true;
@@ -2842,7 +2869,7 @@ export class CPUService {
         }
 
         this.registersBank.get(toRegister)[byteToRegister] =
-            this.check8bitOperation(this.registersBank.get(toRegister)[byteToRegister] ^ byte);
+            this.alu.performBitwiseXOR8Bits(this.registersBank.get(toRegister)[byteToRegister], byte);
 
         return true;
 
@@ -2869,7 +2896,7 @@ export class CPUService {
         }
 
         this.registersBank.get(toRegister)[byteToRegister] =
-            this.check8bitOperation(this.registersBank.get(toRegister)[byteToRegister] ^ byte);
+            this.alu.performBitwiseXOR8Bits(this.registersBank.get(toRegister)[byteToRegister], byte);
 
         return true;
 
@@ -2887,7 +2914,7 @@ export class CPUService {
         const byteToRegister = CPUService.getByteFrom8bitsGPR(toRegister);
 
         this.registersBank.get(toRegister)[byteToRegister] =
-            this.check8bitOperation(this.registersBank.get(toRegister)[byteToRegister] ^ byte);
+            this.alu.performBitwiseXOR8Bits(this.registersBank.get(toRegister)[byteToRegister], byte);
 
         return true;
 
@@ -2903,7 +2930,7 @@ export class CPUService {
         }
 
         this.registersBank.get(toRegister).value =
-            this.check16bitOperation(~this.registersBank.get(toRegister).value);
+            this.alu.performBitwiseNOT16Bits(this.registersBank.get(toRegister).value);
 
         return true;
     }
@@ -2920,7 +2947,7 @@ export class CPUService {
         const byteToRegister = CPUService.getByteFrom8bitsGPR(toRegister);
 
         this.registersBank.get(toRegister)[byteToRegister] =
-            this.check16bitOperation(~this.registersBank.get(toRegister)[byteToRegister]);
+            this.alu.performBitwiseNOT8Bits(this.registersBank.get(toRegister)[byteToRegister]);
 
         return true;
     }
@@ -2940,7 +2967,7 @@ export class CPUService {
         }
 
         this.registersBank.get(toRegister).value =
-            this.check16bitOperation(this.registersBank.get(toRegister).value <<
+            this.alu.performBitshiftLeft16Bits(this.registersBank.get(toRegister).value,
                 this.registersBank.get(fromRegister).value);
 
         return true;
@@ -2973,7 +3000,7 @@ export class CPUService {
         }
 
         this.registersBank.get(toRegister).value =
-            this.check16bitOperation(this.registersBank.get(toRegister).value << word);
+            this.alu.performBitshiftLeft16Bits(this.registersBank.get(toRegister).value, word);
 
         return true;
 
@@ -2998,7 +3025,7 @@ export class CPUService {
         }
 
         this.registersBank.get(toRegister).value =
-            this.check16bitOperation(this.registersBank.get(toRegister).value << word);
+            this.alu.performBitshiftLeft16Bits(this.registersBank.get(toRegister).value, word);
 
         return true;
 
@@ -3014,7 +3041,7 @@ export class CPUService {
         }
 
         this.registersBank.get(toRegister).value =
-            this.check16bitOperation(this.registersBank.get(toRegister).value << word);
+            this.alu.performBitshiftLeft16Bits(this.registersBank.get(toRegister).value, word);
 
         return true;
 
@@ -3038,7 +3065,7 @@ export class CPUService {
         const byteFromRegister = CPUService.getByteFrom8bitsGPR(fromRegister);
 
         this.registersBank.get(toRegister)[byteToRegister] =
-            this.check8bitOperation(this.registersBank.get(toRegister)[byteToRegister] <<
+            this.alu.performBitshiftLeft8Bits(this.registersBank.get(toRegister)[byteToRegister],
                 this.registersBank.get(fromRegister)[byteFromRegister]);
 
         return true;
@@ -3072,7 +3099,7 @@ export class CPUService {
         }
 
         this.registersBank.get(toRegister)[byteToRegister] =
-            this.check8bitOperation(this.registersBank.get(toRegister)[byteToRegister] << byte);
+            this.alu.performBitshiftLeft8Bits(this.registersBank.get(toRegister)[byteToRegister], byte);
 
         return true;
 
@@ -3099,7 +3126,7 @@ export class CPUService {
         }
 
         this.registersBank.get(toRegister)[byteToRegister] =
-            this.check8bitOperation(this.registersBank.get(toRegister)[byteToRegister] << byte);
+            this.alu.performBitshiftLeft8Bits(this.registersBank.get(toRegister)[byteToRegister], byte);
 
         return true;
 
@@ -3117,7 +3144,7 @@ export class CPUService {
         const byteToRegister = CPUService.getByteFrom8bitsGPR(toRegister);
 
         this.registersBank.get(toRegister)[byteToRegister] =
-            this.check8bitOperation(this.registersBank.get(toRegister)[byteToRegister] << byte);
+            this.alu.performBitshiftLeft8Bits(this.registersBank.get(toRegister)[byteToRegister], byte);
 
         return true;
 
@@ -3138,7 +3165,7 @@ export class CPUService {
         }
 
         this.registersBank.get(toRegister).value =
-            this.check16bitOperation(this.registersBank.get(toRegister).value >>>
+            this.alu.performBitshiftRight16Bits(this.registersBank.get(toRegister).value,
                 this.registersBank.get(fromRegister).value);
 
         return true;
@@ -3171,7 +3198,7 @@ export class CPUService {
         }
 
         this.registersBank.get(toRegister).value =
-            this.check16bitOperation(this.registersBank.get(toRegister).value >>> word);
+            this.alu.performBitshiftRight16Bits(this.registersBank.get(toRegister).value, word);
 
         return true;
 
@@ -3196,7 +3223,7 @@ export class CPUService {
         }
 
         this.registersBank.get(toRegister).value =
-            this.check16bitOperation(this.registersBank.get(toRegister).value >>> word);
+            this.alu.performBitshiftRight16Bits(this.registersBank.get(toRegister).value, word);
 
         return true;
 
@@ -3212,7 +3239,7 @@ export class CPUService {
         }
 
         this.registersBank.get(toRegister).value =
-            this.check16bitOperation(this.registersBank.get(toRegister).value >>> word);
+            this.alu.performBitshiftRight16Bits(this.registersBank.get(toRegister).value, word);
 
         return true;
 
@@ -3236,7 +3263,7 @@ export class CPUService {
         const byteFromRegister = CPUService.getByteFrom8bitsGPR(fromRegister);
 
         this.registersBank.get(toRegister)[byteToRegister] =
-            this.check8bitOperation(this.registersBank.get(toRegister)[byteToRegister] >>>
+            this.alu.performBitshiftRight8Bits(this.registersBank.get(toRegister)[byteToRegister],
                 this.registersBank.get(fromRegister)[byteFromRegister]);
 
         return true;
@@ -3270,7 +3297,7 @@ export class CPUService {
         }
 
         this.registersBank.get(toRegister)[byteToRegister] =
-            this.check8bitOperation(this.registersBank.get(toRegister)[byteToRegister] >>> byte);
+            this.alu.performBitshiftRight8Bits(this.registersBank.get(toRegister)[byteToRegister], byte);
 
         return true;
 
@@ -3297,7 +3324,7 @@ export class CPUService {
         }
 
         this.registersBank.get(toRegister)[byteToRegister] =
-            this.check8bitOperation(this.registersBank.get(toRegister)[byteToRegister] >>> byte);
+            this.alu.performBitshiftRight8Bits(this.registersBank.get(toRegister)[byteToRegister], byte);
 
         return true;
 
@@ -3315,7 +3342,7 @@ export class CPUService {
         const byteToRegister = CPUService.getByteFrom8bitsGPR(toRegister);
 
         this.registersBank.get(toRegister)[byteToRegister] =
-            this.check8bitOperation(this.registersBank.get(toRegister)[byteToRegister] >>> byte);
+            this.alu.performBitshiftRight8Bits(this.registersBank.get(toRegister)[byteToRegister], byte);
 
         return true;
 

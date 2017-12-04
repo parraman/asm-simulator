@@ -1,7 +1,7 @@
-Instruction Set
-===============
+Instructions Set
+================
 
-The assembler simulator supports the following instructions:
+The assembler simulator supports the following instructions.
 
 +-----------+-----------+------------+-----------+
 | ``ADD``   | ``ADDB``  | ``AND``    | ``ANDB``  |

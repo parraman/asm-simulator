@@ -1,4 +1,3 @@
-import { Subject } from 'rxjs/Subject';
 
 export enum SRBit {
 
@@ -70,28 +69,28 @@ export enum CPURegisterOperationType {
 
     READ = 1,
     WRITE = 2,
-    PUSH_WORD = 3, /* Stack pointer specific operation: push 2 bytes to stack */
-    PUSH_BYTE = 4, /* Stack pointer specific operation: push 1 byte to stack */
-    POP_WORD = 5, /* Stack pointer specific operation: pop 2 bytes from stack */
-    POP_BYTE = 6 /* Stack pointer specific operation: pop 2 bytes from stack */
+    READ_BIT = 3,
+    WRITE_BIT = 4,
+    PUSH = 5, /* Stack pointer specific operation: push to stack */
+    POP = 6   /* Stack pointer specific operation: pop from stack */
 
 }
 
 export class CPURegisterOperation {
 
     public operationType: CPURegisterOperationType;
-    public index: number;
-    public value: number;
+    public data: Map<string, any>;
 
-    constructor(operationType: CPURegisterOperationType, index: number, value: number) {
+    constructor(operationType: CPURegisterOperationType, data?: Map<string, any>) {
 
         this.operationType = operationType;
-        this.index = index;
-        this.value = value;
+        this.data = data;
 
     }
 
 }
+
+type PublishCPURegisterOperation = (operation: CPURegisterOperation) => void;
 
 export class CPURegister {
 
@@ -102,10 +101,10 @@ export class CPURegister {
 
     protected _value: number;
 
-    public operationSource: Subject<CPURegisterOperation>;
+    protected publishRegisterOperation: PublishCPURegisterOperation;
 
     constructor (name: string, index: number, resetValue: number,
-                 operationSource?: Subject<CPURegisterOperation>,
+                 publishRegisterOperation?: PublishCPURegisterOperation,
                  description?: string) {
 
         this.name = name;
@@ -113,27 +112,99 @@ export class CPURegister {
         this.index = index;
         this.resetValue = resetValue;
         this._value = resetValue;
-        this.operationSource = operationSource;
+        this.publishRegisterOperation = publishRegisterOperation;
 
     }
 
-    protected pushWriteValue(newValue: number) {
+    protected publishWriteBit(index: number, bitNumber: number,
+                              newBitValue: number) {
 
-        if (this.operationSource) {
+        if (this.publishRegisterOperation) {
 
-            this.operationSource.next(new CPURegisterOperation(CPURegisterOperationType.WRITE,
-                this.index, newValue));
+            const parameters: Map<string, any> = new Map<string, any>();
+            parameters.set('index', index);
+            parameters.set('bitNumber', bitNumber);
+            parameters.set('value', newBitValue);
+
+            this.publishRegisterOperation(new CPURegisterOperation(CPURegisterOperationType.WRITE_BIT,
+                parameters));
 
         }
 
     }
 
-    protected pushReadValue() {
+    protected publishReadBit(index: number, bitNumber: number,
+                             readBitValue: number) {
 
-        if (this.operationSource) {
+        if (this.publishRegisterOperation) {
 
-            this.operationSource.next(new CPURegisterOperation(CPURegisterOperationType.READ,
-                this.index, this._value));
+            const parameters: Map<string, any> = new Map<string, any>();
+            parameters.set('index', index);
+            parameters.set('bitNumber', bitNumber);
+            parameters.set('value', readBitValue);
+
+            this.publishRegisterOperation(new CPURegisterOperation(CPURegisterOperationType.READ_BIT,
+                parameters));
+
+        }
+
+    }
+
+    protected publishWriteValue(index: number, newValue: number) {
+
+        if (this.publishRegisterOperation) {
+
+            const parameters: Map<string, any> = new Map<string, any>();
+            parameters.set('index', index);
+            parameters.set('value', newValue);
+
+            this.publishRegisterOperation(new CPURegisterOperation(CPURegisterOperationType.WRITE,
+                parameters));
+
+        }
+
+    }
+
+    protected publishReadValue(index: number, readValue: number) {
+
+        if (this.publishRegisterOperation) {
+
+            const parameters: Map<string, any> = new Map<string, any>();
+            parameters.set('index', index);
+            parameters.set('value', readValue);
+
+            this.publishRegisterOperation(new CPURegisterOperation(CPURegisterOperationType.READ,
+                parameters));
+
+        }
+
+    }
+
+    protected publishPush(index: number, newValue: number) {
+
+        if (this.publishRegisterOperation) {
+
+            const parameters: Map<string, any> = new Map<string, any>();
+            parameters.set('index', index);
+            parameters.set('value', newValue);
+
+            this.publishRegisterOperation(new CPURegisterOperation(CPURegisterOperationType.PUSH,
+                parameters));
+
+        }
+
+    }
+
+    protected publishPop(index: number, newValue: number) {
+
+        if (this.publishRegisterOperation) {
+
+            const parameters: Map<string, any> = new Map<string, any>();
+            parameters.set('index', index);
+            parameters.set('value', newValue);
+
+            this.publishRegisterOperation(new CPURegisterOperation(CPURegisterOperationType.POP,
+                parameters));
 
         }
 
@@ -141,7 +212,7 @@ export class CPURegister {
 
     get value(): number {
 
-        this.pushReadValue();
+        this.publishReadValue(this.index, this._value);
         return this._value;
 
     }
@@ -149,50 +220,58 @@ export class CPURegister {
     set value(newValue: number) {
 
         this._value = newValue;
-        this.pushWriteValue(newValue);
+        this.publishWriteValue(this.index, newValue);
 
     }
-
 
 }
 
 export class CPUGeneralPurposeRegister extends CPURegister {
 
-    constructor (name: string, index: number, resetValue: number,
-                 operationSource?: Subject<CPURegisterOperation>,
+    public indexHigh: number;
+    public indexLow: number;
+
+    constructor (name: string, index: number,
+                 indexHigh: number, indexLow: number, resetValue: number,
+                 publishRegisterOperation?: PublishCPURegisterOperation,
                  description?: string) {
 
-        super(name, index, resetValue, operationSource, description);
+        super(name, index, resetValue, publishRegisterOperation, description);
+
+        this.indexHigh = indexHigh;
+        this.indexLow = indexLow;
 
     }
 
-    set lsb(newValue: number) {
+    set low(newValue: number) {
 
         this._value = (this._value & 0xFF00) + newValue;
-        this.pushWriteValue(this._value);
+        this.publishWriteValue(this.indexLow, newValue);
 
     }
 
-    get lsb() {
+    get low() {
 
-        this.pushReadValue();
+        const readValue = this._value & 0x00FF;
+        this.publishReadValue(this.indexLow, readValue);
 
-        return (this._value & 0x00FF);
+        return readValue;
 
     }
 
-    set msb(newValue: number) {
+    set high(newValue: number) {
 
         this._value = (this._value & 0x00FF) + (newValue << 8);
-        this.pushWriteValue(this._value);
+        this.publishWriteValue(this.indexHigh, newValue);
 
     }
 
-    get msb() {
+    get high() {
 
-        this.pushReadValue();
+        const readValue = (this._value & 0xFF00) >>> 8;
+        this.publishReadValue(this.indexHigh, readValue);
 
-        return ((this._value & 0xFF00) >>> 8);
+        return readValue;
 
     }
 }
@@ -200,62 +279,38 @@ export class CPUGeneralPurposeRegister extends CPURegister {
 export class CPUStackPointerRegister extends CPURegister {
 
     constructor (name: string, index: number, resetValue: number,
-                 operationSource?: Subject<CPURegisterOperation>,
+                 publishRegisterOperation?: PublishCPURegisterOperation,
                  description?: string) {
 
-        super(name, index, resetValue, operationSource, description);
+        super(name, index, resetValue, publishRegisterOperation, description);
 
     }
 
     public pushWord() {
 
         this._value = this._value - 2;
-
-        if (this.operationSource) {
-
-            this.operationSource.next(new CPURegisterOperation(CPURegisterOperationType.PUSH_WORD,
-                this.index, this._value));
-
-        }
+        this.publishPush(this.index, this._value);
 
     }
 
     public popWord() {
 
         this._value = this._value + 2;
-
-        if (this.operationSource) {
-
-            this.operationSource.next(new CPURegisterOperation(CPURegisterOperationType.POP_WORD,
-                this.index, this._value));
-
-        }
+        this.publishPop(this.index, this._value);
 
     }
 
     public pushByte() {
 
         this._value = this._value - 1;
-
-        if (this.operationSource) {
-
-            this.operationSource.next(new CPURegisterOperation(CPURegisterOperationType.PUSH_BYTE,
-                this.index, this._value));
-
-        }
+        this.publishPush(this.index, this._value);
 
     }
 
     public popByte() {
 
         this._value = this._value + 1;
-
-        if (this.operationSource) {
-
-            this.operationSource.next(new CPURegisterOperation(CPURegisterOperationType.POP_BYTE,
-                this.index, this._value));
-
-        }
+        this.publishPop(this.index, this._value);
 
     }
 
@@ -272,10 +327,10 @@ export class CPUStatusRegister extends CPURegister {
     private _supervisor = 0;
 
     constructor (name: string, index: number, initialValue: number,
-                 operationSource?: Subject<CPURegisterOperation>,
+                 publishRegisterOperation?: PublishCPURegisterOperation,
                  description?: string) {
 
-        super(name, index, initialValue, operationSource, description);
+        super(name, index, initialValue, publishRegisterOperation, description);
 
         if ((initialValue & (1 << SRBit.HALT)) !== 0) {
             this._halt = 1;
@@ -300,7 +355,7 @@ export class CPUStatusRegister extends CPURegister {
 
     get value(): number {
 
-        this.pushReadValue();
+        this.publishReadValue(this.index, this._value);
         return this._value;
 
     }
@@ -339,7 +394,7 @@ export class CPUStatusRegister extends CPURegister {
         }
 
         this._value = newValue;
-        this.pushWriteValue(newValue);
+        this.publishWriteValue(this.index, newValue);
 
     }
 
@@ -353,13 +408,13 @@ export class CPUStatusRegister extends CPURegister {
             this._value |= (1 << SRBit.HALT);
         }
 
-        this.pushWriteValue(this._value);
+        this.publishWriteBit(this.index, SRBit.HALT, this._halt);
 
     }
 
     get halt(): number {
 
-        this.pushReadValue();
+        this.publishReadBit(this.index, SRBit.HALT, this._halt);
         return this._halt;
     }
 
@@ -373,13 +428,13 @@ export class CPUStatusRegister extends CPURegister {
             this._value |= (1 << SRBit.FAULT);
         }
 
-        this.pushWriteValue(this._value);
+        this.publishWriteBit(this.index, SRBit.FAULT, this._fault);
 
     }
 
     get fault(): number {
 
-        this.pushReadValue();
+        this.publishReadBit(this.index, SRBit.FAULT, this._fault);
         return this._fault;
     }
 
@@ -393,13 +448,13 @@ export class CPUStatusRegister extends CPURegister {
             this._value |= (1 << SRBit.ZERO);
         }
 
-        this.pushWriteValue(this._value);
+        this.publishWriteBit(this.index, SRBit.ZERO, this._zero);
 
     }
 
     get zero(): number {
 
-        this.pushReadValue();
+        this.publishReadBit(this.index, SRBit.ZERO, this._zero);
         return this._zero;
     }
 
@@ -413,13 +468,13 @@ export class CPUStatusRegister extends CPURegister {
             this._value |= (1 << SRBit.CARRY);
         }
 
-        this.pushWriteValue(this._value);
+        this.publishWriteBit(this.index, SRBit.CARRY, this._carry);
 
     }
 
     get carry(): number {
 
-        this.pushReadValue();
+        this.publishReadBit(this.index, SRBit.CARRY, this._carry);
         return this._carry;
     }
 
@@ -433,13 +488,13 @@ export class CPUStatusRegister extends CPURegister {
             this._value |= (1 << SRBit.IRQMASK);
         }
 
-        this.pushWriteValue(this._value);
+        this.publishWriteBit(this.index, SRBit.IRQMASK, this._irqMask);
 
     }
 
     get irqMask(): number {
 
-        this.pushReadValue();
+        this.publishReadBit(this.index, SRBit.IRQMASK, this._irqMask);
         return this._irqMask;
     }
 
@@ -453,13 +508,13 @@ export class CPUStatusRegister extends CPURegister {
             this._value |= (1 << SRBit.SUPERVISOR);
         }
 
-        this.pushWriteValue(this._value);
+        this.publishWriteBit(this.index, SRBit.SUPERVISOR, this._supervisor);
 
     }
 
     get supervisor(): number {
 
-        this.pushReadValue();
+        this.publishReadBit(this.index, SRBit.SUPERVISOR, this._supervisor);
         return this._supervisor;
     }
 

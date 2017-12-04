@@ -149,10 +149,34 @@ export class RegistersViewComponent implements OnInit, OnDestroy {
 
         const registerView = this.registersMap.get(index);
 
-        if (registerView) {
+        switch (index) {
+            case AH:
+            case BH:
+            case CH:
+            case DH:
+                registerView.value = (registerView.value & 0x00FF) + (value << 8);
+                break;
+            case AL:
+            case BL:
+            case CL:
+            case DL:
+                registerView.value = (registerView.value & 0xFF00) + value;
+                break;
+            default:
+                registerView.value = value;
+                break;
+        }
 
-            registerView.value = value;
+    }
 
+    private operationWriteBit(index: number, bitNumber: number, value: number) {
+
+        const registerView = this.registersMap.get(index);
+
+        if (value === 0) {
+            registerView.value &= ~(1 << bitNumber);
+        } else {
+            registerView.value |= (1 << bitNumber);
         }
 
     }
@@ -162,13 +186,17 @@ export class RegistersViewComponent implements OnInit, OnDestroy {
         switch (cpuRegisterOperation.operationType) {
 
             case CPURegisterOperationType.WRITE:
-            case CPURegisterOperationType.PUSH_WORD:
-            case CPURegisterOperationType.PUSH_BYTE:
-            case CPURegisterOperationType.POP_WORD:
-            case CPURegisterOperationType.POP_BYTE:
+            case CPURegisterOperationType.PUSH:
+            case CPURegisterOperationType.POP:
                 this.operationWriteRegister(
-                    cpuRegisterOperation.index,
-                    cpuRegisterOperation.value);
+                    cpuRegisterOperation.data.get('index'),
+                    cpuRegisterOperation.data.get('value'));
+                break;
+            case CPURegisterOperationType.WRITE_BIT:
+                this.operationWriteBit(
+                    cpuRegisterOperation.data.get('index'),
+                    cpuRegisterOperation.data.get('bitNumber'),
+                    cpuRegisterOperation.data.get('value'));
                 break;
             default:
                 break;
