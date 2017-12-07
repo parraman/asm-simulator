@@ -6,7 +6,8 @@ import { Observable } from 'rxjs/Observable';
 import { OpCode, OperandType, Instruction, instructionSet, InstructionSpec } from './instrset';
 import { MemoryService } from './memory.service';
 import { IORegMapService } from './ioregmap.service';
-import {Exception, ExceptionType} from './exceptions';
+import { ClockService} from './clock.service';
+import { Exception, ExceptionType } from './exceptions';
 
 import {
     CPURegisterIndex, CPURegister, CPUStatusRegister, CPURegisterOperation,
@@ -20,6 +21,62 @@ const IRQ_VECTOR_ADDRESS = 0x0003;
 const SYSCALL_VECTOR_ADDRESS = 0x0006;
 const EXCEPTION_VECTOR_ADDRESS = 0x0009;
 
+export enum ControlUnitOperationType {
+
+    FETCH_OPCODE = 0,
+    DECODE = 1,
+    FETCH_OPERANDS = 2,
+    RESOLVE_REGADDRESS = 3,
+    EXECUTE = 4
+
+}
+
+export interface CUOperationParamsFetchOpCode {
+
+    address: number;
+
+}
+
+export interface CUOperationParamsDecode {
+
+    opCode: number;
+
+}
+
+export interface CUOperationParamsFetchOperands {
+
+    operand1Type: OperandType;
+    operand1Address: number;
+    operand2Type: OperandType;
+    operand2Address: number;
+
+}
+
+export interface CUOperationParamsResolveRegAddress {
+
+    register: number;
+    offset: number;
+
+}
+
+export interface CUOperationParamsExecute {
+
+    opCode: number;
+    mnemonic: string;
+    operand1Type: OperandType;
+    operand1Value: number;
+    operand2Type: OperandType;
+    operand2Value: number;
+
+}
+
+
+export class ControlUnitOperation {
+
+
+
+}
+
 
 @Injectable()
 export class CPUService {
@@ -31,9 +88,6 @@ export class CPUService {
 
     protected aluOperationSource = new Subject<ALUOperation>();
     public aluOperation$: Observable<ALUOperation>;
-
-    protected cpuConsumeTicksSource = new Subject<number>();
-    public cpuConsumeTicks$: Observable<number>;
 
     protected nextIP = 0;
 
@@ -94,41 +148,42 @@ export class CPUService {
 
     }
 
-    constructor(protected memoryService: MemoryService,
-                protected ioRegMapService: IORegMapService) {
+    constructor(private memoryService: MemoryService,
+                private clockService: ClockService,
+                private ioRegMapService: IORegMapService) {
 
         const registerA = new CPUGeneralPurposeRegister('A', CPURegisterIndex.A,
             CPURegisterIndex.AH, CPURegisterIndex.AL, 0,
-            this.publishRegisterOperation, 'General Purpose Register A');
+            (op) => this.publishRegisterOperation(op), 'General Purpose Register A');
         this.registersBank.set(CPURegisterIndex.A, registerA);
         this.registersBank.set(CPURegisterIndex.AH, registerA);
         this.registersBank.set(CPURegisterIndex.AL, registerA);
 
         const registerB = new CPUGeneralPurposeRegister('B', CPURegisterIndex.B,
             CPURegisterIndex.BH, CPURegisterIndex.BL, 0,
-            this.publishRegisterOperation, 'General Purpose Register B');
+            (op) => this.publishRegisterOperation(op), 'General Purpose Register B');
         this.registersBank.set(CPURegisterIndex.B, registerB);
         this.registersBank.set(CPURegisterIndex.BH, registerB);
         this.registersBank.set(CPURegisterIndex.BL, registerB);
 
         const registerC = new CPUGeneralPurposeRegister('C', CPURegisterIndex.C,
             CPURegisterIndex.CH, CPURegisterIndex.CL, 0,
-            this.publishRegisterOperation, 'General Purpose Register C');
+            (op) => this.publishRegisterOperation(op), 'General Purpose Register C');
         this.registersBank.set(CPURegisterIndex.C, registerC);
         this.registersBank.set(CPURegisterIndex.CH, registerC);
         this.registersBank.set(CPURegisterIndex.CL, registerC);
 
         const registerD = new CPUGeneralPurposeRegister('D', CPURegisterIndex.D,
             CPURegisterIndex.DH, CPURegisterIndex.DL, 0,
-            this.publishRegisterOperation, 'General Purpose Register D');
+            (op) => this.publishRegisterOperation(op), 'General Purpose Register D');
         this.registersBank.set(CPURegisterIndex.D, registerD);
         this.registersBank.set(CPURegisterIndex.DH, registerD);
         this.registersBank.set(CPURegisterIndex.DL, registerD);
 
         this.userSP = new CPUStackPointerRegister('USP', CPURegisterIndex.USP, 0,
-            this.publishRegisterOperation, 'User Stack Pointer Register');
+            (op) => this.publishRegisterOperation(op), 'User Stack Pointer Register');
         this.supervisorSP = new CPUStackPointerRegister('SSP', CPURegisterIndex.SSP, 0,
-            this.publishRegisterOperation, 'Supervisor Stack Pointer Register');
+            (op) => this.publishRegisterOperation(op), 'Supervisor Stack Pointer Register');
 
         this.registersBank.set(CPURegisterIndex.SP, this.supervisorSP);
         this.registersBank.set(CPURegisterIndex.USP, this.userSP);
@@ -136,18 +191,16 @@ export class CPUService {
 
         this.registersBank.set(CPURegisterIndex.IP,
             new CPURegister('IP', CPURegisterIndex.IP, 0,
-                this.publishRegisterOperation, 'Instruction Pointer Register'));
+                (op) => this.publishRegisterOperation(op), 'Instruction Pointer Register'));
 
         const statusRegister = new CPUStatusRegister('SR', CPURegisterIndex.SR, 0x8000,
-            this.publishRegisterOperation, 'Status Register');
+            (op) => this.publishRegisterOperation(op), 'Status Register');
         this.registersBank.set(CPURegisterIndex.SR, statusRegister);
 
         this.cpuRegisterOperation$ = this.cpuRegisterOperationSource.asObservable();
         this.aluOperation$ = this.aluOperationSource.asObservable();
 
-        this.cpuConsumeTicks$ = this.cpuConsumeTicksSource.asObservable();
-
-        this.alu = new ArithmeticLogicUnit(statusRegister, this.publishALUOperation);
+        this.alu = new ArithmeticLogicUnit(statusRegister, (op) => this.publishALUOperation(op));
 
     }
 
@@ -301,7 +354,7 @@ export class CPUService {
                 `Invalid opcode: ${opcode}`, this.IP.value, this.SP.value);
         }
 
-        let byte, word, register, regaddress, offset;
+        let byte, word, register, regaddress, offset, address;
 
         switch (instruction.operand1) {
 
@@ -344,13 +397,21 @@ export class CPUService {
                     throw new Exception(ExceptionType.INSTRUCTION_FETCH_ERROR,
                         `Error when fetching instruction at ${this.nextIP}`, this.IP.value, this.SP.value);
                 }
+
                 offset = (regaddress & 0xFF00) >>> 8;
                 register = (regaddress & 0x00FF);
                 if (offset > 127) {
                     offset = offset - 256;
                 }
-                args.push(register);
-                args.push(offset);
+
+                if (CPUService.is16bitsGPRorSP(register) === false) {
+                    throw new Exception(ExceptionType.ILLEGAL_INSTRUCTION,
+                        `Invalid first operand: register index ${register} out of bounds`,
+                        this.IP.value, this.SP.value);
+                }
+                address = this.registersBank.get(register).value + offset;
+                args.push(address);
+
                 this.nextIP += 2;
                 break;
             default:
@@ -398,13 +459,21 @@ export class CPUService {
                     throw new Exception(ExceptionType.INSTRUCTION_FETCH_ERROR,
                         `Error when fetching instruction at ${this.nextIP}`, this.IP.value, this.SP.value);
                 }
+
                 offset = (regaddress & 0xFF00) >>> 8;
                 register = (regaddress & 0x00FF);
                 if (offset > 127) {
                     offset = offset - 256;
                 }
-                args.push(register);
-                args.push(offset);
+
+                if (CPUService.is16bitsGPRorSP(register) === false) {
+                    throw new Exception(ExceptionType.ILLEGAL_INSTRUCTION,
+                        `Invalid first operand: register index ${register} out of bounds`,
+                        this.IP.value, this.SP.value);
+                }
+                address = this.registersBank.get(register).value + offset;
+                args.push(address);
+
                 this.nextIP += 2;
                 break;
         }
@@ -417,7 +486,7 @@ export class CPUService {
 
         if (this.SR.halt === 1) {
 
-            this.cpuConsumeTicksSource.next(1);
+            this.clockService.consumeTicks(1);
 
             return;
 
@@ -438,7 +507,7 @@ export class CPUService {
                 this.IP.value = this.nextIP;
             }
 
-            this.cpuConsumeTicksSource.next(1);
+            this.clockService.consumeTicks(1);
 
         } catch (e) {
 
@@ -530,22 +599,15 @@ export class CPUService {
     }
 
     @Instruction(OpCode.MOV_REGADDRESS_TO_REG16, 'MOV', OperandType.REGISTER_16BITS, OperandType.REGADDRESS)
-    private instrMOV_REGADDRESS_TO_REG16(toRegister: number, fromRegister: number, fromOffset): boolean {
+    private instrMOV_REGADDRESS_TO_REG16(toRegister: number, fromAddress: number): boolean {
 
         if (CPUService.is16bitsGPRorSP(toRegister) === false) {
             throw new Exception(ExceptionType.ILLEGAL_INSTRUCTION,
                 `Invalid first operand: register index ${toRegister} out of bounds`,
                 this.IP.value, this.SP.value);
         }
-        if (CPUService.is16bitsGPRorSP(fromRegister) === false) {
-            throw new Exception(ExceptionType.ILLEGAL_INSTRUCTION,
-                `Invalid second operand: register index ${fromRegister} out of bounds`,
-                this.IP.value, this.SP.value);
-        }
 
-        const address = this.registersBank.get(fromRegister).value + fromOffset;
-
-        this.registersBank.get(toRegister).value = this.memoryService.loadWord(address);
+        this.registersBank.get(toRegister).value = this.memoryService.loadWord(fromAddress);
 
         return true;
 
@@ -572,13 +634,8 @@ export class CPUService {
     }
 
     @Instruction(OpCode.MOV_REG16_TO_REGADDRESS, 'MOV', OperandType.REGADDRESS, OperandType.REGISTER_16BITS)
-    private instrMOV_REG16_TO_REGADDRESS(toRegister: number, toOffset: number, fromRegister: number): boolean {
+    private instrMOV_REG16_TO_REGADDRESS(toAddress: number, fromRegister: number): boolean {
 
-        if (CPUService.is16bitsGPRorSP(toRegister) === false) {
-            throw new Exception(ExceptionType.ILLEGAL_INSTRUCTION,
-                `Invalid first operand: register index ${toRegister} out of bounds`,
-                this.IP.value, this.SP.value);
-        }
 
         if (CPUService.is16bitsGPRorSP(fromRegister) === false) {
             throw new Exception(ExceptionType.ILLEGAL_INSTRUCTION,
@@ -586,13 +643,11 @@ export class CPUService {
                 this.IP.value, this.SP.value);
         }
 
-        const address = this.registersBank.get(toRegister).value + toOffset;
-
         try {
-            this.memoryService.storeWord(address, this.registersBank.get(fromRegister).value);
+            this.memoryService.storeWord(toAddress, this.registersBank.get(fromRegister).value);
         } catch (e) {
             throw new Exception(ExceptionType.MEMORY_ACCESS_ERROR,
-                e.message, this.IP.value, this.SP.value, address);
+                e.message, this.IP.value, this.SP.value, toAddress);
         }
 
         return true;
@@ -628,21 +683,13 @@ export class CPUService {
     }
 
     @Instruction(OpCode.MOV_WORD_TO_REGADDRESS, 'MOV', OperandType.REGADDRESS, OperandType.WORD)
-    private instrMOV_WORD_TO_REGADDRESS(toRegister: number, toOffset: number, word: number): boolean {
-
-        if (CPUService.is16bitsGPRorSP(toRegister) === false) {
-            throw new Exception(ExceptionType.ILLEGAL_INSTRUCTION,
-                `Invalid first operand: register index ${toRegister} out of bounds`,
-                this.IP.value, this.SP.value);
-        }
-
-        const address = this.registersBank.get(toRegister).value + toOffset;
+    private instrMOV_WORD_TO_REGADDRESS(toAddress: number, word: number): boolean {
 
         try {
-            this.memoryService.storeWord(address, word);
+            this.memoryService.storeWord(toAddress, word);
         } catch (e) {
             throw new Exception(ExceptionType.MEMORY_ACCESS_ERROR,
-                e.message, this.IP.value, this.SP.value, address);
+                e.message, this.IP.value, this.SP.value, toAddress);
         }
 
         return true;
@@ -698,29 +745,23 @@ export class CPUService {
     }
 
     @Instruction(OpCode.MOVB_REGADDRESS_TO_REG8, 'MOVB', OperandType.REGISTER_8BITS, OperandType.REGADDRESS)
-    private instrMOVB_REGADDRESS_TO_REG8(toRegister: number, fromRegister: number, fromOffset: number): boolean {
+    private instrMOVB_REGADDRESS_TO_REG8(toRegister: number, fromAddress: number): boolean {
 
         if (CPUService.is8bitsGPR(toRegister) === false) {
             throw new Exception(ExceptionType.ILLEGAL_INSTRUCTION,
                 `Invalid first operand: register index ${toRegister} out of bounds`,
                 this.IP.value, this.SP.value);
         }
-        if (CPUService.is16bitsGPRorSP(fromRegister) === false) {
-            throw new Exception(ExceptionType.ILLEGAL_INSTRUCTION,
-                `Invalid second operand: register index ${fromRegister} out of bounds`,
-                this.IP.value, this.SP.value);
-        }
 
-        const address = this.registersBank.get(fromRegister).value + fromOffset;
         const byteToRegister = CPUService.getByteFrom8bitsGPR(toRegister);
 
         let byte;
 
         try {
-            byte = this.memoryService.loadByte(address);
+            byte = this.memoryService.loadByte(fromAddress);
         } catch (e) {
             throw new Exception(ExceptionType.MEMORY_ACCESS_ERROR,
-                e.message, this.IP.value, this.SP.value, address);
+                e.message, this.IP.value, this.SP.value, fromAddress);
         }
 
         this.registersBank.get(toRegister)[byteToRegister] = byte;
@@ -753,13 +794,7 @@ export class CPUService {
     }
 
     @Instruction(OpCode.MOVB_REG8_TO_REGADDRESS, 'MOVB', OperandType.REGADDRESS, OperandType.REGISTER_8BITS)
-    private instrMOVB_REG8_TO_REGADDRESS(toRegister: number, toOffset: number, fromRegister: number): boolean {
-
-        if (CPUService.is16bitsGPRorSP(toRegister) === false) {
-            throw new Exception(ExceptionType.ILLEGAL_INSTRUCTION,
-                `Invalid first operand: register index ${toRegister} out of bounds`,
-                this.IP.value, this.SP.value);
-        }
+    private instrMOVB_REG8_TO_REGADDRESS(toAddress: number, fromRegister: number): boolean {
 
         if (CPUService.is8bitsGPR(fromRegister) === false) {
             throw new Exception(ExceptionType.ILLEGAL_INSTRUCTION,
@@ -767,14 +802,13 @@ export class CPUService {
                 this.IP.value, this.SP.value);
         }
 
-        const address = this.registersBank.get(toRegister).value + toOffset;
         const byteFromRegister = CPUService.getByteFrom8bitsGPR(fromRegister);
 
         try {
-            this.memoryService.storeByte(address, this.registersBank.get(fromRegister)[byteFromRegister]);
+            this.memoryService.storeByte(toAddress, this.registersBank.get(fromRegister)[byteFromRegister]);
         } catch (e) {
             throw new Exception(ExceptionType.MEMORY_ACCESS_ERROR,
-                e.message, this.IP.value, this.SP.value, address);
+                e.message, this.IP.value, this.SP.value, toAddress);
         }
 
         return true;
@@ -813,21 +847,13 @@ export class CPUService {
     }
 
     @Instruction(OpCode.MOVB_BYTE_TO_REGADDRESS, 'MOVB', OperandType.REGADDRESS, OperandType.BYTE)
-    private instrMOVB_BYTE_TO_REGADDRESS(toRegister: number, toOffset: number, byte: number): boolean {
-
-        if (CPUService.is16bitsGPRorSP(toRegister) === false) {
-            throw new Exception(ExceptionType.ILLEGAL_INSTRUCTION,
-                `Invalid first operand: register index ${toRegister} out of bounds`,
-                this.IP.value, this.SP.value);
-        }
-
-        const address = this.registersBank.get(toRegister).value + toOffset;
+    private instrMOVB_BYTE_TO_REGADDRESS(toAddress: number, byte: number): boolean {
 
         try {
-            this.memoryService.storeByte(address, byte);
+            this.memoryService.storeByte(toAddress, byte);
         } catch (e) {
             throw new Exception(ExceptionType.MEMORY_ACCESS_ERROR,
-                e.message, this.IP.value, this.SP.value, address);
+                e.message, this.IP.value, this.SP.value, toAddress);
         }
 
         return true;
@@ -857,28 +883,21 @@ export class CPUService {
     }
 
     @Instruction(OpCode.ADD_REGADDRESS_TO_REG16, 'ADD', OperandType.REGISTER_16BITS, OperandType.REGADDRESS)
-    private instrADD_REGADDRESS_TO_REG16(toRegister: number, fromRegister: number, fromOffset: number): boolean {
+    private instrADD_REGADDRESS_TO_REG16(toRegister: number, fromAddress: number): boolean {
 
         if (CPUService.is16bitsGPRorSP(toRegister) === false) {
             throw new Exception(ExceptionType.ILLEGAL_INSTRUCTION,
                 `Invalid first operand: register index ${toRegister} out of bounds`,
                 this.IP.value, this.SP.value);
         }
-        if (CPUService.is16bitsGPRorSP(fromRegister) === false) {
-            throw new Exception(ExceptionType.ILLEGAL_INSTRUCTION,
-                `Invalid second operand: register index ${fromRegister} out of bounds`,
-                this.IP.value, this.SP.value);
-        }
-
-        const address = this.registersBank.get(fromRegister).value + fromOffset;
 
         let word;
 
         try {
-            word = this.memoryService.loadWord(address);
+            word = this.memoryService.loadWord(fromAddress);
         } catch (e) {
             throw new Exception(ExceptionType.MEMORY_ACCESS_ERROR,
-                e.message, this.IP.value, this.SP.value, address);
+                e.message, this.IP.value, this.SP.value, fromAddress);
         }
 
         this.registersBank.get(toRegister).value =
@@ -955,29 +974,23 @@ export class CPUService {
     }
 
     @Instruction(OpCode.ADDB_REGADDRESS_TO_REG8, 'ADDB', OperandType.REGISTER_8BITS, OperandType.REGADDRESS)
-    private instrADDB_REGADDRESS_TO_REG8(toRegister: number, fromRegister: number, fromOffset: number): boolean {
+    private instrADDB_REGADDRESS_TO_REG8(toRegister: number, fromAddress: number): boolean {
 
         if (CPUService.is8bitsGPR(toRegister) === false) {
             throw new Exception(ExceptionType.ILLEGAL_INSTRUCTION,
                 `Invalid first operand: register index ${toRegister} out of bounds`,
                 this.IP.value, this.SP.value);
         }
-        if (CPUService.is16bitsGPRorSP(fromRegister) === false) {
-            throw new Exception(ExceptionType.ILLEGAL_INSTRUCTION,
-                `Invalid second operand: register index ${fromRegister} out of bounds`,
-                this.IP.value, this.SP.value);
-        }
 
-        const address = this.registersBank.get(fromRegister).value + fromOffset;
         const byteToRegister = CPUService.getByteFrom8bitsGPR(toRegister);
 
         let byte;
 
         try {
-            byte = this.memoryService.loadByte(address);
+            byte = this.memoryService.loadByte(fromAddress);
         } catch (e) {
             throw new Exception(ExceptionType.MEMORY_ACCESS_ERROR,
-                e.message, this.IP.value, this.SP.value, address);
+                e.message, this.IP.value, this.SP.value, fromAddress);
         }
 
         this.registersBank.get(toRegister)[byteToRegister] =
@@ -1055,28 +1068,21 @@ export class CPUService {
     }
 
     @Instruction(OpCode.SUB_REGADDRESS_FROM_REG16, 'SUB', OperandType.REGISTER_16BITS, OperandType.REGADDRESS)
-    private instrSUB_REGADDRESS_FROM_REG16(toRegister: number, fromRegister: number, fromOffset: number): boolean {
+    private instrSUB_REGADDRESS_FROM_REG16(toRegister: number, fromAddress: number): boolean {
 
         if (CPUService.is16bitsGPRorSP(toRegister) === false) {
             throw new Exception(ExceptionType.ILLEGAL_INSTRUCTION,
                 `Invalid first operand: register index ${toRegister} out of bounds`,
                 this.IP.value, this.SP.value);
         }
-        if (CPUService.is16bitsGPRorSP(fromRegister) === false) {
-            throw new Exception(ExceptionType.ILLEGAL_INSTRUCTION,
-                `Invalid second operand: register index ${fromRegister} out of bounds`,
-                this.IP.value, this.SP.value);
-        }
-
-        const address = this.registersBank.get(fromRegister).value + fromOffset;
 
         let word;
 
         try {
-            word = this.memoryService.loadWord(address);
+            word = this.memoryService.loadWord(fromAddress);
         } catch (e) {
             throw new Exception(ExceptionType.MEMORY_ACCESS_ERROR,
-                e.message, this.IP.value, this.SP.value, address);
+                e.message, this.IP.value, this.SP.value, fromAddress);
         }
 
         this.registersBank.get(toRegister).value =
@@ -1153,29 +1159,23 @@ export class CPUService {
     }
 
     @Instruction(OpCode.SUBB_REGADDRESS_FROM_REG8, 'SUBB', OperandType.REGISTER_8BITS, OperandType.REGADDRESS)
-    private instrSUBB_REGADDRESS_FROM_REG8(toRegister: number, fromRegister: number, fromOffset: number): boolean {
+    private instrSUBB_REGADDRESS_FROM_REG8(toRegister: number, fromAddress: number): boolean {
 
         if (CPUService.is8bitsGPR(toRegister) === false) {
             throw new Exception(ExceptionType.ILLEGAL_INSTRUCTION,
                 `Invalid first operand: register index ${toRegister} out of bounds`,
                 this.IP.value, this.SP.value);
         }
-        if (CPUService.is16bitsGPRorSP(fromRegister) === false) {
-            throw new Exception(ExceptionType.ILLEGAL_INSTRUCTION,
-                `Invalid second operand: register index ${fromRegister} out of bounds`,
-                this.IP.value, this.SP.value);
-        }
 
-        const address = this.registersBank.get(fromRegister).value + fromOffset;
         const byteToRegister = CPUService.getByteFrom8bitsGPR(toRegister);
 
         let byte;
 
         try {
-            byte = this.memoryService.loadByte(address);
+            byte = this.memoryService.loadByte(fromAddress);
         } catch (e) {
             throw new Exception(ExceptionType.MEMORY_ACCESS_ERROR,
-                e.message, this.IP.value, this.SP.value, address);
+                e.message, this.IP.value, this.SP.value, fromAddress);
         }
 
         this.registersBank.get(toRegister)[byteToRegister] =
@@ -1320,28 +1320,21 @@ export class CPUService {
     }
 
     @Instruction(OpCode.CMP_REGADDRESS_WITH_REG16, 'CMP', OperandType.REGISTER_16BITS, OperandType.REGADDRESS)
-    private instrCMP_REGADDRESS_WITH_REG16(toRegister: number, fromRegister: number, fromOffset: number): boolean {
+    private instrCMP_REGADDRESS_WITH_REG16(toRegister: number, fromAddress: number): boolean {
 
         if (CPUService.is16bitsGPRorSP(toRegister) === false) {
             throw new Exception(ExceptionType.ILLEGAL_INSTRUCTION,
                 `Invalid first operand: register index ${toRegister} out of bounds`,
                 this.IP.value, this.SP.value);
         }
-        if (CPUService.is16bitsGPRorSP(fromRegister) === false) {
-            throw new Exception(ExceptionType.ILLEGAL_INSTRUCTION,
-                `Invalid second operand: register index ${fromRegister} out of bounds`,
-                this.IP.value, this.SP.value);
-        }
-
-        const address = this.registersBank.get(fromRegister).value + fromOffset;
 
         let word;
 
         try {
-            word = this.memoryService.loadWord(address);
+            word = this.memoryService.loadWord(fromAddress);
         } catch (e) {
             throw new Exception(ExceptionType.MEMORY_ACCESS_ERROR,
-                e.message, this.IP.value, this.SP.value, address);
+                e.message, this.IP.value, this.SP.value, fromAddress);
         }
 
         this.alu.performSubstraction16Bits(this.registersBank.get(toRegister).value, word);
@@ -1414,29 +1407,23 @@ export class CPUService {
     }
 
     @Instruction(OpCode.CMPB_REGADDRESS_WITH_REG8, 'CMPB', OperandType.REGISTER_8BITS, OperandType.REGADDRESS)
-    private instrCMPB_REGADDRESS_WITH_REG8(toRegister: number, fromRegister: number, fromOffset: number): boolean {
+    private instrCMPB_REGADDRESS_WITH_REG8(toRegister: number, fromAddress: number): boolean {
 
         if (CPUService.is8bitsGPR(toRegister) === false) {
             throw new Exception(ExceptionType.ILLEGAL_INSTRUCTION,
                 `Invalid first operand: register index ${toRegister} out of bounds`,
                 this.IP.value, this.SP.value);
         }
-        if (CPUService.is16bitsGPRorSP(fromRegister) === false) {
-            throw new Exception(ExceptionType.ILLEGAL_INSTRUCTION,
-                `Invalid second operand: register index ${fromRegister} out of bounds`,
-                this.IP.value, this.SP.value);
-        }
 
-        const address = this.registersBank.get(fromRegister).value + fromOffset;
         const byteToRegister = CPUService.getByteFrom8bitsGPR(toRegister);
 
         let byte;
 
         try {
-            byte = this.memoryService.loadByte(address);
+            byte = this.memoryService.loadByte(fromAddress);
         } catch (e) {
             throw new Exception(ExceptionType.MEMORY_ACCESS_ERROR,
-                e.message, this.IP.value, this.SP.value, address);
+                e.message, this.IP.value, this.SP.value, fromAddress);
         }
 
         this.alu.performSubstraction8Bits(this.registersBank.get(toRegister)[byteToRegister], byte);
@@ -1489,15 +1476,9 @@ export class CPUService {
     }
 
     @Instruction(OpCode.JMP_REGADDRESS, 'JMP', OperandType.REGADDRESS)
-    private instrJMP_REGADDRESS(toRegister: number, toOffset: number): boolean {
+    private instrJMP_REGADDRESS(toAddress: number): boolean {
 
-        if (CPUService.is16bitsGPRorSP(toRegister) === false) {
-            throw new Exception(ExceptionType.ILLEGAL_INSTRUCTION,
-                `Invalid first operand: register index ${toRegister} out of bounds`,
-                this.IP.value, this.SP.value);
-        }
-
-        this.IP.value = this.registersBank.get(toRegister).value + toOffset;
+        this.IP.value = toAddress;
 
         return false;
 
@@ -1513,16 +1494,10 @@ export class CPUService {
     }
 
     @Instruction(OpCode.JC_REGADDRESS, 'JC', OperandType.REGADDRESS, undefined, ['JB', 'JNAE'])
-    private instrJC_REGADDRESS(toRegister: number, toOffset: number): boolean {
-
-        if (CPUService.is16bitsGPRorSP(toRegister) === false) {
-            throw new Exception(ExceptionType.ILLEGAL_INSTRUCTION,
-                `Invalid first operand: register index ${toRegister} out of bounds`,
-                this.IP.value, this.SP.value);
-        }
+    private instrJC_REGADDRESS(toAddress: number): boolean {
 
         if (this.SR.carry === 1) {
-            this.IP.value = this.registersBank.get(toRegister).value + toOffset;
+            this.IP.value = toAddress;
             return false;
         } else {
             return true;
@@ -1543,16 +1518,10 @@ export class CPUService {
     }
 
     @Instruction(OpCode.JNC_REGADDRESS, 'JNC', OperandType.REGADDRESS, undefined, ['JNB', 'JAE'])
-    private instrJNC_REGADDRESS(toRegister: number, toOffset: number): boolean {
-
-        if (CPUService.is16bitsGPRorSP(toRegister) === false) {
-            throw new Exception(ExceptionType.ILLEGAL_INSTRUCTION,
-                `Invalid first operand: register index ${toRegister} out of bounds`,
-                this.IP.value, this.SP.value);
-        }
+    private instrJNC_REGADDRESS(toAddress: number): boolean {
 
         if (this.SR.carry === 0) {
-            this.IP.value = this.registersBank.get(toRegister).value + toOffset;
+            this.IP.value = toAddress;
             return false;
         } else {
             return true;
@@ -1573,16 +1542,10 @@ export class CPUService {
     }
 
     @Instruction(OpCode.JZ_REGADDRESS, 'JZ', OperandType.REGADDRESS, undefined, ['JE'])
-    private instrJZ_REGADDRESS(toRegister: number, toOffset: number): boolean {
-
-        if (CPUService.is16bitsGPRorSP(toRegister) === false) {
-            throw new Exception(ExceptionType.ILLEGAL_INSTRUCTION,
-                `Invalid first operand: register index ${toRegister} out of bounds`,
-                this.IP.value, this.SP.value);
-        }
+    private instrJZ_REGADDRESS(toAddress: number): boolean {
 
         if (this.SR.zero === 1) {
-            this.IP.value = this.registersBank.get(toRegister).value + toOffset;
+            this.IP.value = toAddress;
             return false;
         } else {
             return true;
@@ -1603,16 +1566,10 @@ export class CPUService {
     }
 
     @Instruction(OpCode.JNZ_REGADDRESS, 'JNZ', OperandType.REGADDRESS, undefined, ['JNE'])
-    private instrJNZ_REGADDRESS(toRegister: number, toOffset: number): boolean {
-
-        if (CPUService.is16bitsGPRorSP(toRegister) === false) {
-            throw new Exception(ExceptionType.ILLEGAL_INSTRUCTION,
-                `Invalid first operand: register index ${toRegister} out of bounds`,
-                this.IP.value, this.SP.value);
-        }
+    private instrJNZ_REGADDRESS(toAddress: number): boolean {
 
         if (this.SR.zero === 0) {
-            this.IP.value = this.registersBank.get(toRegister).value + toOffset;
+            this.IP.value = toAddress;
             return false;
         } else {
             return true;
@@ -1633,16 +1590,10 @@ export class CPUService {
     }
 
     @Instruction(OpCode.JA_REGADDRESS, 'JA', OperandType.REGADDRESS, undefined, ['JNBE'])
-    private instrJA_REGADDRESS(toRegister: number, toOffset: number): boolean {
-
-        if (CPUService.is16bitsGPRorSP(toRegister) === false) {
-            throw new Exception(ExceptionType.ILLEGAL_INSTRUCTION,
-                `Invalid first operand: register index ${toRegister} out of bounds`,
-                this.IP.value, this.SP.value);
-        }
+    private instrJA_REGADDRESS(toAddress: number): boolean {
 
         if ((this.SR.carry === 0) && (this.SR.zero === 0)) {
-            this.IP.value = this.registersBank.get(toRegister).value + toOffset;
+            this.IP.value = toAddress;
             return false;
         } else {
             return true;
@@ -1663,16 +1614,10 @@ export class CPUService {
     }
 
     @Instruction(OpCode.JNA_REGADDRESS, 'JNA', OperandType.REGADDRESS, undefined, ['JBE'])
-    private instrJNA_REGADDRESS(toRegister: number, toOffset: number): boolean {
-
-        if (CPUService.is16bitsGPRorSP(toRegister) === false) {
-            throw new Exception(ExceptionType.ILLEGAL_INSTRUCTION,
-                `Invalid first operand: register index ${toRegister} out of bounds`,
-                this.IP.value, this.SP.value);
-        }
+    private instrJNA_REGADDRESS(toAddress: number): boolean {
 
         if ((this.SR.carry === 1) || (this.SR.zero === 1)) {
-            this.IP.value = this.registersBank.get(toRegister).value + toOffset;
+            this.IP.value = toAddress;
             return false;
         } else {
             return true;
@@ -1713,23 +1658,15 @@ export class CPUService {
     }
 
     @Instruction(OpCode.PUSH_REGADDRESS, 'PUSH', OperandType.REGADDRESS)
-    private instrPUSH_REGADDRESS(toRegister: number, toOffset: number): boolean {
-
-        if (CPUService.is16bitsGPRorSP(toRegister) === false) {
-            throw new Exception(ExceptionType.ILLEGAL_INSTRUCTION,
-                `Invalid first operand: register index ${toRegister} out of bounds`,
-                this.IP.value, this.SP.value);
-        }
-
-        const address = this.registersBank.get(toRegister).value + toOffset;
+    private instrPUSH_REGADDRESS(toAddress: number): boolean {
 
         let word;
 
         try {
-            word = this.memoryService.loadWord(address);
+            word = this.memoryService.loadWord(toAddress);
         } catch (e) {
             throw new Exception(ExceptionType.MEMORY_ACCESS_ERROR,
-                e.message, this.IP.value, this.SP.value, address);
+                e.message, this.IP.value, this.SP.value, toAddress);
         }
 
         try {
@@ -1803,23 +1740,15 @@ export class CPUService {
     }
 
     @Instruction(OpCode.PUSHB_REGADDRESS, 'PUSHB', OperandType.REGADDRESS)
-    private instrPUSHB_REGADDRESS(toRegister: number, toOffset: number): boolean {
-
-        if (CPUService.is16bitsGPRorSP(toRegister) === false) {
-            throw new Exception(ExceptionType.ILLEGAL_INSTRUCTION,
-                `Invalid first operand: register index ${toRegister} out of bounds`,
-                this.IP.value, this.SP.value);
-        }
-
-        const address = this.registersBank.get(toRegister).value + toOffset;
+    private instrPUSHB_REGADDRESS(toAddress: number): boolean {
 
         let byte;
 
         try {
-            byte = this.memoryService.loadByte(address);
+            byte = this.memoryService.loadByte(toAddress);
         } catch (e) {
             throw new Exception(ExceptionType.MEMORY_ACCESS_ERROR,
-                e.message, this.IP.value, this.SP.value, address);
+                e.message, this.IP.value, this.SP.value, toAddress);
         }
 
         try {
@@ -1921,13 +1850,7 @@ export class CPUService {
     }
 
     @Instruction(OpCode.CALL_REGADDRESS, 'CALL', OperandType.REGADDRESS)
-    private instrCALL_REGADDRESS(toRegister: number, toOffset: number): boolean {
-
-        if (CPUService.is16bitsGPRorSP(toRegister) === false) {
-            throw new Exception(ExceptionType.ILLEGAL_INSTRUCTION,
-                `Invalid first operand: register index ${toRegister} out of bounds`,
-                this.IP.value, this.SP.value);
-        }
+    private instrCALL_REGADDRESS(toAddress: number): boolean {
 
         try {
             this.pushWord(this.nextIP);
@@ -1936,7 +1859,7 @@ export class CPUService {
                 e.message, this.IP.value, this.SP.value);
         }
 
-        this.IP.value = this.registersBank.get(toRegister).value + toOffset;
+        this.IP.value = toAddress;
 
         return false;
 
@@ -1994,23 +1917,15 @@ export class CPUService {
     }
 
     @Instruction(OpCode.MUL_REGADDRESS, 'MUL', OperandType.REGADDRESS)
-    private instrMUL_REGADDRESS(toRegister: number, toOffset: number): boolean {
-
-        if (CPUService.is16bitsGPRorSP(toRegister) === false) {
-            throw new Exception(ExceptionType.ILLEGAL_INSTRUCTION,
-                `Invalid first operand: register index ${toRegister} out of bounds`,
-                this.IP.value, this.SP.value);
-        }
-
-        const address = this.registersBank.get(toRegister).value + toOffset;
+    private instrMUL_REGADDRESS(toAddress: number): boolean {
 
         let word;
 
         try {
-            word = this.memoryService.loadWord(address);
+            word = this.memoryService.loadWord(toAddress);
         } catch (e) {
             throw new Exception(ExceptionType.MEMORY_ACCESS_ERROR,
-                e.message, this.IP.value, this.SP.value, address);
+                e.message, this.IP.value, this.SP.value, toAddress);
         }
 
         this.registersBank.get(CPURegisterIndex.A).value =
@@ -2062,8 +1977,8 @@ export class CPUService {
 
         const byteToRegister = CPUService.getByteFrom8bitsGPR(toRegister);
 
-        this.registersBank.get(CPURegisterIndex.A)['lsb'] =
-            this.alu.performMultiplication8Bits(this.registersBank.get(CPURegisterIndex.A)['lsb'],
+        this.registersBank.get(CPURegisterIndex.A)['low'] =
+            this.alu.performMultiplication8Bits(this.registersBank.get(CPURegisterIndex.A)['low'],
                 this.registersBank.get(toRegister)[byteToRegister]);
 
         return true;
@@ -2071,28 +1986,19 @@ export class CPUService {
     }
 
     @Instruction(OpCode.MULB_REGADDRESS, 'MULB', OperandType.REGADDRESS)
-    private instrMULB_REGADDRESS(toRegister: number, toOffset: number): boolean {
-
-
-        if (CPUService.is16bitsGPRorSP(toRegister) === false) {
-            throw new Exception(ExceptionType.ILLEGAL_INSTRUCTION,
-                `Invalid first operand: register index ${toRegister} out of bounds`,
-                this.IP.value, this.SP.value);
-        }
-
-        const address = this.registersBank.get(toRegister).value + toOffset;
+    private instrMULB_REGADDRESS(toAddress: number): boolean {
 
         let byte;
 
         try {
-            byte = this.memoryService.loadByte(address);
+            byte = this.memoryService.loadByte(toAddress);
         } catch (e) {
             throw new Exception(ExceptionType.MEMORY_ACCESS_ERROR,
-                e.message, this.IP.value, this.SP.value, address);
+                e.message, this.IP.value, this.SP.value, toAddress);
         }
 
-        this.registersBank.get(CPURegisterIndex.A)['lsb'] =
-            this.alu.performMultiplication8Bits(this.registersBank.get(CPURegisterIndex.A)['lsb'], byte);
+        this.registersBank.get(CPURegisterIndex.A)['low'] =
+            this.alu.performMultiplication8Bits(this.registersBank.get(CPURegisterIndex.A)['low'], byte);
 
         return true;
 
@@ -2110,8 +2016,8 @@ export class CPUService {
                 e.message, this.IP.value, this.SP.value, toAddress);
         }
 
-        this.registersBank.get(CPURegisterIndex.A)['lsb'] =
-            this.alu.performMultiplication8Bits(this.registersBank.get(CPURegisterIndex.A)['lsb'], byte);
+        this.registersBank.get(CPURegisterIndex.A)['low'] =
+            this.alu.performMultiplication8Bits(this.registersBank.get(CPURegisterIndex.A)['low'], byte);
 
         return true;
 
@@ -2120,8 +2026,8 @@ export class CPUService {
     @Instruction(OpCode.MULB_BYTE, 'MULB', OperandType.BYTE)
     private instrMULB_WORD(byte: number): boolean {
 
-        this.registersBank.get(CPURegisterIndex.A)['lsb'] =
-            this.alu.performMultiplication8Bits(this.registersBank.get(CPURegisterIndex.A)['lsb'],
+        this.registersBank.get(CPURegisterIndex.A)['low'] =
+            this.alu.performMultiplication8Bits(this.registersBank.get(CPURegisterIndex.A)['low'],
                 byte);
 
         return true;
@@ -2152,23 +2058,15 @@ export class CPUService {
     }
 
     @Instruction(OpCode.DIV_REGADDRESS, 'DIV', OperandType.REGADDRESS)
-    private instrDIV_REGADDRESS(toRegister: number, toOffset: number): boolean {
-
-        if (CPUService.is16bitsGPRorSP(toRegister) === false) {
-            throw new Exception(ExceptionType.ILLEGAL_INSTRUCTION,
-                `Invalid first operand: register index ${toRegister} out of bounds`,
-                this.IP.value, this.SP.value);
-        }
-
-        const address = this.registersBank.get(toRegister).value + toOffset;
+    private instrDIV_REGADDRESS(toAddress: number): boolean {
 
         let word;
 
         try {
-            word = this.memoryService.loadWord(address);
+            word = this.memoryService.loadWord(toAddress);
         } catch (e) {
             throw new Exception(ExceptionType.MEMORY_ACCESS_ERROR,
-                e.message, this.IP.value, this.SP.value, address);
+                e.message, this.IP.value, this.SP.value, toAddress);
         }
 
         try {
@@ -2237,8 +2135,8 @@ export class CPUService {
         const byteToRegister = CPUService.getByteFrom8bitsGPR(toRegister);
 
         try {
-            this.registersBank.get(CPURegisterIndex.A)['lsb'] =
-                this.alu.performDivision8Bits(this.registersBank.get(CPURegisterIndex.A)['lsb'],
+            this.registersBank.get(CPURegisterIndex.A)['low'] =
+                this.alu.performDivision8Bits(this.registersBank.get(CPURegisterIndex.A)['low'],
                     this.registersBank.get(toRegister)[byteToRegister]);
         } catch (error) {
             /* There is only one type of ALU error */
@@ -2251,28 +2149,20 @@ export class CPUService {
     }
 
     @Instruction(OpCode.DIVB_REGADDRESS, 'DIVB', OperandType.REGADDRESS)
-    private instrDIVB_REGADDRESS(toRegister: number, toOffset: number): boolean {
-
-        if (CPUService.is16bitsGPRorSP(toRegister) === false) {
-            throw new Exception(ExceptionType.ILLEGAL_INSTRUCTION,
-                `Invalid first operand: register index ${toRegister} out of bounds`,
-                this.IP.value, this.SP.value);
-        }
-
-        const address = this.registersBank.get(toRegister).value + toOffset;
+    private instrDIVB_REGADDRESS(toAddress: number): boolean {
 
         let byte;
 
         try {
-            byte = this.memoryService.loadByte(address);
+            byte = this.memoryService.loadByte(toAddress);
         } catch (e) {
             throw new Exception(ExceptionType.MEMORY_ACCESS_ERROR,
-                e.message, this.IP.value, this.SP.value, address);
+                e.message, this.IP.value, this.SP.value, toAddress);
         }
 
         try {
-            this.registersBank.get(CPURegisterIndex.A)['lsb'] =
-                this.alu.performDivision8Bits(this.registersBank.get(CPURegisterIndex.A)['lsb'], byte);
+            this.registersBank.get(CPURegisterIndex.A)['low'] =
+                this.alu.performDivision8Bits(this.registersBank.get(CPURegisterIndex.A)['low'], byte);
         } catch (error) {
             /* There is only one type of ALU error */
             throw new Exception(ExceptionType.DIVIDE_BY_ZERO,
@@ -2296,8 +2186,8 @@ export class CPUService {
         }
 
         try {
-            this.registersBank.get(CPURegisterIndex.A)['lsb'] =
-                this.alu.performDivision8Bits(this.registersBank.get(CPURegisterIndex.A)['lsb'], byte);
+            this.registersBank.get(CPURegisterIndex.A)['low'] =
+                this.alu.performDivision8Bits(this.registersBank.get(CPURegisterIndex.A)['low'], byte);
         } catch (error) {
             /* There is only one type of ALU error */
             throw new Exception(ExceptionType.DIVIDE_BY_ZERO,
@@ -2312,8 +2202,8 @@ export class CPUService {
     private instrDIV_BYTE(byte: number): boolean {
 
         try {
-            this.registersBank.get(CPURegisterIndex.A)['lsb'] =
-                this.alu.performDivision8Bits(this.registersBank.get(CPURegisterIndex.A)['lsb'], byte);
+            this.registersBank.get(CPURegisterIndex.A)['low'] =
+                this.alu.performDivision8Bits(this.registersBank.get(CPURegisterIndex.A)['low'], byte);
         } catch (error) {
             /* There is only one type of ALU error */
             throw new Exception(ExceptionType.DIVIDE_BY_ZERO,
@@ -2348,7 +2238,7 @@ export class CPUService {
     }
 
     @Instruction(OpCode.AND_REGADDRESS_WITH_REG16, 'AND', OperandType.REGISTER_16BITS, OperandType.REGADDRESS)
-    private instrAND_REGADDRESS_WITH_REG16(toRegister: number, fromRegister: number, fromOffset: number): boolean {
+    private instrAND_REGADDRESS_WITH_REG16(toRegister: number, fromAddress: number): boolean {
 
 
         if (CPUService.is16bitsGPRorSP(toRegister) === false) {
@@ -2356,21 +2246,14 @@ export class CPUService {
                 `Invalid first operand: register index ${toRegister} out of bounds`,
                 this.IP.value, this.SP.value);
         }
-        if (CPUService.is16bitsGPRorSP(fromRegister) === false) {
-            throw new Exception(ExceptionType.ILLEGAL_INSTRUCTION,
-                `Invalid second operand: register index ${fromRegister} out of bounds`,
-                this.IP.value, this.SP.value);
-        }
-
-        const address = this.registersBank.get(fromRegister).value + fromOffset;
 
         let word;
 
         try {
-            word = this.memoryService.loadWord(address);
+            word = this.memoryService.loadWord(fromAddress);
         } catch (e) {
             throw new Exception(ExceptionType.MEMORY_ACCESS_ERROR,
-                e.message, this.IP.value, this.SP.value, address);
+                e.message, this.IP.value, this.SP.value, fromAddress);
         }
 
         this.registersBank.get(toRegister).value =
@@ -2447,29 +2330,23 @@ export class CPUService {
     }
 
     @Instruction(OpCode.ANDB_REGADDRESS_WITH_REG8, 'ANDB', OperandType.REGISTER_8BITS, OperandType.REGADDRESS)
-    private instrANDB_REGADDRESS_WITH_REG8(toRegister: number, fromRegister: number, fromOffset: number): boolean {
+    private instrANDB_REGADDRESS_WITH_REG8(toRegister: number, fromAddress: number): boolean {
 
         if (CPUService.is8bitsGPR(toRegister) === false) {
             throw new Exception(ExceptionType.ILLEGAL_INSTRUCTION,
                 `Invalid first operand: register index ${toRegister} out of bounds`,
                 this.IP.value, this.SP.value);
         }
-        if (CPUService.is16bitsGPRorSP(fromRegister) === false) {
-            throw new Exception(ExceptionType.ILLEGAL_INSTRUCTION,
-                `Invalid second operand: register index ${fromRegister} out of bounds`,
-                this.IP.value, this.SP.value);
-        }
 
-        const address = this.registersBank.get(fromRegister).value + fromOffset;
         const byteToRegister = CPUService.getByteFrom8bitsGPR(toRegister);
 
         let byte;
 
         try {
-            byte = this.memoryService.loadByte(address);
+            byte = this.memoryService.loadByte(fromAddress);
         } catch (e) {
             throw new Exception(ExceptionType.MEMORY_ACCESS_ERROR,
-                e.message, this.IP.value, this.SP.value, address);
+                e.message, this.IP.value, this.SP.value, fromAddress);
         }
 
         this.registersBank.get(toRegister)[byteToRegister] =
@@ -2547,28 +2424,21 @@ export class CPUService {
     }
 
     @Instruction(OpCode.OR_REGADDRESS_WITH_REG16, 'OR', OperandType.REGISTER_16BITS, OperandType.REGADDRESS)
-    private instrOR_REGADDRESS_WITH_REG16(toRegister: number, fromRegister: number, fromOffset: number): boolean {
+    private instrOR_REGADDRESS_WITH_REG16(toRegister: number, fromAddress: number): boolean {
 
         if (CPUService.is16bitsGPRorSP(toRegister) === false) {
             throw new Exception(ExceptionType.ILLEGAL_INSTRUCTION,
                 `Invalid first operand: register index ${toRegister} out of bounds`,
                 this.IP.value, this.SP.value);
         }
-        if (CPUService.is16bitsGPRorSP(fromRegister) === false) {
-            throw new Exception(ExceptionType.ILLEGAL_INSTRUCTION,
-                `Invalid second operand: register index ${fromRegister} out of bounds`,
-                this.IP.value, this.SP.value);
-        }
-
-        const address = this.registersBank.get(fromRegister).value + fromOffset;
 
         let word;
 
         try {
-            word = this.memoryService.loadWord(address);
+            word = this.memoryService.loadWord(fromAddress);
         } catch (e) {
             throw new Exception(ExceptionType.MEMORY_ACCESS_ERROR,
-                e.message, this.IP.value, this.SP.value, address);
+                e.message, this.IP.value, this.SP.value, fromAddress);
         }
 
         this.registersBank.get(toRegister).value =
@@ -2645,29 +2515,23 @@ export class CPUService {
     }
 
     @Instruction(OpCode.ORB_REGADDRESS_WITH_REG8, 'ORB', OperandType.REGISTER_8BITS, OperandType.REGADDRESS)
-    private instrORB_REGADDRESS_WITH_REG8(toRegister: number, fromRegister: number, fromOffset: number): boolean {
+    private instrORB_REGADDRESS_WITH_REG8(toRegister: number, fromAddress: number): boolean {
 
         if (CPUService.is8bitsGPR(toRegister) === false) {
             throw new Exception(ExceptionType.ILLEGAL_INSTRUCTION,
                 `Invalid first operand: register index ${toRegister} out of bounds`,
                 this.IP.value, this.SP.value);
         }
-        if (CPUService.is16bitsGPRorSP(fromRegister) === false) {
-            throw new Exception(ExceptionType.ILLEGAL_INSTRUCTION,
-                `Invalid second operand: register index ${fromRegister} out of bounds`,
-                this.IP.value, this.SP.value);
-        }
 
-        const address = this.registersBank.get(fromRegister).value + fromOffset;
         const byteToRegister = CPUService.getByteFrom8bitsGPR(toRegister);
 
         let byte;
 
         try {
-            byte = this.memoryService.loadByte(address);
+            byte = this.memoryService.loadByte(fromAddress);
         } catch (e) {
             throw new Exception(ExceptionType.MEMORY_ACCESS_ERROR,
-                e.message, this.IP.value, this.SP.value, address);
+                e.message, this.IP.value, this.SP.value, fromAddress);
         }
 
         this.registersBank.get(toRegister)[byteToRegister] =
@@ -2745,28 +2609,21 @@ export class CPUService {
     }
 
     @Instruction(OpCode.XOR_REGADDRESS_WITH_REG16, 'XOR', OperandType.REGISTER_16BITS, OperandType.REGADDRESS)
-    private instrXOR_REGADDRESS_WITH_REG16(toRegister: number, fromRegister: number, fromOffset: number): boolean {
+    private instrXOR_REGADDRESS_WITH_REG16(toRegister: number, fromAddress: number): boolean {
 
         if (CPUService.is16bitsGPRorSP(toRegister) === false) {
             throw new Exception(ExceptionType.ILLEGAL_INSTRUCTION,
                 `Invalid first operand: register index ${toRegister} out of bounds`,
                 this.IP.value, this.SP.value);
         }
-        if (CPUService.is16bitsGPRorSP(fromRegister) === false) {
-            throw new Exception(ExceptionType.ILLEGAL_INSTRUCTION,
-                `Invalid second operand: register index ${fromRegister} out of bounds`,
-                this.IP.value, this.SP.value);
-        }
-
-        const address = this.registersBank.get(fromRegister).value + fromOffset;
 
         let word;
 
         try {
-            word = this.memoryService.loadWord(address);
+            word = this.memoryService.loadWord(fromAddress);
         } catch (e) {
             throw new Exception(ExceptionType.MEMORY_ACCESS_ERROR,
-                e.message, this.IP.value, this.SP.value, address);
+                e.message, this.IP.value, this.SP.value, fromAddress);
         }
 
         this.registersBank.get(toRegister).value =
@@ -2843,29 +2700,23 @@ export class CPUService {
     }
 
     @Instruction(OpCode.XORB_REGADDRESS_WITH_REG8, 'XORB', OperandType.REGISTER_8BITS, OperandType.REGADDRESS)
-    private instrXORB_REGADDRESS_WITH_REG8(toRegister: number, fromRegister: number, fromOffset: number): boolean {
+    private instrXORB_REGADDRESS_WITH_REG8(toRegister: number, fromAddress: number): boolean {
 
         if (CPUService.is8bitsGPR(toRegister) === false) {
             throw new Exception(ExceptionType.ILLEGAL_INSTRUCTION,
                 `Invalid first operand: register index ${toRegister} out of bounds`,
                 this.IP.value, this.SP.value);
         }
-        if (CPUService.is16bitsGPRorSP(fromRegister) === false) {
-            throw new Exception(ExceptionType.ILLEGAL_INSTRUCTION,
-                `Invalid second operand: register index ${fromRegister} out of bounds`,
-                this.IP.value, this.SP.value);
-        }
 
-        const address = this.registersBank.get(fromRegister).value + fromOffset;
         const byteToRegister = CPUService.getByteFrom8bitsGPR(toRegister);
 
         let byte;
 
         try {
-            byte = this.memoryService.loadByte(address);
+            byte = this.memoryService.loadByte(fromAddress);
         } catch (e) {
             throw new Exception(ExceptionType.MEMORY_ACCESS_ERROR,
-                e.message, this.IP.value, this.SP.value, address);
+                e.message, this.IP.value, this.SP.value, fromAddress);
         }
 
         this.registersBank.get(toRegister)[byteToRegister] =
@@ -2975,28 +2826,21 @@ export class CPUService {
     }
 
     @Instruction(OpCode.SHL_REGADDRESS_WITH_REG16, 'SHL', OperandType.REGISTER_16BITS, OperandType.REGADDRESS)
-    private instrSHL_REGADDRESS_WITH_REG16(toRegister: number, fromRegister: number, fromOffset: number): boolean {
+    private instrSHL_REGADDRESS_WITH_REG16(toRegister: number, fromAddress: number): boolean {
 
         if (CPUService.is16bitsGPRorSP(toRegister) === false) {
             throw new Exception(ExceptionType.ILLEGAL_INSTRUCTION,
                 `Invalid first operand: register index ${toRegister} out of bounds`,
                 this.IP.value, this.SP.value);
         }
-        if (CPUService.is16bitsGPRorSP(fromRegister) === false) {
-            throw new Exception(ExceptionType.ILLEGAL_INSTRUCTION,
-                `Invalid second operand: register index ${fromRegister} out of bounds`,
-                this.IP.value, this.SP.value);
-        }
-
-        const address = this.registersBank.get(fromRegister).value + fromOffset;
 
         let word;
 
         try {
-            word = this.memoryService.loadWord(address);
+            word = this.memoryService.loadWord(fromAddress);
         } catch (e) {
             throw new Exception(ExceptionType.MEMORY_ACCESS_ERROR,
-                e.message, this.IP.value, this.SP.value, address);
+                e.message, this.IP.value, this.SP.value, fromAddress);
         }
 
         this.registersBank.get(toRegister).value =
@@ -3073,29 +2917,23 @@ export class CPUService {
     }
 
     @Instruction(OpCode.SHLB_REGADDRESS_WITH_REG8, 'SHLB', OperandType.REGISTER_16BITS, OperandType.REGADDRESS)
-    private instrSHLB_REGADDRESS_WITH_REG8(toRegister: number, fromRegister: number, fromOffset: number): boolean {
+    private instrSHLB_REGADDRESS_WITH_REG8(toRegister: number, fromAddress: number): boolean {
 
         if (CPUService.is8bitsGPR(toRegister) === false) {
             throw new Exception(ExceptionType.ILLEGAL_INSTRUCTION,
                 `Invalid first operand: register index ${toRegister} out of bounds`,
                 this.IP.value, this.SP.value);
         }
-        if (CPUService.is16bitsGPRorSP(fromRegister) === false) {
-            throw new Exception(ExceptionType.ILLEGAL_INSTRUCTION,
-                `Invalid second operand: register index ${fromRegister} out of bounds`,
-                this.IP.value, this.SP.value);
-        }
 
-        const address = this.registersBank.get(fromRegister).value + fromOffset;
         const byteToRegister = CPUService.getByteFrom8bitsGPR(toRegister);
 
         let byte;
 
         try {
-            byte = this.memoryService.loadByte(address);
+            byte = this.memoryService.loadByte(fromAddress);
         } catch (e) {
             throw new Exception(ExceptionType.MEMORY_ACCESS_ERROR,
-                e.message, this.IP.value, this.SP.value, address);
+                e.message, this.IP.value, this.SP.value, fromAddress);
         }
 
         this.registersBank.get(toRegister)[byteToRegister] =
@@ -3173,28 +3011,21 @@ export class CPUService {
     }
 
     @Instruction(OpCode.SHR_REGADDRESS_WITH_REG16, 'SHR', OperandType.REGISTER_16BITS, OperandType.REGADDRESS)
-    private instrSHR_REGADDRESS_WITH_REG16(toRegister: number, fromRegister: number, fromOffset: number): boolean {
+    private instrSHR_REGADDRESS_WITH_REG16(toRegister: number, fromAddress: number): boolean {
 
         if (CPUService.is16bitsGPRorSP(toRegister) === false) {
             throw new Exception(ExceptionType.ILLEGAL_INSTRUCTION,
                 `Invalid first operand: register index ${toRegister} out of bounds`,
                 this.IP.value, this.SP.value);
         }
-        if (CPUService.is16bitsGPRorSP(fromRegister) === false) {
-            throw new Exception(ExceptionType.ILLEGAL_INSTRUCTION,
-                `Invalid second operand: register index ${fromRegister} out of bounds`,
-                this.IP.value, this.SP.value);
-        }
-
-        const address = this.registersBank.get(fromRegister).value + fromOffset;
 
         let word;
 
         try {
-            word = this.memoryService.loadWord(address);
+            word = this.memoryService.loadWord(fromAddress);
         } catch (e) {
             throw new Exception(ExceptionType.MEMORY_ACCESS_ERROR,
-                e.message, this.IP.value, this.SP.value, address);
+                e.message, this.IP.value, this.SP.value, fromAddress);
         }
 
         this.registersBank.get(toRegister).value =
@@ -3271,29 +3102,23 @@ export class CPUService {
     }
 
     @Instruction(OpCode.SHRB_REGADDRESS_WITH_REG8, 'SHRB', OperandType.REGISTER_8BITS, OperandType.REGADDRESS)
-    private instrSHRB_REGADDRESS_WITH_REG8(toRegister: number, fromRegister: number, fromOffset: number): boolean {
+    private instrSHRB_REGADDRESS_WITH_REG8(toRegister: number, fromAddress: number): boolean {
 
         if (CPUService.is8bitsGPR(toRegister) === false) {
             throw new Exception(ExceptionType.ILLEGAL_INSTRUCTION,
                 `Invalid first operand: register index ${toRegister} out of bounds`,
                 this.IP.value, this.SP.value);
         }
-        if (CPUService.is16bitsGPRorSP(fromRegister) === false) {
-            throw new Exception(ExceptionType.ILLEGAL_INSTRUCTION,
-                `Invalid second operand: register index ${fromRegister} out of bounds`,
-                this.IP.value, this.SP.value);
-        }
 
-        const address = this.registersBank.get(fromRegister).value + fromOffset;
         const byteToRegister = CPUService.getByteFrom8bitsGPR(toRegister);
 
         let byte;
 
         try {
-            byte = this.memoryService.loadByte(address);
+            byte = this.memoryService.loadByte(fromAddress);
         } catch (e) {
             throw new Exception(ExceptionType.MEMORY_ACCESS_ERROR,
-                e.message, this.IP.value, this.SP.value, address);
+                e.message, this.IP.value, this.SP.value, fromAddress);
         }
 
         this.registersBank.get(toRegister)[byteToRegister] =
@@ -3499,23 +3324,15 @@ export class CPUService {
     }
 
     @Instruction(OpCode.IN_REGADDRESS, 'IN', OperandType.REGADDRESS)
-    private instrIN_REGADDRESS(toRegister: number, toOffset: number) {
-
-        if (CPUService.is16bitsGPRorSP(toRegister) === false) {
-            throw new Exception(ExceptionType.ILLEGAL_INSTRUCTION,
-                `Invalid first operand: register index ${toRegister} out of bounds`,
-                this.IP.value, this.SP.value);
-        }
-
-        const address = this.registersBank.get(toRegister).value + toOffset;
+    private instrIN_REGADDRESS(toAddress: number) {
 
         let register_address;
 
         try {
-            register_address = this.memoryService.loadWord(address);
+            register_address = this.memoryService.loadWord(toAddress);
         } catch (e) {
             throw new Exception(ExceptionType.MEMORY_ACCESS_ERROR,
-                e.message, this.IP.value, this.SP.value, address);
+                e.message, this.IP.value, this.SP.value, toAddress);
         }
 
         this.registersBank.get(CPURegisterIndex.A).value =
@@ -3572,23 +3389,15 @@ export class CPUService {
     }
 
     @Instruction(OpCode.OUT_REGADDRESS, 'OUT', OperandType.REGADDRESS)
-    private instrOUT_REGADDRESS(toRegister: number, toOffset: number) {
-
-        if (CPUService.is16bitsGPRorSP(toRegister) === false) {
-            throw new Exception(ExceptionType.ILLEGAL_INSTRUCTION,
-                `Invalid first operand: register index ${toRegister} out of bounds`,
-                this.IP.value, this.SP.value);
-        }
-
-        const address = this.registersBank.get(toRegister).value + toOffset;
+    private instrOUT_REGADDRESS(toAddress: number) {
 
         let register_address;
 
         try {
-            register_address = this.memoryService.loadWord(address);
+            register_address = this.memoryService.loadWord(toAddress);
         } catch (e) {
             throw new Exception(ExceptionType.MEMORY_ACCESS_ERROR,
-                e.message, this.IP.value, this.SP.value, address);
+                e.message, this.IP.value, this.SP.value, toAddress);
         }
 
         const value = this.registersBank.get(CPURegisterIndex.A).value;

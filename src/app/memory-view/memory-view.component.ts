@@ -1,11 +1,24 @@
-import { Component, OnInit, Input, OnDestroy, SimpleChanges, OnChanges,
-    EventEmitter, Output } from '@angular/core';
-import { MemoryOperation, MemoryService, MemoryOperationType } from '../memory.service';
+import {
+    Component, OnInit, Input, OnDestroy, SimpleChanges, OnChanges,
+    EventEmitter, Output
+} from '@angular/core';
+
+import {
+    MemoryOperation, MemoryService, MemoryOperationType,
+    MemoryOperationParamsLoadStore,
+    MemoryOperationParamsStoreBytes,
+    MemoryOperationParamsAddRegion
+} from '../memory.service';
+
 import { Subscription } from 'rxjs/Subscription';
+
 import { ErrorBarService } from '../error-bar.service';
 import { Utils } from '../utils';
 import { CPUService } from '../cpu.service';
-import { CPURegisterIndex, CPURegisterOperation, CPURegisterOperationType } from '../cpuregs';
+import {
+    CPURegisterIndex, CPURegisterOperation, CPURegisterOperationType,
+    CPURegisterRegularOpParams, CPURegisterBitOpParams
+} from '../cpuregs';
 
 
 class MemoryCellView {
@@ -164,11 +177,11 @@ export class MemoryViewComponent implements OnInit, OnDestroy, OnChanges {
     }
 
     private operationAddRegion(regionID: string, name: string, startAddress: number, endAddress: number,
-                               initialValue: number = 0) {
+                               initialValues?: Array<number>) {
 
         for (let i = startAddress; i <= endAddress; i++) {
 
-            this.memoryCellViews[i].value = initialValue;
+            this.memoryCellViews[i].value = initialValues ? initialValues[i] : 0;
             this.memoryCellViews[i].isMemoryRegion = true;
             this.memoryCellViews[i].memoryRegionStyle =
                 name.replace(/([a-z])([A-Z])/g, '$1-$2').toLowerCase();
@@ -176,30 +189,6 @@ export class MemoryViewComponent implements OnInit, OnDestroy, OnChanges {
         }
 
         this.memoryRegionViews.set(regionID, {'startAddress': startAddress, 'endAddress': endAddress});
-
-    }
-
-    private operationRemoveRegion(regionID: string) {
-
-        const memoryRegion = this.memoryRegionViews.get(regionID);
-
-        if (memoryRegion) {
-
-            const startAddress = memoryRegion['startAddress'];
-            const endAddress = memoryRegion['endAddress'];
-
-            for (let i = startAddress; i <= endAddress; i++) {
-
-                this.memoryCellViews[i].value = 0;
-                this.memoryCellViews[i].memoryRegionStyle = undefined;
-                this.memoryCellViews[i].isMemoryRegion = false;
-                this.updateCellStyle(i);
-
-            }
-
-            this.memoryRegionViews.delete(regionID);
-
-        }
 
     }
 
@@ -248,7 +237,7 @@ export class MemoryViewComponent implements OnInit, OnDestroy, OnChanges {
 
     }
 
-    private operationPushWord(index: CPURegisterIndex, value: number) {
+    private operationPush(index: CPURegisterIndex, value: number) {
 
         let previousRegisterSPPointer;
 
@@ -257,25 +246,27 @@ export class MemoryViewComponent implements OnInit, OnDestroy, OnChanges {
             case CPURegisterIndex.SSP:
                 previousRegisterSPPointer = this.registerSSPPointer;
                 this.registerSSPPointer = value;
-                this.sspCells.push(previousRegisterSPPointer);
-                this.sspCells.push(previousRegisterSPPointer - 1);
+                for (let i = 0; previousRegisterSPPointer - i !== this.registerSSPPointer; i++) {
+                    this.sspCells.push(previousRegisterSPPointer - i);
+                    this.updateCellStyle(previousRegisterSPPointer - i);
+                }
                 break;
             case CPURegisterIndex.USP:
                 previousRegisterSPPointer = this.registerUSPPointer;
                 this.registerUSPPointer = value;
-                this.uspCells.push(previousRegisterSPPointer);
-                this.uspCells.push(previousRegisterSPPointer - 1);
+                for (let i = 0; previousRegisterSPPointer - i !== this.registerUSPPointer; i++) {
+                    this.uspCells.push(previousRegisterSPPointer - i);
+                    this.updateCellStyle(previousRegisterSPPointer - i);
+                }
                 break;
 
         }
 
-        this.updateCellStyle(previousRegisterSPPointer);
-        this.updateCellStyle(previousRegisterSPPointer - 1);
         this.updateCellStyle(value);
 
     }
 
-    private operationPushByte(index: CPURegisterIndex, value: number) {
+    private operationPop(index: CPURegisterIndex, value: number) {
 
         let previousRegisterSPPointer;
 
@@ -284,69 +275,23 @@ export class MemoryViewComponent implements OnInit, OnDestroy, OnChanges {
             case CPURegisterIndex.SSP:
                 previousRegisterSPPointer = this.registerSSPPointer;
                 this.registerSSPPointer = value;
-                this.sspCells.push(previousRegisterSPPointer);
+                for (let i = 1; previousRegisterSPPointer + i <= this.registerSSPPointer; i++) {
+                    this.sspCells.splice(this.sspCells.indexOf(previousRegisterSPPointer + i), 1);
+                    this.updateCellStyle(previousRegisterSPPointer + i);
+                }
                 break;
             case CPURegisterIndex.USP:
                 previousRegisterSPPointer = this.registerUSPPointer;
                 this.registerUSPPointer = value;
-                this.uspCells.push(previousRegisterSPPointer);
+                for (let i = 1; previousRegisterSPPointer + i <= this.registerSSPPointer; i++) {
+                    this.uspCells.splice(this.uspCells.indexOf(previousRegisterSPPointer + i), 1);
+                    this.updateCellStyle(previousRegisterSPPointer + i);
+                }
                 break;
 
         }
 
         this.updateCellStyle(previousRegisterSPPointer);
-        this.updateCellStyle(value);
-
-    }
-
-    private operationPopByte(index: CPURegisterIndex, value: number) {
-
-        let previousRegisterSPPointer;
-
-        switch (index) {
-
-            case CPURegisterIndex.SSP:
-                previousRegisterSPPointer = this.registerSSPPointer;
-                this.registerSSPPointer = value;
-                this.sspCells.splice(this.sspCells.indexOf(previousRegisterSPPointer + 1), 1);
-                break;
-            case CPURegisterIndex.USP:
-                previousRegisterSPPointer = this.registerUSPPointer;
-                this.registerUSPPointer = value;
-                this.uspCells.splice(this.uspCells.indexOf(previousRegisterSPPointer + 1), 1);
-                break;
-
-        }
-
-        this.updateCellStyle(previousRegisterSPPointer);
-        this.updateCellStyle(value);
-
-    }
-
-    private operationPopWord(index: CPURegisterIndex, value: number) {
-
-        let previousRegisterSPPointer;
-
-        switch (index) {
-
-            case CPURegisterIndex.SSP:
-                previousRegisterSPPointer = this.registerSSPPointer;
-                this.registerSSPPointer = value;
-                this.sspCells.splice(this.sspCells.indexOf(previousRegisterSPPointer + 1), 1);
-                this.sspCells.splice(this.sspCells.indexOf(previousRegisterSPPointer + 2), 1);
-                break;
-            case CPURegisterIndex.USP:
-                previousRegisterSPPointer = this.registerUSPPointer;
-                this.registerUSPPointer = value;
-                this.uspCells.splice(this.uspCells.indexOf(previousRegisterSPPointer + 1), 1);
-                this.uspCells.splice(this.uspCells.indexOf(previousRegisterSPPointer + 2), 1);
-                break;
-
-        }
-
-        this.updateCellStyle(previousRegisterSPPointer);
-        this.updateCellStyle(previousRegisterSPPointer + 1);
-        this.updateCellStyle(value);
 
     }
 
@@ -452,27 +397,51 @@ export class MemoryViewComponent implements OnInit, OnDestroy, OnChanges {
 
     }
 
+    private operationWriteBit(index: number, bitNumber: number, value: number) {
+
+        if (index === CPURegisterIndex.SR) {
+
+            if (value === 0) {
+                this.registerSR &= ~(1 << bitNumber);
+            } else {
+                this.registerSR |= (1 << bitNumber);
+            }
+
+            this.updateCellStyle(this.registerSSPPointer);
+            this.updateCellStyle(this.registerUSPPointer);
+
+        }
+
+    }
+
     private processCPURegisterOperation(cpuRegisterOperation: CPURegisterOperation) {
 
         switch (cpuRegisterOperation.operationType) {
 
             case CPURegisterOperationType.WRITE:
-                this.operationWriteRegister(cpuRegisterOperation.index, cpuRegisterOperation.value);
+                this.operationWriteRegister(
+                    (<CPURegisterRegularOpParams>cpuRegisterOperation.data).index,
+                    (<CPURegisterRegularOpParams>cpuRegisterOperation.data).value);
                 break;
-            case CPURegisterOperationType.PUSH_WORD:
-                this.operationPushWord(cpuRegisterOperation.index, cpuRegisterOperation.value);
+            case CPURegisterOperationType.WRITE_BIT:
+                this.operationWriteBit(
+                    (<CPURegisterBitOpParams>cpuRegisterOperation.data).index,
+                    (<CPURegisterBitOpParams>cpuRegisterOperation.data).bitNumber,
+                    (<CPURegisterBitOpParams>cpuRegisterOperation.data).value);
                 break;
-            case CPURegisterOperationType.PUSH_BYTE:
-                this.operationPushByte(cpuRegisterOperation.index, cpuRegisterOperation.value);
+            case CPURegisterOperationType.PUSH:
+                this.operationPush(
+                    (<CPURegisterRegularOpParams>cpuRegisterOperation.data).index,
+                    (<CPURegisterRegularOpParams>cpuRegisterOperation.data).value);
                 break;
-            case CPURegisterOperationType.POP_WORD:
-                this.operationPopWord(cpuRegisterOperation.index, cpuRegisterOperation.value);
+            case CPURegisterOperationType.POP:
+                this.operationPop(
+                    (<CPURegisterRegularOpParams>cpuRegisterOperation.data).index,
+                    (<CPURegisterRegularOpParams>cpuRegisterOperation.data).value);
                 break;
-            case CPURegisterOperationType.POP_BYTE:
-                this.operationPopByte(cpuRegisterOperation.index, cpuRegisterOperation.value);
+            default:
                 break;
         }
-
 
     }
 
@@ -482,37 +451,30 @@ export class MemoryViewComponent implements OnInit, OnDestroy, OnChanges {
 
             case MemoryOperationType.ADD_REGION:
                 this.operationAddRegion(
-                    memoryOperation.data.get('regionID'),
-                    memoryOperation.data.get('name'),
-                    memoryOperation.data.get('startAddress'),
-                    memoryOperation.data.get('endAddress'),
-                    memoryOperation.data.get('initialValue'));
-                break;
-            case MemoryOperationType.REMOVE_REGION:
-                this.operationRemoveRegion(memoryOperation.data.get('regionID'));
+                    (<MemoryOperationParamsAddRegion>memoryOperation.data).regionID,
+                    (<MemoryOperationParamsAddRegion>memoryOperation.data).name,
+                    (<MemoryOperationParamsAddRegion>memoryOperation.data).startAddress,
+                    (<MemoryOperationParamsAddRegion>memoryOperation.data).endAddress,
+                    (<MemoryOperationParamsAddRegion>memoryOperation.data).initialValues);
                 break;
             case MemoryOperationType.STORE_BYTE:
                 this.operationWriteByte(
-                    memoryOperation.data.get('address'),
-                    memoryOperation.data.get('value'));
+                    (<MemoryOperationParamsLoadStore>memoryOperation.data).address,
+                    (<MemoryOperationParamsLoadStore>memoryOperation.data).value);
                 break;
             case MemoryOperationType.STORE_BYTES:
                 this.operationWriteCells(
-                    memoryOperation.data.get('initialAddress'),
-                    memoryOperation.data.get('size'),
-                    memoryOperation.data.get('values'));
+                    (<MemoryOperationParamsStoreBytes>memoryOperation.data).initialAddress,
+                    (<MemoryOperationParamsStoreBytes>memoryOperation.data).size,
+                    (<MemoryOperationParamsStoreBytes>memoryOperation.data).values);
                 break;
             case MemoryOperationType.STORE_WORD:
                 this.operationWriteWord(
-                    memoryOperation.data.get('address'),
-                    memoryOperation.data.get('value'));
-                break;
-            case MemoryOperationType.LOAD_BYTE:
+                    (<MemoryOperationParamsLoadStore>memoryOperation.data).address,
+                    (<MemoryOperationParamsLoadStore>memoryOperation.data).value);
                 break;
             case MemoryOperationType.RESET:
                 this.operationReset();
-                break;
-            case MemoryOperationType.SIZE_CHANGE: // TODO: Complete the code to update the size of the memory
                 break;
             default:
                 break;

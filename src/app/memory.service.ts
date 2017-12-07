@@ -3,6 +3,8 @@ import { Injectable } from '@angular/core';
 import { Subject } from 'rxjs/Subject';
 import { Observable } from 'rxjs/Observable';
 
+import { Utils } from './utils';
+import { EventsLogService, SystemEvent } from './events-log.service';
 
 export enum MemoryCellAccessPermission {
 
@@ -14,14 +16,101 @@ export enum MemoryCellAccessPermission {
 export enum MemoryOperationType {
 
     RESET = 0,
-    SIZE_CHANGE = 1,
-    LOAD_BYTE = 2,
-    STORE_BYTE = 3,
-    STORE_BYTES = 4,
-    LOAD_WORD = 5,
-    STORE_WORD = 6,
-    ADD_REGION = 7,
-    REMOVE_REGION = 8
+    LOAD_BYTE = 1,
+    STORE_BYTE = 2,
+    STORE_BYTES = 3,
+    LOAD_WORD = 4,
+    STORE_WORD = 5,
+    ADD_REGION = 6
+
+}
+
+export interface MemoryOperationParamsLoadStore {
+
+    address: number;
+    value: number;
+
+}
+
+export interface MemoryOperationParamsStoreBytes {
+
+    initialAddress: number;
+    size: number;
+    values: Array<number>;
+
+}
+
+export interface MemoryOperationParamsAddRegion {
+
+    regionID: string;
+    name: string;
+    startAddress: number;
+    endAddress: number;
+    accessPermissions: MemoryCellAccessPermission;
+    initialValues: Array<number>;
+
+}
+
+type MemoryOperationParams = MemoryOperationParamsLoadStore | MemoryOperationParamsStoreBytes |
+    MemoryOperationParamsAddRegion;
+
+export class MemoryOperation implements SystemEvent {
+
+    public operationType: MemoryOperationType;
+    public data: MemoryOperationParams;
+
+    constructor(operationType: MemoryOperationType, data?: MemoryOperationParams) {
+
+        this.operationType = operationType;
+        this.data = data;
+
+    }
+
+    toString(): string {
+
+        let ret, params;
+
+        switch (this.operationType) {
+
+            case MemoryOperationType.RESET:
+                ret = `MEM: Reset memory`;
+                break;
+            case MemoryOperationType.LOAD_BYTE:
+                params = <MemoryOperationParamsLoadStore>this.data;
+                ret = `MEM: Load byte from [0x${Utils.pad(params.address, 16, 4)}] => 0x${Utils.pad(params.value, 16, 2)}`;
+                break;
+            case MemoryOperationType.STORE_BYTE:
+                params = <MemoryOperationParamsLoadStore>this.data;
+                ret = `MEM: Store byte 0x${Utils.pad(params.value, 16, 2)} at [0x${Utils.pad(params.address, 16, 4)}]`;
+                break;
+            case MemoryOperationType.STORE_BYTES:
+                params = <MemoryOperationParamsStoreBytes>this.data;
+                if (params.values) {
+                    ret = `MEM: Store ${params.size} bytes at [0x${Utils.pad(params.initialAddress, 16, 4)}]`;
+                } else {
+                    ret = `MEM: Clear ${params.size} bytes at [0x${Utils.pad(params.initialAddress, 16, 4)}]`;
+                }
+                break;
+            case MemoryOperationType.LOAD_WORD:
+                params = <MemoryOperationParamsLoadStore>this.data;
+                ret = `MEM: Load word from [0x${Utils.pad(params.address, 16, 4)}] => 0x${Utils.pad(params.value, 16, 4)}`;
+                break;
+            case MemoryOperationType.STORE_WORD:
+                params = <MemoryOperationParamsLoadStore>this.data;
+                ret = `MEM: Store word 0x${Utils.pad(params.value, 16, 4)} at [0x${Utils.pad(params.address, 16, 4)}]`;
+                break;
+            case MemoryOperationType.ADD_REGION:
+                params = <MemoryOperationParamsAddRegion>this.data;
+                ret = `MEM: Add region ${params.name} at addresses ` +
+                    `[0x${Utils.pad(params.startAddress, 16, 4)}, 0x${Utils.pad(params.endAddress, 16, 4)}]`;
+                break;
+            default:
+                break;
+        }
+
+        return ret;
+
+    }
 
 }
 
@@ -45,19 +134,7 @@ class MemoryCell {
 
 }
 
-export class MemoryOperation {
-
-    public operationType: MemoryOperationType;
-    public data: Map<string, any>;
-
-    constructor(operationType: MemoryOperationType, data?: Map<string, any>) {
-
-        this.operationType = operationType;
-        this.data = data;
-
-    }
-
-}
+type PublishMemoryOperation = (operation: MemoryOperation) => void;
 
 /**
  * Memory region class.
@@ -94,20 +171,20 @@ export class MemoryRegion {
     /**
      * Event emitter throw which the operations done to a cell within the region will be broadcasted.
      */
-    public operationSource: Subject<MemoryOperation>;
+    public publishMemoryOperation: PublishMemoryOperation;
 
     public lastAccess = -1;
 
     constructor(regionID: string, name: string, startAddress: number, endAddress: number,
                 accessPermissions: MemoryCellAccessPermission = MemoryCellAccessPermission.READ_WRITE,
-                operationSource?: Subject<MemoryOperation>) {
+                publishMemoryOperation?: PublishMemoryOperation) {
 
         this.regionID = regionID;
         this.name = name;
         this.startAddress = startAddress;
         this.endAddress = endAddress;
         this.accessPermissions = accessPermissions;
-        this.operationSource = operationSource;
+        this.publishMemoryOperation = publishMemoryOperation;
         this.size = endAddress - startAddress + 1;
 
     }
@@ -129,7 +206,7 @@ export class MemoryService {
 
     public memoryOperation$: Observable<MemoryOperation>;
 
-    constructor() {
+    constructor(private eventsLogService: EventsLogService) {
 
         this.memoryCells = Array<MemoryCell>(this.size);
         for (let i = 0; i < this.size; i++) {
@@ -146,9 +223,16 @@ export class MemoryService {
 
     }
 
+    private publishMemoryOperation(operation: MemoryOperation) {
+
+        this.memoryOperationSource.next(operation);
+        this.eventsLogService.log(operation);
+
+    }
+
     public addMemoryRegion(name: string, startAddress: number, endAddress: number,
                            accessPermissions: MemoryCellAccessPermission = MemoryCellAccessPermission.READ_WRITE,
-                           initialValues?: Array<number>, operationSource?: Subject<MemoryOperation>): string {
+                           initialValues?: Array<number>, publishMemoryOperation?: PublishMemoryOperation): string {
 
         /* We need to first check that startAddress and endAddress are valid, i.e.:
            - startAddress >= 0 AND endAddress < size AND
@@ -212,7 +296,7 @@ export class MemoryService {
 
         /* Now we can insert the new memory region */
         const newMemoryRegion = new MemoryRegion(newID, name, startAddress, endAddress,
-            accessPermissions, operationSource);
+            accessPermissions, publishMemoryOperation);
         this.memoryRegions.set(newID, newMemoryRegion);
 
         for (let i = startAddress; i <= endAddress; i++) {
@@ -221,62 +305,18 @@ export class MemoryService {
             this.memoryCells[i].memoryRegion = newMemoryRegion;
         }
 
-        const parameters: Map<string, any> = new Map<string, any>();
-        parameters.set('regionID', newID);
-        parameters.set('name', name);
-        parameters.set('startAddress', startAddress);
-        parameters.set('endAddress', endAddress);
-        parameters.set('accessPermissions', accessPermissions);
-        parameters.set('initialValues', initialValues);
+        const parameters: MemoryOperationParamsAddRegion = {
+            regionID: newID,
+            name: name,
+            startAddress: startAddress,
+            endAddress: endAddress,
+            accessPermissions: accessPermissions,
+            initialValues: initialValues
+        };
 
-        this.memoryOperationSource.next(new MemoryOperation(MemoryOperationType.ADD_REGION, parameters));
+        this.publishMemoryOperation(new MemoryOperation(MemoryOperationType.ADD_REGION, parameters));
 
         return newID;
-
-    }
-
-    public removeMemoryRegion(regionID: string) {
-
-        const memoryRegion = this.memoryRegions.get(regionID);
-
-        if (memoryRegion) {
-
-            for (let i = memoryRegion.startAddress; i <= memoryRegion.endAddress; i++) {
-
-                this.memoryCells[i].memoryRegion = undefined;
-                this.memoryCells[i].accessPermissions = MemoryCellAccessPermission.READ_WRITE;
-                this.memoryCells[i].dataValue = 0;
-
-            }
-
-            this.memoryRegions.delete(regionID);
-
-            const parameters: Map<string, any> = new Map<string, any>();
-            parameters.set('regionID', regionID);
-
-            this.memoryOperationSource.next(new MemoryOperation(MemoryOperationType.REMOVE_REGION, parameters));
-
-        }
-
-    }
-
-    public setMemorySize(size: number): Array<MemoryCell> {
-
-        this.lastAccess = -1;
-        this.size = size;
-        this.memoryCells = new Array(this.size);
-
-        for (let i = 0; i < this.size; i++) {
-            this.memoryCells[i] = new MemoryCell(i);
-        }
-
-        this.memoryRegions.clear();
-
-        const parameters: Map<string, any> = new Map<string, any>();
-        parameters.set('size', size);
-        this.memoryOperationSource.next(new MemoryOperation(MemoryOperationType.SIZE_CHANGE, parameters));
-
-        return this.memoryCells;
 
     }
 
@@ -288,24 +328,26 @@ export class MemoryService {
 
         this.lastAccess = address;
 
-        const parameters: Map<string, any> = new Map<string, any>();
-        parameters.set('address', address);
-        parameters.set('value', this.memoryCells[address].dataValue);
+        const parameters: MemoryOperationParamsLoadStore = {
+            address: address,
+            value: this.memoryCells[address].dataValue
+        };
+
+        const operation = new MemoryOperation(MemoryOperationType.LOAD_BYTE, parameters);
+
+        this.publishMemoryOperation(operation);
 
         if (this.memoryCells[address].memoryRegion) {
 
             this.memoryCells[address].memoryRegion.lastAccess = address;
 
-            if (this.memoryCells[address].memoryRegion.operationSource && publish === true) {
+            if (this.memoryCells[address].memoryRegion.publishMemoryOperation && publish === true) {
 
-                this.memoryCells[address].memoryRegion.operationSource.next(
-                    new MemoryOperation(MemoryOperationType.LOAD_BYTE, parameters));
+                this.memoryCells[address].memoryRegion.publishMemoryOperation(operation);
 
             }
 
         }
-
-        this.memoryOperationSource.next(new MemoryOperation(MemoryOperationType.LOAD_BYTE, parameters));
 
         return this.memoryCells[address].dataValue;
 
@@ -336,23 +378,26 @@ export class MemoryService {
         this.lastAccess = address;
         this.memoryCells[address].dataValue = value;
 
-        const parameters: Map<string, any> = new Map<string, any>();
-        parameters.set('address', address);
-        parameters.set('value', value);
+        const parameters: MemoryOperationParamsLoadStore = {
+            address: address,
+            value: value
+        };
+
+        const operation = new MemoryOperation(MemoryOperationType.STORE_BYTE, parameters);
+
+        this.publishMemoryOperation(operation);
 
         if (this.memoryCells[address].memoryRegion) {
 
             this.memoryCells[address].memoryRegion.lastAccess = address;
 
-            if (this.memoryCells[address].memoryRegion.operationSource && publish === true) {
+            if (this.memoryCells[address].memoryRegion.publishMemoryOperation && publish === true) {
 
-                this.memoryCells[address].memoryRegion.operationSource.next(
-                    new MemoryOperation(MemoryOperationType.STORE_BYTE, parameters));
+                this.memoryCells[address].memoryRegion.publishMemoryOperation(operation);
 
             }
         }
 
-        this.memoryOperationSource.next(new MemoryOperation(MemoryOperationType.STORE_BYTE, parameters));
 
     }
 
@@ -382,12 +427,13 @@ export class MemoryService {
 
         this.lastAccess = initialAddress + size;
 
-        const parameters: Map<string, any> = new Map<string, any>();
-        parameters.set('initialAddress', initialAddress);
-        parameters.set('size', size);
-        parameters.set('values', values);
+        const parameters: MemoryOperationParamsStoreBytes = {
+            initialAddress: initialAddress,
+            size: size,
+            values: values
+        };
 
-        this.memoryOperationSource.next(new MemoryOperation(MemoryOperationType.STORE_BYTES, parameters));
+        this.publishMemoryOperation(new MemoryOperation(MemoryOperationType.STORE_BYTES, parameters));
 
     }
 
@@ -402,24 +448,26 @@ export class MemoryService {
         const word = (this.memoryCells[address].dataValue << 8) +
             (this.memoryCells[address + 1].dataValue);
 
-        const parameters: Map<string, any> = new Map<string, any>();
-        parameters.set('address', address);
-        parameters.set('value', word);
+        const parameters: MemoryOperationParamsLoadStore = {
+            address: address,
+            value: word
+        };
+
+        const operation = new MemoryOperation(MemoryOperationType.LOAD_WORD, parameters);
+
+        this.publishMemoryOperation(operation);
 
         if (this.memoryCells[address].memoryRegion) {
 
             this.memoryCells[address].memoryRegion.lastAccess = address;
 
-            if (this.memoryCells[address].memoryRegion.operationSource && publish === true) {
+            if (this.memoryCells[address].memoryRegion.publishMemoryOperation && publish === true) {
 
-                this.memoryCells[address].memoryRegion.operationSource.next(
-                    new MemoryOperation(MemoryOperationType.LOAD_WORD, parameters));
+                this.memoryCells[address].memoryRegion.publishMemoryOperation(operation);
 
             }
 
         }
-
-        this.memoryOperationSource.next(new MemoryOperation(MemoryOperationType.LOAD_WORD, parameters));
 
         return word;
 
@@ -456,23 +504,25 @@ export class MemoryService {
         this.memoryCells[address].dataValue = msb;
         this.memoryCells[address + 1].dataValue = lsb;
 
-        const parameters: Map<string, any> = new Map<string, any>();
-        parameters.set('address', address);
-        parameters.set('value', value);
+        const parameters: MemoryOperationParamsLoadStore = {
+            address: address,
+            value: value
+        };
+
+        const operation = new MemoryOperation(MemoryOperationType.STORE_WORD, parameters);
+
+        this.publishMemoryOperation(operation);
 
         if (this.memoryCells[address].memoryRegion) {
 
             this.memoryCells[address].memoryRegion.lastAccess = address;
 
-            if (this.memoryCells[address].memoryRegion.operationSource && publish === true) {
+            if (this.memoryCells[address].memoryRegion.publishMemoryOperation && publish === true) {
 
-                this.memoryCells[address].memoryRegion.operationSource.next(
-                    new MemoryOperation(MemoryOperationType.STORE_WORD, parameters));
+                this.memoryCells[address].memoryRegion.publishMemoryOperation(operation);
 
             }
         }
-
-        this.memoryOperationSource.next(new MemoryOperation(MemoryOperationType.STORE_WORD, parameters));
 
     }
 
@@ -488,7 +538,7 @@ export class MemoryService {
 
         }
 
-        this.memoryOperationSource.next(new MemoryOperation(MemoryOperationType.RESET));
+        this.publishMemoryOperation(new MemoryOperation(MemoryOperationType.RESET));
 
     }
 

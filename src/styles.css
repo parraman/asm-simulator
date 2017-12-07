@@ -1,3 +1,7 @@
+a {
+  cursor: pointer;
+}
+
 .navbar.navbar-inverse {
   background-color:#428BCA;
   background-image:none;
@@ -291,4 +295,82 @@ body {
 
 .breakpoints {
   width: 12px;
+}
+
+.events-log-list {
+  overflow-y: scroll;
+  height: 262px;
+  border-radius: 4px;
+  border: 1px solid #ccc;
+  -webkit-box-shadow: inset 0 1px 1px rgba(0, 0, 0, .075);
+  box-shadow: inset 0 1px 1px rgba(0, 0, 0, .075);
+  padding-top: 3px;
+  padding-bottom: 3px;
+  width: 100%;
+  margin-bottom: 8px;
+}
+
+.event {
+  height: 20px;
+  padding: 4px 8px;
+  line-height: 12px;
+  font-size: 80%;
+  border: none;
+  font-weight: 700;
+}
+
+.event-enabler {
+  text-decoration: line-through;
+}
+
+.event-enabler.enabled {
+  text-decoration: none;
+}
+
+.event-enabler.muted {
+  filter: alpha(opacity=65);
+  opacity: .65;
+}
+
+.memory-operation-event {
+  color: orchid;
+}
+
+.control-unit-event {
+  color: #E67E22;
+}
+
+.cpu-registers-event {
+  color: #22D19D;
+}
+
+.alu-event {
+  color: #A137ED;
+}
+
+.io-registers-event {
+  color: #E81F1F;
+}
+
+.irq-controller-event {
+  color: #4D8C20;
+}
+
+.textual-display-event {
+  color: peru;
+}
+
+.visual-display-event {
+  color: #fa8072;
+}
+
+.keypad-event {
+  color: darkslateblue;
+}
+
+
+a[disabled] {
+  pointer-events: none;
+  filter: alpha(opacity=65);
+  opacity: .65;
 }

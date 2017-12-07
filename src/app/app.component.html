@@ -16,11 +16,16 @@
     <div class="col-md-6">
       <div class="panel panel-default">
         <div class="panel-body">
-          <h4>Code <small>(<a style="cursor: pointer" (click)="setCodeSample(1)">Sample 1</a>, <a style="cursor: pointer" (click)="setCodeSample(2)">Sample 2</a>, <a style="cursor: pointer" (click)="setCodeSample(3)">Sample 3</a>, <a style="cursor: pointer" (click)="setCodeSample(4)">Sample 4</a>, <a style="cursor: pointer" (click)="setCodeSample(5)">Sample 5</a>)</small></h4>
+          <h4>Code <small>(<a (click)="setCodeSample(1)">Sample 1</a>, <a (click)="setCodeSample(2)">Sample 2</a>, <a (click)="setCodeSample(3)">Sample 3</a>, <a (click)="setCodeSample(4)">Sample 4</a>, <a (click)="setCodeSample(5)">Sample 5</a>)</small></h4>
           <form>
             <textarea #codeTextArea name="code" class="source-code"></textarea>
             <button class="btn btn-default btn-secondary" type="button" style="background-image:none;" (click)="assemble()">Assemble </button>
           </form>
+        </div>
+      </div>
+      <div class="panel panel-default">
+        <div class="panel-body" style="padding-bottom: 10px">
+          <app-events-log-viewer [isRunning]="isRunning"></app-events-log-viewer>
         </div>
       </div>
     </div>

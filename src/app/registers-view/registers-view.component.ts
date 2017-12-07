@@ -4,7 +4,10 @@ import { Subscription } from 'rxjs/Subscription';
 import { Utils } from '../utils';
 
 import { CPUService } from '../cpu.service';
-import { CPURegisterIndex, CPURegisterOperation, CPURegisterOperationType } from '../cpuregs';
+import {
+    CPURegisterIndex, CPURegisterOperation, CPURegisterOperationType,
+    CPURegisterRegularOpParams, CPURegisterBitOpParams
+} from '../cpuregs';
 
 class CPURegisterView {
 
@@ -96,18 +99,26 @@ export class RegistersViewComponent implements OnInit, OnDestroy {
         let register = registerBank.get(CPURegisterIndex.A);
         this.A = new CPURegisterView(register.name, register.value, register.description);
         this.registersMap.set(CPURegisterIndex.A, this.A);
+        this.registersMap.set(CPURegisterIndex.AH, this.A);
+        this.registersMap.set(CPURegisterIndex.AL, this.A);
 
         register = registerBank.get(CPURegisterIndex.B);
         this.B = new CPURegisterView(register.name, register.value, register.description);
         this.registersMap.set(CPURegisterIndex.B, this.B);
+        this.registersMap.set(CPURegisterIndex.BH, this.B);
+        this.registersMap.set(CPURegisterIndex.BL, this.B);
 
         register = registerBank.get(CPURegisterIndex.C);
         this.C = new CPURegisterView(register.name, register.value, register.description);
         this.registersMap.set(CPURegisterIndex.C, this.C);
+        this.registersMap.set(CPURegisterIndex.CH, this.C);
+        this.registersMap.set(CPURegisterIndex.CL, this.C);
 
         register = registerBank.get(CPURegisterIndex.D);
         this.D = new CPURegisterView(register.name, register.value, register.description);
         this.registersMap.set(CPURegisterIndex.D, this.D);
+        this.registersMap.set(CPURegisterIndex.DH, this.D);
+        this.registersMap.set(CPURegisterIndex.DL, this.D);
 
         register = registerBank.get(CPURegisterIndex.IP);
         this.IP = new CPURegisterView(register.name, register.value, register.description);
@@ -150,16 +161,16 @@ export class RegistersViewComponent implements OnInit, OnDestroy {
         const registerView = this.registersMap.get(index);
 
         switch (index) {
-            case AH:
-            case BH:
-            case CH:
-            case DH:
+            case CPURegisterIndex.AH:
+            case CPURegisterIndex.BH:
+            case CPURegisterIndex.CH:
+            case CPURegisterIndex.DH:
                 registerView.value = (registerView.value & 0x00FF) + (value << 8);
                 break;
-            case AL:
-            case BL:
-            case CL:
-            case DL:
+            case CPURegisterIndex.AL:
+            case CPURegisterIndex.BL:
+            case CPURegisterIndex.CL:
+            case CPURegisterIndex.DL:
                 registerView.value = (registerView.value & 0xFF00) + value;
                 break;
             default:
@@ -189,14 +200,14 @@ export class RegistersViewComponent implements OnInit, OnDestroy {
             case CPURegisterOperationType.PUSH:
             case CPURegisterOperationType.POP:
                 this.operationWriteRegister(
-                    cpuRegisterOperation.data.get('index'),
-                    cpuRegisterOperation.data.get('value'));
+                    (<CPURegisterRegularOpParams>cpuRegisterOperation.data).index,
+                    (<CPURegisterRegularOpParams>cpuRegisterOperation.data).value);
                 break;
             case CPURegisterOperationType.WRITE_BIT:
                 this.operationWriteBit(
-                    cpuRegisterOperation.data.get('index'),
-                    cpuRegisterOperation.data.get('bitNumber'),
-                    cpuRegisterOperation.data.get('value'));
+                    (<CPURegisterBitOpParams>cpuRegisterOperation.data).index,
+                    (<CPURegisterBitOpParams>cpuRegisterOperation.data).bitNumber,
+                    (<CPURegisterBitOpParams>cpuRegisterOperation.data).value);
                 break;
             default:
                 break;

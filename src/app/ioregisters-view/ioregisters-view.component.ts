@@ -1,6 +1,8 @@
 import { Component, OnInit, OnDestroy } from '@angular/core';
 
-import { IORegisterOperation, IORegMapService, IORegisterOperationType } from '../ioregmap.service';
+import { IORegisterOperation, IORegMapService, IORegisterOperationType,
+         IORegisterOperationAddRegister,
+         IORegisterOperationParamsReadWrite } from '../ioregmap.service';
 import { Utils } from '../utils';
 
 import { Subscription } from 'rxjs/Subscription';
@@ -120,17 +122,6 @@ export class IORegistersViewComponent implements OnInit, OnDestroy {
 
     }
 
-    private operationRemoveRegister(address: number) {
-
-        if (this.registersViewMap.has(address)) {
-
-            this.registersViewMap.delete(address);
-            this.registerAddresses.splice(this.registerAddresses.indexOf(address), 1);
-
-        }
-
-    }
-
     private operationWriteRegister(address: number, value: number) {
 
         const registerView = this.registersViewMap.get(address);
@@ -149,19 +140,15 @@ export class IORegistersViewComponent implements OnInit, OnDestroy {
 
             case IORegisterOperationType.ADD_REGISTER:
                 this.operationAddRegister(
-                    ioRegisterOperation.data.get('name'),
-                    ioRegisterOperation.data.get('address'),
-                    ioRegisterOperation.data.get('initialValue'),
-                    ioRegisterOperation.data.get('description'));
-                break;
-            case IORegisterOperationType.REMOVE_REGISTER:
-                this.operationRemoveRegister(
-                    ioRegisterOperation.data.get('address'));
+                    (<IORegisterOperationAddRegister>ioRegisterOperation.data).name,
+                    (<IORegisterOperationAddRegister>ioRegisterOperation.data).address,
+                    (<IORegisterOperationAddRegister>ioRegisterOperation.data).initialValue,
+                    (<IORegisterOperationAddRegister>ioRegisterOperation.data).description);
                 break;
             case IORegisterOperationType.WRITE:
                 this.operationWriteRegister(
-                    ioRegisterOperation.data.get('address'),
-                    ioRegisterOperation.data.get('value'));
+                    (<IORegisterOperationParamsReadWrite>ioRegisterOperation.data).address,
+                    (<IORegisterOperationParamsReadWrite>ioRegisterOperation.data).value);
                 break;
 
         }

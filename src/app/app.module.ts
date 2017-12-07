@@ -20,6 +20,9 @@ import { IrqCtrlService } from './irqctrl.service';
 import { CPUService } from './cpu.service';
 import { PreventScrollDirective } from './prevent-scroll.directive';
 import { TimerService } from './timer.service';
+import { EventsLogViewerComponent } from './events-log-viewer/events-log-viewer.component';
+import { ClockService } from './clock.service';
+import { EventsLogService } from './events-log.service';
 
 @NgModule({
     declarations: [
@@ -32,7 +35,8 @@ import { TimerService } from './timer.service';
         IORegistersViewComponent,
         ErrorBarComponent,
         AutofocusDirective,
-        PreventScrollDirective
+        PreventScrollDirective,
+        EventsLogViewerComponent
     ],
     imports: [
         BrowserModule,
@@ -45,7 +49,9 @@ import { TimerService } from './timer.service';
         ErrorBarService,
         IrqCtrlService,
         CPUService,
-        TimerService
+        TimerService,
+        ClockService,
+        EventsLogService
     ],
     bootstrap: [AppComponent]
 })

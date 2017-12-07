@@ -1,11 +1,13 @@
 import { Injectable } from '@angular/core';
 import { IrqCtrlService } from './irqctrl.service';
-import { IORegMapService, IORegisterOperation, IORegisterType,
-    IORegisterOperationType} from './ioregmap.service';
+import {
+    IORegMapService, IORegisterOperation, IORegisterType,
+    IORegisterOperationType, IORegisterOperationParamsReadWrite
+} from './ioregmap.service';
 
 import { Subject } from 'rxjs/Subject';
 import { Observable } from 'rxjs/Observable';
-import { CPUService} from './cpu.service';
+import { ClockService} from './clock.service';
 import { Subscription } from 'rxjs/Subscription';
 
 
@@ -15,7 +17,7 @@ const TMRCOUNTER_REGISTER_ADDRESS = 4;
 enum TimerState {
 
     RESET = 0,
-    PRELOADED = 1,
+    PRELOAD = 1,
     RUNNING = 2,
     DEPLETED = 3
 
@@ -33,11 +35,17 @@ export class TimerService {
 
     private ioRegisterOperation$: Observable<IORegisterOperation>;
 
-    private cpuConsumeTicksSubscription: Subscription;
+    private clockConsumeTicksSubscription: Subscription;
+
+    private publishIORegisterOperation(operation: IORegisterOperation) {
+
+        this.ioRegisterOperationSource.next(operation);
+
+    }
 
     constructor(private ioRegMapService: IORegMapService,
                 private irqCtrlService: IrqCtrlService,
-                private cpuService: CPUService) {
+                private clockService: ClockService) {
 
         this.ioRegisterOperation$ = this.ioRegisterOperationSource.asObservable();
 
@@ -46,12 +54,12 @@ export class TimerService {
         );
 
         ioRegMapService.addRegister('TMRPRELOAD', TMRPRELOAD_REGISTER_ADDRESS, 0, IORegisterType.READ_WRITE,
-            this.ioRegisterOperationSource, 'Timer Preload Register');
+            (op) => this.publishIORegisterOperation(op), 'Timer Preload Register');
         ioRegMapService.addRegister('TMRCOUNTER', TMRCOUNTER_REGISTER_ADDRESS, 0, IORegisterType.READ_ONLY,
-            this.ioRegisterOperationSource, 'Timer counter Register');
+            (op) => this.publishIORegisterOperation(op), 'Timer counter Register');
 
-        this.cpuConsumeTicksSubscription = this.cpuService.cpuConsumeTicks$.subscribe(
-            (ticks) => this.processCPUConsumeTicks(ticks)
+        this.clockConsumeTicksSubscription = this.clockService.clockConsumeTicks$.subscribe(
+            (ticks) => this.processClockConsumeTicks(ticks)
         );
 
     }
@@ -63,7 +71,7 @@ export class TimerService {
                 this.timerPreloadRegister = value;
                 this.timerCounterRegister = value;
 
-                this.state = TimerState.PRELOADED;
+                this.state = TimerState.PRELOAD;
 
                 this.ioRegMapService.store(TMRCOUNTER_REGISTER_ADDRESS, value, false, false);
                 break;
@@ -80,20 +88,20 @@ export class TimerService {
                 break;
             case IORegisterOperationType.WRITE:
                 this.processWriteOperation(
-                    ioRegisterOperation.data.get('address'),
-                    ioRegisterOperation.data.get('value'));
+                    (<IORegisterOperationParamsReadWrite>ioRegisterOperation.data).address,
+                    (<IORegisterOperationParamsReadWrite>ioRegisterOperation.data).value);
                 break;
         }
 
     }
 
-    private processCPUConsumeTicks(ticks: number) {
+    private processClockConsumeTicks(ticks: number) {
 
         switch (this.state) {
 
             case TimerState.RESET:
                 break;
-            case TimerState.PRELOADED:
+            case TimerState.PRELOAD:
                 this.state = TimerState.RUNNING;
                 break;
             case TimerState.RUNNING:
@@ -119,7 +127,7 @@ export class TimerService {
 
         this.state = TimerState.RESET;
         this.timerPreloadRegister = 0;
-        this.timerCounterRegister = 0; 
+        this.timerCounterRegister = 0;
 
         this.ioRegMapService.store(TMRPRELOAD_REGISTER_ADDRESS, 0, false, false);
         this.ioRegMapService.store(TMRCOUNTER_REGISTER_ADDRESS, 0, false, false);

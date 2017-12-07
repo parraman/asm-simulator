@@ -76,12 +76,29 @@ export enum CPURegisterOperationType {
 
 }
 
+export interface CPURegisterRegularOpParams {
+
+    index: number;
+    value: number;
+
+}
+
+export interface CPURegisterBitOpParams {
+
+    index: number;
+    bitNumber: number;
+    value: number;
+
+}
+
+type CPURegisterOperationParams = CPURegisterRegularOpParams | CPURegisterBitOpParams;
+
 export class CPURegisterOperation {
 
     public operationType: CPURegisterOperationType;
-    public data: Map<string, any>;
+    public data: CPURegisterOperationParams;
 
-    constructor(operationType: CPURegisterOperationType, data?: Map<string, any>) {
+    constructor(operationType: CPURegisterOperationType, data: CPURegisterOperationParams) {
 
         this.operationType = operationType;
         this.data = data;
@@ -121,10 +138,11 @@ export class CPURegister {
 
         if (this.publishRegisterOperation) {
 
-            const parameters: Map<string, any> = new Map<string, any>();
-            parameters.set('index', index);
-            parameters.set('bitNumber', bitNumber);
-            parameters.set('value', newBitValue);
+            const parameters: CPURegisterBitOpParams = {
+                index: index,
+                bitNumber: bitNumber,
+                value: newBitValue
+            };
 
             this.publishRegisterOperation(new CPURegisterOperation(CPURegisterOperationType.WRITE_BIT,
                 parameters));
@@ -138,10 +156,11 @@ export class CPURegister {
 
         if (this.publishRegisterOperation) {
 
-            const parameters: Map<string, any> = new Map<string, any>();
-            parameters.set('index', index);
-            parameters.set('bitNumber', bitNumber);
-            parameters.set('value', readBitValue);
+            const parameters: CPURegisterBitOpParams = {
+                index: index,
+                bitNumber: bitNumber,
+                value: readBitValue
+            };
 
             this.publishRegisterOperation(new CPURegisterOperation(CPURegisterOperationType.READ_BIT,
                 parameters));
@@ -154,9 +173,10 @@ export class CPURegister {
 
         if (this.publishRegisterOperation) {
 
-            const parameters: Map<string, any> = new Map<string, any>();
-            parameters.set('index', index);
-            parameters.set('value', newValue);
+            const parameters: CPURegisterRegularOpParams = {
+                index: index,
+                value: newValue
+            };
 
             this.publishRegisterOperation(new CPURegisterOperation(CPURegisterOperationType.WRITE,
                 parameters));
@@ -169,9 +189,10 @@ export class CPURegister {
 
         if (this.publishRegisterOperation) {
 
-            const parameters: Map<string, any> = new Map<string, any>();
-            parameters.set('index', index);
-            parameters.set('value', readValue);
+            const parameters: CPURegisterRegularOpParams = {
+                index: index,
+                value: readValue
+            };
 
             this.publishRegisterOperation(new CPURegisterOperation(CPURegisterOperationType.READ,
                 parameters));
@@ -184,9 +205,10 @@ export class CPURegister {
 
         if (this.publishRegisterOperation) {
 
-            const parameters: Map<string, any> = new Map<string, any>();
-            parameters.set('index', index);
-            parameters.set('value', newValue);
+            const parameters: CPURegisterRegularOpParams = {
+                index: index,
+                value: newValue
+            };
 
             this.publishRegisterOperation(new CPURegisterOperation(CPURegisterOperationType.PUSH,
                 parameters));
@@ -199,9 +221,10 @@ export class CPURegister {
 
         if (this.publishRegisterOperation) {
 
-            const parameters: Map<string, any> = new Map<string, any>();
-            parameters.set('index', index);
-            parameters.set('value', newValue);
+            const parameters: CPURegisterRegularOpParams = {
+                index: index,
+                value: newValue
+            };
 
             this.publishRegisterOperation(new CPURegisterOperation(CPURegisterOperationType.POP,
                 parameters));
@@ -517,6 +540,5 @@ export class CPUStatusRegister extends CPURegister {
         this.publishReadBit(this.index, SRBit.SUPERVISOR, this._supervisor);
         return this._supervisor;
     }
-
 
 }

@@ -29,10 +29,6 @@ export class PreventScrollDirective {
             // Scrolling down, but this will take us past the bottom.
             element.scrollTop = scrollHeight;
             return PreventScrollDirective.prevent(event);
-        } else if (up && delta > scrollTop) {
-            // Scrolling up, but this will take us past the top.
-            element.scrollTop = 0;
-            return PreventScrollDirective.prevent(event);
         }
     }
 
@@ -50,10 +46,6 @@ export class PreventScrollDirective {
         if (!up && -delta > scrollHeight - height - scrollTop) {
             // Scrolling down, but this will take us past the bottom.
             element.scrollTop = scrollHeight;
-            return PreventScrollDirective.prevent(event);
-        } else if (up && delta > scrollTop) {
-            // Scrolling up, but this will take us past the top.
-            element.scrollTop = 0;
             return PreventScrollDirective.prevent(event);
         }
     }

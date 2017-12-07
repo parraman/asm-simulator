@@ -2,6 +2,9 @@ import { Injectable } from '@angular/core';
 
 import { Subject } from 'rxjs/Subject';
 import { Observable } from 'rxjs/Observable';
+import { SystemEvent } from './events-log.service';
+
+import { Utils } from './utils';
 
 export enum IORegisterType {
 
@@ -14,10 +17,70 @@ export enum IORegisterOperationType {
 
     READ = 0,
     WRITE = 1,
-    ADD_REGISTER = 2,
-    REMOVE_REGISTER = 3
+    ADD_REGISTER = 2
 
 }
+
+export interface IORegisterOperationParamsReadWrite {
+
+    name: string;
+    address: number;
+    value: number;
+
+}
+
+export interface IORegisterOperationAddRegister {
+
+    name: string;
+    address: number;
+    description: string;
+    registerType: IORegisterType;
+    initialValue: number;
+
+}
+
+type IORegisterOperationParams = IORegisterOperationParamsReadWrite | IORegisterOperationAddRegister;
+
+export class IORegisterOperation implements SystemEvent {
+
+    public operationType: IORegisterOperationType;
+    public data: IORegisterOperationParams;
+
+    constructor(operationType: IORegisterOperationType, data: IORegisterOperationParams) {
+
+        this.operationType = operationType;
+        this.data = data;
+
+    }
+
+    public toString(): string {
+
+        let ret, params;
+
+        switch (this.operationType) {
+
+            case IORegisterOperationType.READ:
+                params = <IORegisterOperationParamsReadWrite>this.data;
+                ret = `IOREG: Read register ${params.name} [0x${Utils.pad(params.address, 16, 4)}] => 0x${Utils.pad(params.value, 16, 2)}`
+                break;
+            case IORegisterOperationType.WRITE:
+                params = <IORegisterOperationParamsReadWrite>this.data;
+                ret = `IOREG: Write word 0x${Utils.pad(params.value, 16, 4)} to register ${params.name} ` +
+                      `[0x${Utils.pad(params.address, 16, 4)}]`;
+                break;
+            case IORegisterOperationType.ADD_REGISTER:
+                params = <IORegisterOperationAddRegister>this.data;
+                ret = `IOREG: Add register ${params.name} at address 0x${Utils.pad(params.address, 16, 4)}`;
+                break;
+        }
+
+        return ret;
+
+    }
+
+}
+
+type PublishIORegisterOperation = (operation: IORegisterOperation) => void;
 
 export class IORegister {
 
@@ -26,12 +89,12 @@ export class IORegister {
     public address: number;
     public registerType: IORegisterType;
     public value: number;
-    public operationSource: Subject<IORegisterOperation>;
+    public publishIORegisterOperation: PublishIORegisterOperation;
 
     constructor(name: string, address: number,
                 initialValue: number = 0,
                 registerType: IORegisterType = IORegisterType.READ_WRITE,
-                operationSource?: Subject<IORegisterOperation>,
+                publishIORegisterOperation?: PublishIORegisterOperation,
                 description?: string) {
 
         this.name = name;
@@ -39,25 +102,12 @@ export class IORegister {
         this.address = address;
         this.registerType = registerType;
         this.value = initialValue;
-        this.operationSource = operationSource;
+        this.publishIORegisterOperation = publishIORegisterOperation;
 
     }
 
 }
 
-export class IORegisterOperation {
-
-    public operationType: IORegisterOperationType;
-    public data: Map<string, any>;
-
-    constructor(operationType: IORegisterOperationType, data: Map<string, any>) {
-
-        this.operationType = operationType;
-        this.data = data;
-
-    }
-
-}
 
 @Injectable()
 export class IORegMapService {
@@ -76,6 +126,12 @@ export class IORegMapService {
 
     }
 
+    private publishIORegisterOperation(operation: IORegisterOperation) {
+
+        this.ioRegisterOperationSource.next(operation);
+
+    }
+
     public getRegistersMap(): Map<number, IORegister> {
         return this.registersMap;
     }
@@ -83,7 +139,7 @@ export class IORegMapService {
     public addRegister(name: string, address: number,
                        initialValue: number = 0,
                        registerType: IORegisterType = IORegisterType.READ_WRITE,
-                       operationSource?: Subject<IORegisterOperation>,
+                       publishIORegisterOperation?: PublishIORegisterOperation,
                        description?: string): number {
 
         /* We need to check that the address is within limits [0, 65535] */
@@ -100,36 +156,22 @@ export class IORegMapService {
 
         }
 
-        const ioRegister = new IORegister(name, address, initialValue, registerType, operationSource, description);
+        const ioRegister = new IORegister(name, address, initialValue, registerType,
+            publishIORegisterOperation, description);
+
         this.registersMap.set(address, ioRegister);
 
-        const parameters: Map<string, any> = new Map<string, any>();
-        parameters.set('name', name);
-        parameters.set('address', address);
-        parameters.set('description', address);
-        parameters.set('registerType', registerType);
-        parameters.set('initialValue', initialValue);
+        const parameters: IORegisterOperationAddRegister = {
+            name: name,
+            address: address,
+            description: description,
+            registerType: registerType,
+            initialValue: initialValue,
+        };
 
-        this.ioRegisterOperationSource.next(new IORegisterOperation(IORegisterOperationType.ADD_REGISTER, parameters));
+        this.publishIORegisterOperation(new IORegisterOperation(IORegisterOperationType.ADD_REGISTER, parameters));
 
         return address;
-
-    }
-
-    public removeRegister(address: number) {
-
-        const register = this.registersMap.get(address);
-
-        if (register) {
-
-            this.registersMap.delete(address);
-
-            const parameters: Map<string, any> = new Map<string, any>();
-            parameters.set('address', address);
-
-            this.ioRegisterOperationSource.next(new IORegisterOperation(IORegisterOperationType.REMOVE_REGISTER, parameters));
-
-        }
 
     }
 
@@ -143,17 +185,21 @@ export class IORegMapService {
 
         this.lastAccess = address;
 
-        const parameters: Map<string, any> = new Map<string, any>();
-        parameters.set('address', address);
-        parameters.set('value', register.value);
+        const parameters: IORegisterOperationParamsReadWrite = {
+            name: register.name,
+            address: address,
+            value: register.value
+        };
 
-        if (register.operationSource !== undefined && publish === true) {
+        const operation = new IORegisterOperation(IORegisterOperationType.READ, parameters);
 
-            register.operationSource.next(new IORegisterOperation(IORegisterOperationType.READ, parameters));
+        this.publishIORegisterOperation(operation);
+
+        if (register.publishIORegisterOperation !== undefined && publish === true) {
+
+            register.publishIORegisterOperation(operation);
 
         }
-
-        this.ioRegisterOperationSource.next(new IORegisterOperation(IORegisterOperationType.READ, parameters));
 
         return register.value;
 
@@ -174,17 +220,21 @@ export class IORegMapService {
         this.lastAccess = address;
         register.value = value;
 
-        const parameters: Map<string, any> = new Map<string, any>();
-        parameters.set('address', address);
-        parameters.set('value', value);
+        const parameters: IORegisterOperationParamsReadWrite = {
+            name: register.name,
+            address: address,
+            value: value
+        };
 
-        if (register.operationSource !== undefined && publish === true) {
+        const operation = new IORegisterOperation(IORegisterOperationType.WRITE, parameters);
 
-            register.operationSource.next(new IORegisterOperation(IORegisterOperationType.WRITE, parameters));
+        this.publishIORegisterOperation(operation);
+
+        if (register.publishIORegisterOperation !== undefined && publish === true) {
+
+            register.publishIORegisterOperation(operation);
 
         }
-
-        this.ioRegisterOperationSource.next(new IORegisterOperation(IORegisterOperationType.WRITE, parameters));
 
     }
 

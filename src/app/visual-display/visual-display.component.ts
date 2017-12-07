@@ -3,8 +3,10 @@ import { Component, OnInit, ElementRef, ViewChild, AfterViewInit } from '@angula
 import { Subject } from 'rxjs/Subject';
 import { Observable } from 'rxjs/Observable';
 
-import { MemoryOperation, MemoryService,
-         MemoryCellAccessPermission, MemoryOperationType } from '../memory.service';
+import {
+    MemoryOperation, MemoryService, MemoryOperationParamsLoadStore,
+    MemoryCellAccessPermission, MemoryOperationType
+} from '../memory.service';
 
 const COLOR_PALETTE = [
 
@@ -71,11 +73,17 @@ export class VisualDisplayComponent implements OnInit, AfterViewInit {
 
     }
 
+    private publishMemoryOperation(operation: MemoryOperation) {
+
+        this.memoryOperationSource.next(operation);
+
+    }
+
     ngOnInit() {
 
         this.memoryService.addMemoryRegion('VisualDisplayRegion', 0x300, 0x3FF,
             MemoryCellAccessPermission.READ_WRITE, undefined,
-            this.memoryOperationSource);
+            (op) => this.publishMemoryOperation(op));
 
     }
 
@@ -123,13 +131,13 @@ export class VisualDisplayComponent implements OnInit, AfterViewInit {
 
             case MemoryOperationType.STORE_BYTE:
                 this.operationStoreByte(
-                    memoryOperation.data.get('address'),
-                    memoryOperation.data.get('value'));
+                    (<MemoryOperationParamsLoadStore>memoryOperation.data).address,
+                    (<MemoryOperationParamsLoadStore>memoryOperation.data).value);
                 break;
             case MemoryOperationType.STORE_WORD:
                 this.operationStoreWord(
-                    memoryOperation.data.get('address'),
-                    memoryOperation.data.get('value'));
+                    (<MemoryOperationParamsLoadStore>memoryOperation.data).address,
+                    (<MemoryOperationParamsLoadStore>memoryOperation.data).value);
                 break;
             default:
                 break;

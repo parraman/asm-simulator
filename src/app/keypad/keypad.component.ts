@@ -37,12 +37,18 @@ export class KeypadComponent implements OnInit {
 
     }
 
+    private publishIORegisterOperation(operation: IORegisterOperation) {
+
+        this.ioRegisterOperationSource.next(operation);
+
+    }
+
     ngOnInit() {
 
         this.ioRegMapService.addRegister('KPDSTATUS', KPDSTATUS_REGISTER_ADDRESS, 0,
-            IORegisterType.READ_ONLY, this.ioRegisterOperationSource, 'Keypad Status Register');
+            IORegisterType.READ_ONLY, (op) => this.publishIORegisterOperation(op), 'Keypad Status Register');
         this.ioRegMapService.addRegister('KPDDATA', KPDDATA_REGISTER_ADDRESS, 0,
-            IORegisterType.READ_ONLY, this.ioRegisterOperationSource, 'Keypad Data Register');
+            IORegisterType.READ_ONLY, (op) => this.publishIORegisterOperation(op), 'Keypad Data Register');
 
     }
 
@@ -72,7 +78,7 @@ export class KeypadComponent implements OnInit {
         switch (ioRegisterOperation.operationType) {
             case IORegisterOperationType.READ:
                 this.processReadOperation(
-                    ioRegisterOperation.data.get('address'));
+                    ioRegisterOperation.data.address);
                 break;
             case IORegisterOperationType.WRITE:
                 break;

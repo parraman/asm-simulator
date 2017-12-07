@@ -8,7 +8,10 @@ import { Subscription } from 'rxjs/Subscription';
 import { Observable } from 'rxjs/Observable';
 import 'rxjs/add/observable/timer';
 
-import { CPURegisterIndex, CPURegisterOperation, CPURegisterOperationType, SRBit } from './cpuregs';
+import {
+    CPURegisterIndex, CPURegisterOperation, CPURegisterOperationType, SRBit,
+    CPURegisterRegularOpParams, CPURegisterBitOpParams
+} from './cpuregs';
 import { IrqCtrlService } from './irqctrl.service';
 import { TimerService } from './timer.service';
 import { KeypadComponent } from './keypad/keypad.component';
@@ -17,7 +20,7 @@ import { TextualDisplayComponent } from './textual-display/textual-display.compo
 import { ErrorBarComponent } from './error-bar/error-bar.component';
 
 import * as CodeMirror from 'codemirror';
-import {InstructionSet, instructionSet} from './instrset';
+import { instructionSet } from './instrset';
 
 const WRAP_CLS = 'CodeMirror-activeline';
 const BACK_CLS = 'CodeMirror-activeline-background';
@@ -263,8 +266,6 @@ export class AppComponent implements AfterViewInit {
         this.instance.state.activeLine = undefined;
         this.instance.on('beforeSelectionChange', () => {
 
-            const mode = this.instance.getMode();
-
             if (this.instance.state.activeLine) {
 
                 this.instance.removeLineClass(this.instance.state.activeLine, 'wrap', WRAP_CLS);
@@ -283,16 +284,16 @@ export class AppComponent implements AfterViewInit {
 
     private processCPURegisterOperation(cpuRegisterOperation: CPURegisterOperation) {
 
-        if (cpuRegisterOperation.index === CPURegisterIndex.IP &&
-            cpuRegisterOperation.operationType === CPURegisterOperationType.WRITE) {
+        if (cpuRegisterOperation.operationType === CPURegisterOperationType.WRITE &&
+            cpuRegisterOperation.data.index === CPURegisterIndex.IP) {
 
-            this.currentIP = cpuRegisterOperation.value;
+            this.currentIP = cpuRegisterOperation.data.value;
 
             if (this.isRunning === true) {
 
-                if (this.mapping && this.mapping.has(cpuRegisterOperation.value)) {
+                if (this.mapping && this.mapping.has(this.currentIP)) {
 
-                    const lineNumber = this.mapping.get(cpuRegisterOperation.value);
+                    const lineNumber = this.mapping.get(this.currentIP);
                     const info = this.instance.lineInfo(lineNumber);
 
                     if (info.gutterMarkers) {
@@ -310,9 +311,9 @@ export class AppComponent implements AfterViewInit {
 
             if (this.isRunning === false) {
 
-                if (this.mapping && this.mapping.has(cpuRegisterOperation.value)) {
+                if (this.mapping && this.mapping.has(this.currentIP)) {
 
-                    const line = this.mapping.get(cpuRegisterOperation.value);
+                    const line = this.mapping.get(this.currentIP);
                     this.markLine(line);
 
                     const clientHeight = this.instance.getScrollInfo().clientHeight;
@@ -331,10 +332,16 @@ export class AppComponent implements AfterViewInit {
                 }
             }
 
-        } else if (cpuRegisterOperation.index === CPURegisterIndex.SR &&
-            cpuRegisterOperation.operationType === CPURegisterOperationType.WRITE) {
+        } else if (cpuRegisterOperation.operationType === CPURegisterOperationType.WRITE &&
+                   (<CPURegisterRegularOpParams>cpuRegisterOperation.data).index === CPURegisterIndex.SR) {
 
-            this.isCPUHalted = (cpuRegisterOperation.value & (1 << SRBit.HALT)) !== 0;
+            this.isCPUHalted = (cpuRegisterOperation.data.value & (1 << SRBit.HALT)) !== 0;
+
+        } else if (cpuRegisterOperation.operationType === CPURegisterOperationType.WRITE_BIT &&
+                   (<CPURegisterBitOpParams>cpuRegisterOperation.data).index === CPURegisterIndex.SR &&
+                   (<CPURegisterBitOpParams>cpuRegisterOperation.data).bitNumber === SRBit.HALT) {
+
+            this.isCPUHalted = cpuRegisterOperation.data.value === 1;
 
         }
 
@@ -424,7 +431,7 @@ export class AppComponent implements AfterViewInit {
         this.isRunning = true;
 
         this.timerSubscription = Observable.timer(1, this.speed).subscribe(
-            (ticks: any) => {
+            () => {
 
                 try {
 

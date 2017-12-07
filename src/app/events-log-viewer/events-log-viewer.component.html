@@ -1,0 +1,42 @@
+<div>
+<h5 style="display: inline-block">Events log</h5>
+<div class="small" style="float: right; margin-top: 10px; margin-bottom: 10px;">
+  <a *ngIf="enableLogging === false" (click)="enableLogging = true">Enable</a>
+  <a *ngIf="enableLogging === true" (click)="enableLogging = false">Disable</a>
+</div>
+</div>
+<div class="list-group events-log-list" appPreventScroll>
+  <div *ngFor="let i of logLines" class="list-group-item source-code event" [ngClass]="i.style">
+    <span>{{i.text}}</span>
+  </div>
+</div>
+<div class="small"><span class="event-enabler control-unit-event" [ngClass]="{'enabled': enableControlUnit === true, 'muted': isRunning === true || enableLogging === false}">Control Unit: </span>
+  <a *ngIf="enableControlUnit === false" (click)="enableControlUnit = true" [attr.disabled]="isRunning === true || enableLogging === false ? '' : null">Enable</a>
+  <a *ngIf="enableControlUnit === true" (click)="enableControlUnit = false" [attr.disabled]="isRunning === true || enableLogging === false ? '' : null">Disable</a>
+  <span style="margin-left:10px;" class="event-enabler cpu-registers-event" [ngClass]="{'enabled': enableCPURegisters === true, 'muted': isRunning === true || enableLogging === false}">CPU Registers: </span>
+  <a *ngIf="enableCPURegisters === false" (click)="enableCPURegisters = true" [attr.disabled]="isRunning === true || enableLogging === false ? '' : null">Enable</a>
+  <a *ngIf="enableCPURegisters === true" (click)="enableCPURegisters = false" [attr.disabled]="isRunning === true || enableLogging === false ? '' : null">Disable</a>
+  <span style="margin-left:10px;" class="event-enabler alu-event" [ngClass]="{'enabled': enableALU === true, 'muted': isRunning === true || enableLogging === false}">Arithmetic Logic Unit: </span>
+  <a *ngIf="enableALU === false" (click)="enableALU = true" [attr.disabled]="isRunning === true || enableLogging === false ? '' : null">Enable</a>
+  <a *ngIf="enableALU === true" (click)="enableALU = false" [attr.disabled]="isRunning === true || enableLogging === false ? '' : null">Enable</a>
+</div>
+<div class="small"><span class="event-enabler memory-operation-event" [ngClass]="{'enabled': enableMemory === true, 'muted': isRunning === true || enableLogging === false}">Memory:</span>
+  <a *ngIf="enableMemory === false" (click)="enableMemory = true" [attr.disabled]="isRunning === true || enableLogging === false ? '' : null">Enable</a>
+  <a *ngIf="enableMemory === true" (click)="enableMemory = false" [attr.disabled]="isRunning === true || enableLogging === false ? '' : null">Disable</a>
+  <span style="margin-left:10px;" class="event-enabler io-registers-event" [ngClass]="{'enabled': enableIORegisters === true, 'muted': isRunning === true || enableLogging === false}">I/O Registers: </span>
+  <a *ngIf="enableIORegisters === false" (click)="enableIORegisters = true" [attr.disabled]="isRunning === true || enableLogging === false ? '' : null">Enable</a>
+  <a *ngIf="enableIORegisters === true" (click)="enableIORegisters = false" [attr.disabled]="isRunning === true || enableLogging === false ? '' : null">Disable</a>
+  <span style="margin-left:10px;" class="event-enabler irq-controller-event" [ngClass]="{'enabled': enableIRQController === true, 'muted': isRunning === true || enableLogging === false}">IRQ Controller: </span>
+  <a *ngIf="enableIRQController === false" (click)="enableIRQController = true" [attr.disabled]="isRunning === true || enableLogging === false ? '' : null">Enable</a>
+  <a *ngIf="enableIRQController === true" (click)="enableIRQController = false" [attr.disabled]="isRunning === true || enableLogging === false ? '' : null">Disable</a>
+</div>
+<div class="small"><span class="event-enabler textual-display-event" [ngClass]="{'enabled': enableTextualDisplay === true, 'muted': isRunning === true || enableLogging === false}">Textual Display: </span>
+  <a *ngIf="enableTextualDisplay === false" (click)="enableTextualDisplay = true" [attr.disabled]="isRunning === true || enableLogging === false ? '' : null">Enable</a>
+  <a *ngIf="enableTextualDisplay === true" (click)="enableTextualDisplay = false" [attr.disabled]="isRunning === true || enableLogging === false ? '' : null">Disable</a>
+  <span style="margin-left:10px;" class="event-enabler visual-display-event" [ngClass]="{'enabled': enableVisualDisplay === true, 'muted': isRunning === true || enableLogging === false}">Visual Display: </span>
+  <a *ngIf="enableVisualDisplay === false" (click)="enableVisualDisplay = true" [attr.disabled]="isRunning === true || enableLogging === false ? '' : null">Enable</a>
+  <a *ngIf="enableVisualDisplay === true" (click)="enableVisualDisplay = false" [attr.disabled]="isRunning === true || enableLogging === false ? '' : null">Disable</a>
+  <span style="margin-left:10px;" class="event-enabler keypad-event" [ngClass]="{'enabled': enableKeypad === true, 'muted': isRunning === true || enableLogging === false}">Keypad: </span>
+  <a *ngIf="enableKeypad === false" (click)="enableKeypad = true" [attr.disabled]="isRunning === true || enableLogging === false ? '' : null">Enable</a>
+  <a *ngIf="enableKeypad === true" (click)="enableKeypad = false" [attr.disabled]="isRunning === true || enableLogging === false ? '' : null">Disable</a>
+</div>

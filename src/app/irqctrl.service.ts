@@ -4,8 +4,9 @@ import { Subject } from 'rxjs/Subject';
 import { Observable } from 'rxjs/Observable';
 
 import { IORegisterOperation, IORegMapService,
-         IORegisterType, IORegisterOperationType } from './ioregmap.service';
-import {CPUService} from "./cpu.service";
+         IORegisterType, IORegisterOperationType,
+         IORegisterOperationParamsReadWrite } from './ioregmap.service';
+import { CPUService } from './cpu.service';
 
 const IRQMASK_REGISTER_ADDRESS = 0;
 const IRQSTATUS_REGISTER_ADDRESS = 1;
@@ -25,6 +26,12 @@ export class IrqCtrlService {
 
     private interruptOutput = false;
 
+    private publishIORegisterOperation(operation: IORegisterOperation) {
+
+        this.ioRegisterOperationSource.next(operation);
+
+    }
+
     constructor(private ioRegMapService: IORegMapService, private cpuService: CPUService) {
 
         this.ioRegisterOperation$ = this.ioRegisterOperationSource.asObservable();
@@ -34,11 +41,11 @@ export class IrqCtrlService {
         );
 
         ioRegMapService.addRegister('IRQMASK', IRQMASK_REGISTER_ADDRESS, 0, IORegisterType.READ_WRITE,
-            this.ioRegisterOperationSource, 'Interrupt Controller Mask Register');
+            (op) => this.publishIORegisterOperation(op), 'Interrupt Controller Mask Register');
         ioRegMapService.addRegister('IRQSTATUS', IRQSTATUS_REGISTER_ADDRESS, 0, IORegisterType.READ_ONLY,
-            this.ioRegisterOperationSource, 'Interrupt Controller Status Register');
+            (op) => this.publishIORegisterOperation(op), 'Interrupt Controller Status Register');
         ioRegMapService.addRegister('IRQEOI', IRQEOI_REGISTER_ADDRESS, 0, IORegisterType.READ_WRITE,
-            this.ioRegisterOperationSource, 'End of Interrupt Register');
+            (op) => this.publishIORegisterOperation(op), 'End of Interrupt Register');
 
     }
 
@@ -78,8 +85,8 @@ export class IrqCtrlService {
                 break;
             case IORegisterOperationType.WRITE:
                 this.processWriteOperation(
-                    ioRegisterOperation.data.get('address'),
-                    ioRegisterOperation.data.get('value'));
+                    (<IORegisterOperationParamsReadWrite>ioRegisterOperation.data).address,
+                    (<IORegisterOperationParamsReadWrite>ioRegisterOperation.data).value);
                 break;
         }
 

@@ -363,10 +363,8 @@ export function Instruction(opcode: OpCode, mnemonic: string, operand1?: Operand
         case OperandType.ADDRESS:
         case OperandType.WORD:
         case OperandType.BYTE:
-            instructionArguments += 1;
-            break;
         case OperandType.REGADDRESS:
-            instructionArguments += 2;
+            instructionArguments += 1;
             break;
         default:
             throw Error(`Invalid type for the first operand`);
@@ -380,10 +378,8 @@ export function Instruction(opcode: OpCode, mnemonic: string, operand1?: Operand
         case OperandType.ADDRESS:
         case OperandType.WORD:
         case OperandType.BYTE:
-            instructionArguments += 1;
-            break;
         case OperandType.REGADDRESS:
-            instructionArguments += 2;
+            instructionArguments += 1;
             break;
         default:
             throw Error(`Invalid type for the second operand`);
