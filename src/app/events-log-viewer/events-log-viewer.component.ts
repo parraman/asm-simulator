@@ -1,6 +1,10 @@
-import { AfterViewInit, Component, Input } from '@angular/core';
+import { 
+    AfterViewInit, Component, Input,
+    ViewChild, ViewChildren, ElementRef, QueryList
+} from '@angular/core';
 import { EventsLogService, LoggedEvent } from '../events-log.service';
 import { MemoryOperation, MemoryOperationType } from '../memory.service';
+import { ControlUnitOperation } from '../cpu.service';
 
 class LogLine {
 
@@ -23,6 +27,8 @@ class LogLine {
 export class EventsLogViewerComponent implements AfterViewInit {
 
     @Input() isRunning: boolean;
+    @ViewChild('logLinesContainer') logLinesContainer: ElementRef;
+    @ViewChildren('logLinesItems') logLinesItems: QueryList<any>; 
 
     public enableLogging = false;
 
@@ -42,7 +48,18 @@ export class EventsLogViewerComponent implements AfterViewInit {
 
     ngAfterViewInit() {
 
+        this.logLinesItems.changes.subscribe(() => this.scrollToBottom());
+
         this.eventsLogService.eventsLog$.subscribe((loggedEvent) => this.processLoggedEvent(loggedEvent));
+
+    }
+
+    private scrollToBottom() {
+
+        const element = this.logLinesContainer.nativeElement;
+        try {
+            element.scrollTop = element.scrollHeight;
+        } catch (error) {}
 
     }
 
@@ -63,6 +80,12 @@ export class EventsLogViewerComponent implements AfterViewInit {
                 this.logLines.push(newLine);
 
             }
+
+        } else if (loggedEvent.systemEvent instanceof ControlUnitOperation && this.enableControlUnit === true) {
+
+            const newLine = new LogLine(`${loggedEvent.time}: ${loggedEvent.systemEvent.toString()}`,
+                    `control-unit-event`);
+            this.logLines.push(newLine);
 
         }
 

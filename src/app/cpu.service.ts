@@ -9,6 +9,9 @@ import { IORegMapService } from './ioregmap.service';
 import { ClockService} from './clock.service';
 import { Exception, ExceptionType } from './exceptions';
 
+import { Utils } from './utils';
+import { EventsLogService, SystemEvent } from './events-log.service';
+
 import {
     CPURegisterIndex, CPURegister, CPUStatusRegister, CPURegisterOperation,
     CPUGeneralPurposeRegister, CPUStackPointerRegister
@@ -23,11 +26,12 @@ const EXCEPTION_VECTOR_ADDRESS = 0x0009;
 
 export enum ControlUnitOperationType {
 
-    FETCH_OPCODE = 0,
-    DECODE = 1,
-    FETCH_OPERANDS = 2,
-    RESOLVE_REGADDRESS = 3,
-    EXECUTE = 4
+    RESET = 0,
+    FETCH_OPCODE = 1,
+    DECODE = 2,
+    FETCH_OPERANDS = 3,
+    RESOLVE_REGADDRESS = 4,
+    EXECUTE = 5
 
 }
 
@@ -39,16 +43,16 @@ export interface CUOperationParamsFetchOpCode {
 
 export interface CUOperationParamsDecode {
 
-    opCode: number;
+    opcode: number;
 
 }
 
 export interface CUOperationParamsFetchOperands {
 
+    opcode: number;
+    address: number;
     operand1Type: OperandType;
-    operand1Address: number;
     operand2Type: OperandType;
-    operand2Address: number;
 
 }
 
@@ -61,8 +65,7 @@ export interface CUOperationParamsResolveRegAddress {
 
 export interface CUOperationParamsExecute {
 
-    opCode: number;
-    mnemonic: string;
+    opcode: number;
     operand1Type: OperandType;
     operand1Value: number;
     operand2Type: OperandType;
@@ -70,10 +73,94 @@ export interface CUOperationParamsExecute {
 
 }
 
+type ControlUnitOperationParams = CUOperationParamsFetchOpCode | CUOperationParamsDecode |
+    CUOperationParamsFetchOperands | CUOperationParamsResolveRegAddress |
+    CUOperationParamsExecute;
 
-export class ControlUnitOperation {
+export class ControlUnitOperation implements SystemEvent {
 
+    public operationType: ControlUnitOperationType;
+    public data: ControlUnitOperationParams;
 
+    constructor(operationType: ControlUnitOperationType, data?: ControlUnitOperationParams) {
+
+        this.operationType = operationType;
+        this.data = data;
+
+    }
+
+    toString(): string {
+
+        let ret, params;
+
+        switch (this.operationType) {
+            case ControlUnitOperationType.RESET:
+                ret = `CU: Reset control unit`;
+                break;
+            case ControlUnitOperationType.FETCH_OPCODE:
+                params = <CUOperationParamsFetchOpCode>this.data;
+                ret = `CU: Fetch opcode from [0x${Utils.pad(params.address, 16, 4)}]`;
+                break;
+            case ControlUnitOperationType.DECODE:
+                params = <CUOperationParamsDecode>this.data;
+                ret = `CU: Decode opcode 0x${Utils.pad(params.opcode, 16, 2)}`;
+                break;
+            case ControlUnitOperationType.FETCH_OPERANDS:
+                params = <CUOperationParamsFetchOperands>this.data;
+                if (params.operand1Type === undefined && params.operand2Type === undefined) {
+                    ret = `CU: Instruction {0x${Utils.pad(params.opcode, 16, 2)}: ${OpCode[params.opcode]}} has no operands`;
+                } else if (params.operand2Type === undefined) {
+                    ret = `CU: Fetch operand ${OperandType[params.operand1Type]} from address [0x${Utils.pad(params.address, 16, 4)}]`
+                } else {
+                    ret = `CU: Fetch operands (${OperandType[params.operand1Type]}, ${OperandType[params.operand2Type]}) from address [0x${Utils.pad(params.address, 16, 4)}]`
+                }
+                break;
+            case ControlUnitOperationType.RESOLVE_REGADDRESS:
+                params = <CUOperationParamsResolveRegAddress>this.data;
+                ret = `CU: Resolve indirect address [${CPURegisterIndex[params.register]}`;
+                ret += (params.offset >= 0) ? `+${params.offset}]` : `${params.offset}]`;
+                break;
+            case ControlUnitOperationType.EXECUTE:
+                params = <CUOperationParamsExecute>this.data;
+                ret = `CU: Execute {0x${Utils.pad(params.opcode, 16, 2)}: ${OpCode[params.opcode]}}`
+
+                if (params.operand1Type !== undefined) {
+
+                    if (params.operand1Type === OperandType.BYTE) {
+                        ret += ` (0x${Utils.pad(params.operand1Value, 16, 2)}`;
+                    } else if (params.operand1Type === OperandType.REGISTER_8BITS ||
+                        params.operand1Type === OperandType.REGISTER_16BITS) {
+                        ret += ` (0x${Utils.pad(params.operand1Value, 16, 2)}: ${CPURegisterIndex[params.operand1Value]}`;
+                    } else {
+                        ret += ` (0x${Utils.pad(params.operand1Value, 16, 4)}`;
+                    }
+
+                } else {
+                    break;
+                }
+
+                if (params.operand2Type !== undefined) {
+
+                    if (params.operand2Type === OperandType.BYTE) {
+                        ret += `, 0x${Utils.pad(params.operand2Value, 16, 2)})`;
+                    } else if (params.operand2Type === OperandType.REGISTER_8BITS ||
+                        params.operand2Type === OperandType.REGISTER_16BITS) {
+                        ret += `, 0x${Utils.pad(params.operand2Value, 16, 2)}: ${CPURegisterIndex[params.operand2Value]})`;
+                    } else {
+                        ret += `, 0x${Utils.pad(params.operand2Value, 16, 4)})`;
+                    }
+
+                } else {
+                    ret += `)`;
+                }
+                break;
+            default:
+                break;
+        }
+        
+        return ret;
+
+    }
 
 }
 
@@ -88,6 +175,9 @@ export class CPUService {
 
     protected aluOperationSource = new Subject<ALUOperation>();
     public aluOperation$: Observable<ALUOperation>;
+
+    protected controlUnitOperationSource = new Subject<ControlUnitOperation>();
+    public controlUnitOperation$: Observable<ControlUnitOperation>;
 
     protected nextIP = 0;
 
@@ -150,7 +240,8 @@ export class CPUService {
 
     constructor(private memoryService: MemoryService,
                 private clockService: ClockService,
-                private ioRegMapService: IORegMapService) {
+                private ioRegMapService: IORegMapService,
+                private eventsLogService: EventsLogService) {
 
         const registerA = new CPUGeneralPurposeRegister('A', CPURegisterIndex.A,
             CPURegisterIndex.AH, CPURegisterIndex.AL, 0,
@@ -199,6 +290,7 @@ export class CPUService {
 
         this.cpuRegisterOperation$ = this.cpuRegisterOperationSource.asObservable();
         this.aluOperation$ = this.aluOperationSource.asObservable();
+        this.controlUnitOperation$ = this.controlUnitOperationSource.asObservable();
 
         this.alu = new ArithmeticLogicUnit(statusRegister, (op) => this.publishALUOperation(op));
 
@@ -213,6 +305,13 @@ export class CPUService {
     protected publishALUOperation(operation: ALUOperation) {
 
         this.aluOperationSource.next(operation);
+
+    }
+
+    protected publishControlUnitOperation(operation: ControlUnitOperation) {
+
+        this.controlUnitOperationSource.next(operation);
+        this.eventsLogService.log(operation);
 
     }
 
@@ -320,6 +419,8 @@ export class CPUService {
 
     public reset(): void {
 
+        this.publishControlUnitOperation(new ControlUnitOperation(ControlUnitOperationType.RESET));
+
         this.registersBank.get(CPURegisterIndex.A).value = this.registersBank.get(CPURegisterIndex.A).resetValue;
         this.registersBank.get(CPURegisterIndex.B).value = this.registersBank.get(CPURegisterIndex.B).resetValue;
         this.registersBank.get(CPURegisterIndex.C).value = this.registersBank.get(CPURegisterIndex.C).resetValue;
@@ -337,7 +438,13 @@ export class CPUService {
 
     private fetchAndDecode(args: Array<number>): InstructionSpec {
 
-        let opcode;
+        let opcode, parameters;
+
+        parameters = <CUOperationParamsFetchOpCode> {
+            address: this.nextIP
+        };
+
+        this.publishControlUnitOperation(new ControlUnitOperation(ControlUnitOperationType.FETCH_OPCODE, parameters));
 
         try {
             opcode = this.memoryService.loadByte(this.nextIP);
@@ -347,12 +454,27 @@ export class CPUService {
         }
         this.nextIP += 1;
 
+        parameters = <CUOperationParamsDecode> {
+            opcode: opcode 
+        };
+
+        this.publishControlUnitOperation(new ControlUnitOperation(ControlUnitOperationType.DECODE, parameters));
+
         const instruction = instructionSet.getInstructionFromOpCode(opcode);
 
         if (instruction === undefined) {
             throw new Exception(ExceptionType.UNKNOWN_OPCODE,
                 `Invalid opcode: ${opcode}`, this.IP.value, this.SP.value);
         }
+
+        parameters = <CUOperationParamsFetchOperands> {
+            opcode: instruction.opcode,
+            address: this.nextIP,
+            operand1Type: instruction.operand1,
+            operand2Type: instruction.operand2
+        };
+
+        this.publishControlUnitOperation(new ControlUnitOperation(ControlUnitOperationType.FETCH_OPERANDS, parameters));
 
         let byte, word, register, regaddress, offset, address;
 
@@ -403,6 +525,13 @@ export class CPUService {
                 if (offset > 127) {
                     offset = offset - 256;
                 }
+
+                parameters = <CUOperationParamsResolveRegAddress> {
+                    register: register,
+                    offset: offset
+                };
+
+                this.publishControlUnitOperation(new ControlUnitOperation(ControlUnitOperationType.RESOLVE_REGADDRESS, parameters));
 
                 if (CPUService.is16bitsGPRorSP(register) === false) {
                     throw new Exception(ExceptionType.ILLEGAL_INSTRUCTION,
@@ -466,6 +595,13 @@ export class CPUService {
                     offset = offset - 256;
                 }
 
+                parameters = <CUOperationParamsResolveRegAddress> {
+                    register: register,
+                    offset: offset
+                };
+
+                this.publishControlUnitOperation(new ControlUnitOperation(ControlUnitOperationType.RESOLVE_REGADDRESS, parameters));
+
                 if (CPUService.is16bitsGPRorSP(register) === false) {
                     throw new Exception(ExceptionType.ILLEGAL_INSTRUCTION,
                         `Invalid first operand: register index ${register} out of bounds`,
@@ -502,6 +638,16 @@ export class CPUService {
 
             const args: Array<number> = [];
             const instruction = this.fetchAndDecode(args);
+
+            const parameters: CUOperationParamsExecute = {
+                opcode: instruction.opcode,
+                operand1Type: instruction.operand1,
+                operand1Value: args[0],
+                operand2Type: instruction.operand2,
+                operand2Value: args[1]
+            };
+
+            this.publishControlUnitOperation(new ControlUnitOperation(ControlUnitOperationType.EXECUTE, parameters));
 
             if (this[instruction.methodName].apply(this, args) === true) {
                 this.IP.value = this.nextIP;

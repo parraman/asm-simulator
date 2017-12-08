@@ -5,8 +5,8 @@
   <a *ngIf="enableLogging === true" (click)="enableLogging = false">Disable</a>
 </div>
 </div>
-<div class="list-group events-log-list" appPreventScroll>
-  <div *ngFor="let i of logLines" class="list-group-item source-code event" [ngClass]="i.style">
+<div #logLinesContainer class="list-group events-log-list" appPreventScroll>
+  <div #logLinesItems *ngFor="let i of logLines" class="list-group-item source-code event" [ngClass]="i.style">
     <span>{{i.text}}</span>
   </div>
 </div>
@@ -18,7 +18,7 @@
   <a *ngIf="enableCPURegisters === true" (click)="enableCPURegisters = false" [attr.disabled]="isRunning === true || enableLogging === false ? '' : null">Disable</a>
   <span style="margin-left:10px;" class="event-enabler alu-event" [ngClass]="{'enabled': enableALU === true, 'muted': isRunning === true || enableLogging === false}">Arithmetic Logic Unit: </span>
   <a *ngIf="enableALU === false" (click)="enableALU = true" [attr.disabled]="isRunning === true || enableLogging === false ? '' : null">Enable</a>
-  <a *ngIf="enableALU === true" (click)="enableALU = false" [attr.disabled]="isRunning === true || enableLogging === false ? '' : null">Enable</a>
+  <a *ngIf="enableALU === true" (click)="enableALU = false" [attr.disabled]="isRunning === true || enableLogging === false ? '' : null">Disable</a>
 </div>
 <div class="small"><span class="event-enabler memory-operation-event" [ngClass]="{'enabled': enableMemory === true, 'muted': isRunning === true || enableLogging === false}">Memory:</span>
   <a *ngIf="enableMemory === false" (click)="enableMemory = true" [attr.disabled]="isRunning === true || enableLogging === false ? '' : null">Enable</a>
