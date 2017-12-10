@@ -7,7 +7,7 @@
 </div>
 <div #logLinesContainer class="list-group events-log-list" appPreventScroll>
   <div #logLinesItems *ngFor="let i of logLines" class="list-group-item source-code event" [ngClass]="i.style">
-    <span>{{i.text}}</span>
+    {{i.text}}
   </div>
 </div>
 <div class="small"><span class="event-enabler control-unit-event" [ngClass]="{'enabled': enableControlUnit === true, 'muted': isRunning === true || enableLogging === false}">Control Unit: </span>

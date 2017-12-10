@@ -298,7 +298,8 @@ body {
 }
 
 .events-log-list {
-  overflow-y: scroll;
+  overflow: auto;
+  white-space: nowrap;
   height: 262px;
   border-radius: 4px;
   border: 1px solid #ccc;

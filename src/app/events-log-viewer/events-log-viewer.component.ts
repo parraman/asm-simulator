@@ -2,9 +2,11 @@ import {
     AfterViewInit, Component, Input,
     ViewChild, ViewChildren, ElementRef, QueryList
 } from '@angular/core';
+
 import { EventsLogService, LoggedEvent } from '../events-log.service';
 import { MemoryOperation, MemoryOperationType } from '../memory.service';
 import { ControlUnitOperation } from '../cpu.service';
+import { ALUOperation } from '../alu';
 
 class LogLine {
 
@@ -85,6 +87,12 @@ export class EventsLogViewerComponent implements AfterViewInit {
 
             const newLine = new LogLine(`${loggedEvent.time}: ${loggedEvent.systemEvent.toString()}`,
                     `control-unit-event`);
+            this.logLines.push(newLine);
+
+        } else if (loggedEvent.systemEvent instanceof ALUOperation && this.enableALU === true) {
+
+            const newLine = new LogLine(`${loggedEvent.time}: ${loggedEvent.systemEvent.toString()}`,
+                    `alu-event`);
             this.logLines.push(newLine);
 
         }

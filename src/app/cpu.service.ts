@@ -122,7 +122,7 @@ export class ControlUnitOperation implements SystemEvent {
                 break;
             case ControlUnitOperationType.EXECUTE:
                 params = <CUOperationParamsExecute>this.data;
-                ret = `CU: Execute {0x${Utils.pad(params.opcode, 16, 2)}: ${OpCode[params.opcode]}}`
+                ret = `CU: Execute instruction {0x${Utils.pad(params.opcode, 16, 2)}: ${OpCode[params.opcode]}}`
 
                 if (params.operand1Type !== undefined) {
 
@@ -305,6 +305,7 @@ export class CPUService {
     protected publishALUOperation(operation: ALUOperation) {
 
         this.aluOperationSource.next(operation);
+        this.eventsLogService.log(operation);
 
     }
 

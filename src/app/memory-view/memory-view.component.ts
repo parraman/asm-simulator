@@ -63,6 +63,20 @@ class MemoryCellView {
 
 }
 
+class CPURegisterPointer {
+
+    public index: CPURegisterIndex;
+    public value: number;
+
+    constructor(index: CPURegisterIndex, initialValue: number) {
+
+        this.index = index;
+        this.value = initialValue;
+
+    }
+
+}
+
 
 @Component({
     selector: 'app-memory-view',
@@ -100,13 +114,7 @@ export class MemoryViewComponent implements OnInit, OnDestroy, OnChanges {
     private sspCells: Array<number> = [];
     private uspCells: Array<number> = [];
 
-    private registerAPointer: number;
-    private registerBPointer: number;
-    private registerCPointer: number;
-    private registerDPointer: number;
-    private registerIPPointer: number;
-    private registerSSPPointer: number;
-    private registerUSPPointer: number;
+    private registerPointers: Map<CPURegisterIndex, CPURegisterPointer> = new Map<CPURegisterIndex, CPURegisterPointer>();
 
     private registerSR: number;
 
@@ -128,18 +136,40 @@ export class MemoryViewComponent implements OnInit, OnDestroy, OnChanges {
 
         const registerBank = this.cpuService.getRegistersBank();
 
-        this.registerAPointer = registerBank.get(CPURegisterIndex.A).value;
-        this.registerBPointer = registerBank.get(CPURegisterIndex.B).value;
-        this.registerCPointer = registerBank.get(CPURegisterIndex.C).value;
-        this.registerDPointer = registerBank.get(CPURegisterIndex.D).value;
-        this.registerSSPPointer = registerBank.get(CPURegisterIndex.SSP).value;
-        this.registerUSPPointer = registerBank.get(CPURegisterIndex.USP).value;
-        this.registerIPPointer = registerBank.get(CPURegisterIndex.IP).value;
+        const registerAPointer = new CPURegisterPointer(CPURegisterIndex.A, registerBank.get(CPURegisterIndex.A).value);
+        this.registerPointers.set(CPURegisterIndex.A, registerAPointer);
+        this.registerPointers.set(CPURegisterIndex.AH, registerAPointer);
+        this.registerPointers.set(CPURegisterIndex.AL, registerAPointer);
+
+        const registerBPointer = new CPURegisterPointer(CPURegisterIndex.B, registerBank.get(CPURegisterIndex.B).value);
+        this.registerPointers.set(CPURegisterIndex.B, registerBPointer);
+        this.registerPointers.set(CPURegisterIndex.BH, registerBPointer);
+        this.registerPointers.set(CPURegisterIndex.BL, registerBPointer);
+
+        const registerCPointer = new CPURegisterPointer(CPURegisterIndex.C, registerBank.get(CPURegisterIndex.C).value);
+        this.registerPointers.set(CPURegisterIndex.C, registerCPointer);
+        this.registerPointers.set(CPURegisterIndex.CH, registerCPointer);
+        this.registerPointers.set(CPURegisterIndex.CL, registerCPointer);
+
+        const registerDPointer = new CPURegisterPointer(CPURegisterIndex.D, registerBank.get(CPURegisterIndex.D).value);
+        this.registerPointers.set(CPURegisterIndex.D, registerDPointer);
+        this.registerPointers.set(CPURegisterIndex.DH, registerDPointer);
+        this.registerPointers.set(CPURegisterIndex.DL, registerDPointer);
+
+        const registerSSPPointer = new CPURegisterPointer(CPURegisterIndex.SSP, registerBank.get(CPURegisterIndex.SSP).value);
+        this.registerPointers.set(CPURegisterIndex.SSP, registerSSPPointer);
+
+        const registerUSPPointer = new CPURegisterPointer(CPURegisterIndex.USP, registerBank.get(CPURegisterIndex.USP).value);
+        this.registerPointers.set(CPURegisterIndex.USP, registerUSPPointer);
+
+        const registerIPPointer = new CPURegisterPointer(CPURegisterIndex.IP, registerBank.get(CPURegisterIndex.IP).value);
+        this.registerPointers.set(CPURegisterIndex.IP, registerIPPointer);
+
         this.registerSR = registerBank.get(CPURegisterIndex.SR).value;
 
-        this.updateCellStyle(this.registerIPPointer);
-        this.updateCellStyle(this.registerSSPPointer);
-        this.updateCellStyle(this.registerUSPPointer);
+        this.updateCellStyle(registerIPPointer.value);
+        this.updateCellStyle(registerSSPPointer.value);
+        this.updateCellStyle(registerUSPPointer.value);
 
         this.memoryOperationSubscription = this.memoryService.memoryOperation$.subscribe(
             (memoryOperation) => this.processMemoryOperation(memoryOperation)
@@ -239,27 +269,27 @@ export class MemoryViewComponent implements OnInit, OnDestroy, OnChanges {
 
     private operationPush(index: CPURegisterIndex, value: number) {
 
-        let previousRegisterSPPointer;
+        let cells;
+
+        const registerPointer = this.registerPointers.get(index);
+        const previousRegisterPointer = registerPointer.value;
+
+        registerPointer.value = value;
 
         switch (index) {
 
             case CPURegisterIndex.SSP:
-                previousRegisterSPPointer = this.registerSSPPointer;
-                this.registerSSPPointer = value;
-                for (let i = 0; previousRegisterSPPointer - i !== this.registerSSPPointer; i++) {
-                    this.sspCells.push(previousRegisterSPPointer - i);
-                    this.updateCellStyle(previousRegisterSPPointer - i);
-                }
+                cells = this.sspCells;
                 break;
             case CPURegisterIndex.USP:
-                previousRegisterSPPointer = this.registerUSPPointer;
-                this.registerUSPPointer = value;
-                for (let i = 0; previousRegisterSPPointer - i !== this.registerUSPPointer; i++) {
-                    this.uspCells.push(previousRegisterSPPointer - i);
-                    this.updateCellStyle(previousRegisterSPPointer - i);
-                }
+                cells = this.uspCells;
                 break;
 
+        }
+
+        for (let i = 0; previousRegisterPointer - i !== value; i++) {
+            cells.push(previousRegisterPointer - i);
+            this.updateCellStyle(previousRegisterPointer - i);
         }
 
         this.updateCellStyle(value);
@@ -268,131 +298,100 @@ export class MemoryViewComponent implements OnInit, OnDestroy, OnChanges {
 
     private operationPop(index: CPURegisterIndex, value: number) {
 
-        let previousRegisterSPPointer;
+        let cells;
+
+        const registerPointer = this.registerPointers.get(index);
+        const previousRegisterPointer = registerPointer.value;
+
+        registerPointer.value = value;
 
         switch (index) {
 
             case CPURegisterIndex.SSP:
-                previousRegisterSPPointer = this.registerSSPPointer;
-                this.registerSSPPointer = value;
-                for (let i = 1; previousRegisterSPPointer + i <= this.registerSSPPointer; i++) {
-                    this.sspCells.splice(this.sspCells.indexOf(previousRegisterSPPointer + i), 1);
-                    this.updateCellStyle(previousRegisterSPPointer + i);
-                }
+                cells = this.sspCells;
                 break;
             case CPURegisterIndex.USP:
-                previousRegisterSPPointer = this.registerUSPPointer;
-                this.registerUSPPointer = value;
-                for (let i = 1; previousRegisterSPPointer + i <= this.registerSSPPointer; i++) {
-                    this.uspCells.splice(this.uspCells.indexOf(previousRegisterSPPointer + i), 1);
-                    this.updateCellStyle(previousRegisterSPPointer + i);
-                }
+                cells = this.uspCells;
                 break;
 
         }
 
-        this.updateCellStyle(previousRegisterSPPointer);
+        for (let i = 1; previousRegisterPointer + i <= value; i++) {
+            cells.splice(cells.indexOf(previousRegisterPointer + i), 1);
+            this.updateCellStyle(previousRegisterPointer + i);
+        }
+
+        this.updateCellStyle(previousRegisterPointer);
 
     }
 
     private operationWriteRegister(index: CPURegisterIndex, value: number) {
 
+        let display;
+
+        if (index === CPURegisterIndex.SR) {
+            this.registerSR = value;
+            this.updateCellStyle(this.registerPointers.get(CPURegisterIndex.SSP).value);
+            this.updateCellStyle(this.registerPointers.get(CPURegisterIndex.USP).value);
+            return;
+        }
+        
+        const registerPointer = this.registerPointers.get(index);
+
+        const previousRegisterPointer = registerPointer.value;
+
+        switch (index) {
+            case CPURegisterIndex.AH:
+            case CPURegisterIndex.BH:
+            case CPURegisterIndex.CH:
+            case CPURegisterIndex.DH:
+                registerPointer.value = (previousRegisterPointer & 0x00FF) + (value << 8);
+                break;
+            case CPURegisterIndex.AL:
+            case CPURegisterIndex.BL:
+            case CPURegisterIndex.CL:
+            case CPURegisterIndex.DL:
+                registerPointer.value = (previousRegisterPointer & 0xFF00) + value;
+                break;
+            default:
+                registerPointer.value = value;
+                break;
+        }
+
         switch (index) {
 
             case CPURegisterIndex.A:
-
-                const previousRegisterAPointer = this.registerAPointer;
-                this.registerAPointer = value;
-
-                if (this.displayA === true) {
-
-                    if (previousRegisterAPointer >= 0 && previousRegisterAPointer < this.size) {
-                        this.updateCellStyle(previousRegisterAPointer);
-                    }
-                    this.updateCellStyle(this.registerAPointer);
-                }
+            case CPURegisterIndex.AH:
+            case CPURegisterIndex.AL:
+                display = this.displayA;
                 break;
             case CPURegisterIndex.B:
-
-                const previousRegisterBPointer = this.registerBPointer;
-                this.registerBPointer = value;
-
-                if (this.displayB === true) {
-
-                    if (previousRegisterBPointer >= 0 && previousRegisterBPointer < this.size) {
-                        this.updateCellStyle(previousRegisterBPointer);
-                    }
-                    this.updateCellStyle(this.registerBPointer);
-                }
+            case CPURegisterIndex.BH:
+            case CPURegisterIndex.BL:
+                display = this.displayB;
                 break;
             case CPURegisterIndex.C:
-
-                const previousregisterCPointer = this.registerCPointer;
-                this.registerCPointer = value;
-
-                if (this.displayC === true) {
-
-                    if (previousregisterCPointer >= 0 && previousregisterCPointer < this.size) {
-                        this.updateCellStyle(previousregisterCPointer);
-                    }
-                    this.updateCellStyle(this.registerCPointer);
-
-                }
+            case CPURegisterIndex.CH:
+            case CPURegisterIndex.CL:
+                display = this.displayC;
                 break;
             case CPURegisterIndex.D:
-
-                const previousregisterDPointer = this.registerDPointer;
-                this.registerDPointer = value;
-
-                if (this.displayD === true) {
-
-                    if (previousregisterDPointer >= 0 && previousregisterDPointer < this.size) {
-                        this.updateCellStyle(previousregisterDPointer);
-                    }
-                    this.updateCellStyle(this.registerDPointer);
-
-                }
+            case CPURegisterIndex.DH:
+            case CPURegisterIndex.DL:
+                display = this.displayD;
                 break;
-            case CPURegisterIndex.IP:
-
-                const previousregisterIPPointer = this.registerIPPointer;
-                this.registerIPPointer = value;
-
-                this.updateCellStyle(previousregisterIPPointer);
-                this.updateCellStyle(this.registerIPPointer);
-
+            default:
+                display = true;
                 break;
 
-            case CPURegisterIndex.SR:
+        }
 
-                this.registerSR = value;
+        if (display === true) {
 
-                this.updateCellStyle(this.registerSSPPointer);
-                this.updateCellStyle(this.registerUSPPointer);
-
-
-                break;
-
-            case CPURegisterIndex.SSP:
-
-                let previousRegisterSPPointer = this.registerSSPPointer;
-                this.registerSSPPointer = value;
-
-                this.updateCellStyle(previousRegisterSPPointer);
-                this.updateCellStyle(this.registerSSPPointer);
-
-                break;
-
-            case CPURegisterIndex.USP:
-
-                previousRegisterSPPointer = this.registerUSPPointer;
-                this.registerUSPPointer = value;
-
-                this.updateCellStyle(previousRegisterSPPointer);
-                this.updateCellStyle(this.registerUSPPointer);
-
-                break;
-
+            if (previousRegisterPointer >= 0 && previousRegisterPointer < this.size) {
+                this.updateCellStyle(previousRegisterPointer);
+            }
+            this.updateCellStyle(registerPointer.value);
         }
 
     }
@@ -407,8 +406,8 @@ export class MemoryViewComponent implements OnInit, OnDestroy, OnChanges {
                 this.registerSR |= (1 << bitNumber);
             }
 
-            this.updateCellStyle(this.registerSSPPointer);
-            this.updateCellStyle(this.registerUSPPointer);
+            this.updateCellStyle(this.registerPointers.get(CPURegisterIndex.SSP).value);
+            this.updateCellStyle(this.registerPointers.get(CPURegisterIndex.USP).value);
 
         }
 
@@ -545,34 +544,34 @@ export class MemoryViewComponent implements OnInit, OnDestroy, OnChanges {
         }
 
         if (this.displayD === true &&
-            this.registerDPointer === address) {
+            this.registerPointers.get(CPURegisterIndex.D).value === address) {
             this.memoryCellViews[address].style = 'marker marker-d';
         }
 
         if (this.displayC === true &&
-            this.registerCPointer === address) {
+            this.registerPointers.get(CPURegisterIndex.C).value === address) {
             this.memoryCellViews[address].style = 'marker marker-c';
         }
 
         if (this.displayB === true &&
-            this.registerBPointer === address) {
+            this.registerPointers.get(CPURegisterIndex.B).value === address) {
             this.memoryCellViews[address].style = 'marker marker-b';
         }
 
         if (this.displayA === true &&
-            this.registerAPointer === address) {
+            this.registerPointers.get(CPURegisterIndex.A).value === address) {
             this.memoryCellViews[address].style = 'marker marker-a';
         }
 
-        if (this.registerUSPPointer === address && !this.isSupervisorMode()) {
+        if (this.registerPointers.get(CPURegisterIndex.USP).value === address && !this.isSupervisorMode()) {
             this.memoryCellViews[address].style = 'marker marker-usp';
         }
 
-        if (this.registerSSPPointer === address && this.isSupervisorMode()) {
+        if (this.registerPointers.get(CPURegisterIndex.SSP).value === address && this.isSupervisorMode()) {
             this.memoryCellViews[address].style = 'marker marker-ssp';
         }
 
-        if (this.registerIPPointer === address) {
+        if (this.registerPointers.get(CPURegisterIndex.IP).value === address) {
             this.memoryCellViews[address].style = 'marker marker-ip';
         }
 
@@ -609,22 +608,22 @@ export class MemoryViewComponent implements OnInit, OnDestroy, OnChanges {
         }
         if ('displayA' in changes) {
 
-            this.updateCellStyle(this.registerAPointer);
+            this.updateCellStyle(this.registerPointers.get(CPURegisterIndex.A).value);
 
         }
         if ('displayB' in changes) {
 
-            this.updateCellStyle(this.registerBPointer);
+            this.updateCellStyle(this.registerPointers.get(CPURegisterIndex.B).value);
 
         }
         if ('displayC' in changes) {
 
-            this.updateCellStyle(this.registerCPointer);
+            this.updateCellStyle(this.registerPointers.get(CPURegisterIndex.C).value);
 
         }
         if ('displayD' in changes) {
 
-            this.updateCellStyle(this.registerDPointer);
+            this.updateCellStyle(this.registerPointers.get(CPURegisterIndex.D).value);
 
         }
 
