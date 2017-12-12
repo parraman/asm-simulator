@@ -56,6 +56,36 @@ export class EventsLogViewerComponent implements AfterViewInit {
 
     private eventGroups: Array<SystemEvent> = [];
 
+    private static getStyle(systemEvent: SystemEvent): string {
+
+        let ret;
+
+        if (systemEvent instanceof MemoryOperation) {
+            ret = 'memory-event';
+        } else if (systemEvent instanceof ControlUnitOperation) {
+            ret = 'control-unit-event';
+        } else if (systemEvent instanceof ALUOperation) {
+            ret = 'aluevent';
+        } else if (systemEvent instanceof CPURegisterOperation) {
+            ret = 'cpuregister-event';
+        } else if (systemEvent instanceof IORegisterOperation) {
+            ret = 'ioregister-event';
+        } else if (systemEvent instanceof IrqCtrlOperation) {
+            ret = 'irq-ctrl-event';
+        } else if (systemEvent instanceof TimerOperation) {
+            ret = 'timer-event';
+        } else if (systemEvent instanceof VisualDisplayOperation) {
+            ret = 'visual-display-event';
+        } else if (systemEvent instanceof TextualDisplayOperation) {
+            ret = 'textual-display-event';
+        } else if (systemEvent instanceof KeypadOperation) {
+            ret = 'keypad-event';
+        }
+
+        return ret;
+
+    }
+
     constructor(private eventsLogService: EventsLogService) { }
 
     ngAfterViewInit() {
@@ -124,9 +154,7 @@ export class EventsLogViewerComponent implements AfterViewInit {
     private pushNewLine(loggedEvent: LoggedEvent) {
 
         if (this.isEventEnabled(loggedEvent.systemEvent)) {
-            const style = loggedEvent.systemEvent.constructor.name.replace(/Operation/, 'Event')
-                            .replace(/([a-z])([A-Z])/g, '$1-$2').toLowerCase();
-            const newLine = new LogLine(this.getTextLine(loggedEvent), style);
+            const newLine = new LogLine(this.getTextLine(loggedEvent), EventsLogViewerComponent.getStyle(loggedEvent.systemEvent));
             this.logLines.push(newLine);
         }
 
