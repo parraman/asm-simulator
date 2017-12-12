@@ -225,8 +225,8 @@ export class MemoryService {
 
     private publishMemoryOperation(operation: MemoryOperation) {
 
-        this.memoryOperationSource.next(operation);
         this.eventsLogService.log(operation);
+        this.memoryOperationSource.next(operation);
 
     }
 

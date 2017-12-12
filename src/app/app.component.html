@@ -1,6 +1,6 @@
 <nav class="navbar navbar-inverse navbar-fixed-top">
   <div class="container">
-    <div class="navbar-header">
+    <div class="nav navbar-nav">
       <div class="btn-group">
         <button type="button" class="btn btn-success navbar-btn" (click)="run()" *ngIf="!isRunning"><span class="glyphicon glyphicon-play"></span> Run</button>
         <button type="button" class="btn btn-default navbar-btn" (click)="stop()" *ngIf="isRunning"><span class="glyphicon glyphicon-stop"></span> Stop</button>
@@ -8,12 +8,12 @@
       </div>
       <button type="button" class="btn btn-default navbar-btn" (click)="reset()">Reset</button>
     </div>
-    <div class="navbar-header navbar-right"><a class="navbar-brand navbar-link" href="#">16-bit Assembler Simulator</a></div>
+    <div class="nav navbar-nav navbar-right"><a class="navbar-brand navbar-link" href="#">16-bit Assembler Simulator</a></div>
   </div>
 </nav>
 <div class="container">
   <div class="row">
-    <div class="col-md-6">
+    <div class="col-xs-6">
       <div class="panel panel-default">
         <div class="panel-body">
           <h4>Code <small>(<a (click)="setCodeSample(1)">Sample 1</a>, <a (click)="setCodeSample(2)">Sample 2</a>, <a (click)="setCodeSample(3)">Sample 3</a>, <a (click)="setCodeSample(4)">Sample 4</a>, <a (click)="setCodeSample(5)">Sample 5</a>)</small></h4>
@@ -29,7 +29,7 @@
         </div>
       </div>
     </div>
-    <div class="col-md-6">
+    <div class="col-xs-6">
       <div class="panel panel-default">
         <div class="panel-body">
           <div style="width:60%;display:inline-block;float:left;text-align:center;">

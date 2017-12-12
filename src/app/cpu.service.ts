@@ -2,6 +2,7 @@ import { Injectable } from '@angular/core';
 
 import { Subject } from 'rxjs/Subject';
 import { Observable } from 'rxjs/Observable';
+import { Subscription } from 'rxjs/Subscription';
 
 import { OpCode, OperandType, Instruction, instructionSet, InstructionSpec } from './instrset';
 import { MemoryService } from './memory.service';
@@ -14,7 +15,8 @@ import { EventsLogService, SystemEvent } from './events-log.service';
 
 import {
     CPURegisterIndex, CPURegister, CPUStatusRegister, CPURegisterOperation,
-    CPUGeneralPurposeRegister, CPUStackPointerRegister
+    CPUGeneralPurposeRegister, CPUStackPointerRegister, SRBit, CPURegisterOperationType,
+    CPURegisterRegularOpParams, CPURegisterBitOpParams
 } from './cpuregs';
 
 import { ArithmeticLogicUnit, ALUOperation } from './alu';
@@ -31,7 +33,12 @@ export enum ControlUnitOperationType {
     DECODE = 2,
     FETCH_OPERANDS = 3,
     RESOLVE_REGADDRESS = 4,
-    EXECUTE = 5
+    EXECUTE = 5,
+    CPU_FAULT = 6,
+    HALTED = 7,
+    WAKE_UP = 8,
+    IRQ_RAISE_LEVEL = 9,
+    IRQ_LOWER_LEVEL = 10
 
 }
 
@@ -77,15 +84,25 @@ type ControlUnitOperationParams = CUOperationParamsFetchOpCode | CUOperationPara
     CUOperationParamsFetchOperands | CUOperationParamsResolveRegAddress |
     CUOperationParamsExecute;
 
+enum ControlUnitOperationState {
+
+    IN_PROGRESS = 0,
+    FINISHED = 1
+
+}
+
 export class ControlUnitOperation implements SystemEvent {
 
     public operationType: ControlUnitOperationType;
     public data: ControlUnitOperationParams;
+    public state: ControlUnitOperationState;
 
-    constructor(operationType: ControlUnitOperationType, data?: ControlUnitOperationParams) {
+    constructor(operationType: ControlUnitOperationType, data?: ControlUnitOperationParams,
+                state?: ControlUnitOperationState) {
 
         this.operationType = operationType;
         this.data = data;
+        this.state = state;
 
     }
 
@@ -110,9 +127,10 @@ export class ControlUnitOperation implements SystemEvent {
                 if (params.operand1Type === undefined && params.operand2Type === undefined) {
                     ret = `CU: Instruction {0x${Utils.pad(params.opcode, 16, 2)}: ${OpCode[params.opcode]}} has no operands`;
                 } else if (params.operand2Type === undefined) {
-                    ret = `CU: Fetch operand ${OperandType[params.operand1Type]} from address [0x${Utils.pad(params.address, 16, 4)}]`
+                    ret = `CU: Fetch operand ${OperandType[params.operand1Type]} from address [0x${Utils.pad(params.address, 16, 4)}]`;
                 } else {
-                    ret = `CU: Fetch operands (${OperandType[params.operand1Type]}, ${OperandType[params.operand2Type]}) from address [0x${Utils.pad(params.address, 16, 4)}]`
+                    ret = `CU: Fetch operands (${OperandType[params.operand1Type]}, ` +
+                          `${OperandType[params.operand2Type]}) from address [0x${Utils.pad(params.address, 16, 4)}]`;
                 }
                 break;
             case ControlUnitOperationType.RESOLVE_REGADDRESS:
@@ -122,7 +140,7 @@ export class ControlUnitOperation implements SystemEvent {
                 break;
             case ControlUnitOperationType.EXECUTE:
                 params = <CUOperationParamsExecute>this.data;
-                ret = `CU: Execute instruction {0x${Utils.pad(params.opcode, 16, 2)}: ${OpCode[params.opcode]}}`
+                ret = `CU: Execute instruction {0x${Utils.pad(params.opcode, 16, 2)}: ${OpCode[params.opcode]}}`;
 
                 if (params.operand1Type !== undefined) {
 
@@ -154,10 +172,25 @@ export class ControlUnitOperation implements SystemEvent {
                     ret += `)`;
                 }
                 break;
+            case ControlUnitOperationType.HALTED:
+                ret = `CU: CPU in halt mode`;
+                break;
+            case ControlUnitOperationType.WAKE_UP:
+                ret = `CU: CPU leaving halt mode`;
+                break;
+            case ControlUnitOperationType.CPU_FAULT:
+                ret = `CU: CPU in fault mode`;
+                break;
+            case ControlUnitOperationType.IRQ_RAISE_LEVEL:
+                ret = `CU: Risen CPU interrupt level signal`;
+                break;
+            case ControlUnitOperationType.IRQ_LOWER_LEVEL:
+                ret = `CU: Lowered CPU interrupt level signal`;
+                break;
             default:
                 break;
         }
-        
+
         return ret;
 
     }
@@ -172,6 +205,7 @@ export class CPUService {
 
     protected cpuRegisterOperationSource = new Subject<CPURegisterOperation>();
     public cpuRegisterOperation$: Observable<CPURegisterOperation>;
+    private cpuRegisterOperationSubscription: Subscription;
 
     protected aluOperationSource = new Subject<ALUOperation>();
     public aluOperation$: Observable<ALUOperation>;
@@ -187,6 +221,9 @@ export class CPUService {
     protected alu: ArithmeticLogicUnit;
 
     private interruptInput = 0;
+
+    private isHalted = false;
+    private isFault = false;
 
     protected static is16bitsGPR(index: CPURegisterIndex): boolean {
 
@@ -289,6 +326,11 @@ export class CPUService {
         this.registersBank.set(CPURegisterIndex.SR, statusRegister);
 
         this.cpuRegisterOperation$ = this.cpuRegisterOperationSource.asObservable();
+
+        this.cpuRegisterOperationSubscription = this.cpuRegisterOperation$.subscribe(
+            (cpuRegisterOperation) => this.processCPURegisterOperation(cpuRegisterOperation)
+        );
+
         this.aluOperation$ = this.aluOperationSource.asObservable();
         this.controlUnitOperation$ = this.controlUnitOperationSource.asObservable();
 
@@ -298,22 +340,82 @@ export class CPUService {
 
     protected publishRegisterOperation(operation: CPURegisterOperation) {
 
+        this.eventsLogService.log(operation);
         this.cpuRegisterOperationSource.next(operation);
 
     }
 
     protected publishALUOperation(operation: ALUOperation) {
 
-        this.aluOperationSource.next(operation);
         this.eventsLogService.log(operation);
+        this.aluOperationSource.next(operation);
 
     }
 
-    protected publishControlUnitOperation(operation: ControlUnitOperation) {
+    protected publishControlUnitOperation(operation: ControlUnitOperation, flushGroups: boolean = false) {
 
+        this.eventsLogService.log(operation, flushGroups);
         this.controlUnitOperationSource.next(operation);
-        this.eventsLogService.log(operation);
 
+    }
+
+    protected publishControlUnitOperationStart(operation: ControlUnitOperation) {
+
+        operation.state = ControlUnitOperationState.IN_PROGRESS;
+        this.eventsLogService.startEventGroup(operation);
+        this.controlUnitOperationSource.next(operation);
+
+    }
+
+    protected publishControlUnitOperationEnd(operation: ControlUnitOperation) {
+
+        operation.state = ControlUnitOperationState.FINISHED;
+        this.eventsLogService.endEventGroup(operation);
+        this.controlUnitOperationSource.next(operation);
+
+    }
+
+    private operationWriteRegister(index: CPURegisterIndex, value: number) {
+
+        if (index === CPURegisterIndex.SR) {
+            if ((value & (1 << SRBit.HALT)) !== 0 && this.isHalted === false) {
+                // The system was halted from within the CU by executing HLT
+                this.isHalted = true;
+                this.publishControlUnitOperation(new ControlUnitOperation(ControlUnitOperationType.HALTED), true);
+            }
+        }
+
+    }
+
+    private operationWriteBit(index: number, bitNumber: number, value: number) {
+
+        if (index === CPURegisterIndex.SR) {
+
+            if (bitNumber === SRBit.HALT && value === 1 && this.isHalted === false) {
+                this.isHalted = true;
+                this.publishControlUnitOperation(new ControlUnitOperation(ControlUnitOperationType.HALTED), true);
+            }
+
+        }
+
+    }
+
+    private processCPURegisterOperation(cpuRegisterOperation: CPURegisterOperation) {
+
+        switch (cpuRegisterOperation.operationType) {
+
+            case CPURegisterOperationType.WRITE:
+                this.operationWriteRegister(
+                    (<CPURegisterRegularOpParams>cpuRegisterOperation.data).index,
+                    (<CPURegisterRegularOpParams>cpuRegisterOperation.data).value);
+                break;
+            case CPURegisterOperationType.WRITE_BIT:
+                this.operationWriteBit(
+                    (<CPURegisterBitOpParams>cpuRegisterOperation.data).index,
+                    (<CPURegisterBitOpParams>cpuRegisterOperation.data).bitNumber,
+                    (<CPURegisterBitOpParams>cpuRegisterOperation.data).value);
+                break;
+        }
     }
 
     public getRegistersBank(): Map<CPURegisterIndex, CPURegister> {
@@ -394,17 +496,31 @@ export class CPUService {
 
     public raiseInterrupt() {
 
-        if (this.SR.fault === 1) {
+        if (this.isFault === true) {
 
             throw Error('CPU in FAULT mode: reset required');
 
         }
 
+        let operation;
+
         this.interruptInput = 1;
 
-        this.SR.halt = 0;
+        operation = new ControlUnitOperation(ControlUnitOperationType.IRQ_RAISE_LEVEL);
+
+        this.publishControlUnitOperation(operation);
 
         if (this.SR.irqMask === 1) {
+
+            operation = new ControlUnitOperation(ControlUnitOperationType.WAKE_UP);
+
+            this.publishControlUnitOperationStart(operation);
+
+            this.isHalted = false;
+
+            this.SR.halt = 0;
+
+            this.publishControlUnitOperationEnd(operation);
 
             this.toInterruptHandler();
 
@@ -416,17 +532,25 @@ export class CPUService {
 
         this.interruptInput = 0;
 
+        this.publishControlUnitOperation(new ControlUnitOperation(ControlUnitOperationType.IRQ_LOWER_LEVEL));
+
     }
 
     public reset(): void {
 
-        this.publishControlUnitOperation(new ControlUnitOperation(ControlUnitOperationType.RESET));
+        const operation = new ControlUnitOperation(ControlUnitOperationType.RESET);
+
+        this.publishControlUnitOperationStart(operation);
 
         this.registersBank.get(CPURegisterIndex.A).value = this.registersBank.get(CPURegisterIndex.A).resetValue;
         this.registersBank.get(CPURegisterIndex.B).value = this.registersBank.get(CPURegisterIndex.B).resetValue;
         this.registersBank.get(CPURegisterIndex.C).value = this.registersBank.get(CPURegisterIndex.C).resetValue;
         this.registersBank.get(CPURegisterIndex.D).value = this.registersBank.get(CPURegisterIndex.D).resetValue;
         this.registersBank.get(CPURegisterIndex.IP).value = this.registersBank.get(CPURegisterIndex.IP).resetValue;
+
+        this.isHalted = false;
+        this.isFault = false;
+
         this.registersBank.get(CPURegisterIndex.SR).value = this.registersBank.get(CPURegisterIndex.SR).resetValue;
 
         this.userSP.value = this.userSP.resetValue;
@@ -435,17 +559,21 @@ export class CPUService {
 
         this.interruptInput = 0;
 
+        this.publishControlUnitOperationEnd(operation);
+
     }
 
     private fetchAndDecode(args: Array<number>): InstructionSpec {
 
-        let opcode, parameters;
+        let opcode, parameters, operation;
 
         parameters = <CUOperationParamsFetchOpCode> {
             address: this.nextIP
         };
 
-        this.publishControlUnitOperation(new ControlUnitOperation(ControlUnitOperationType.FETCH_OPCODE, parameters));
+        operation = new ControlUnitOperation(ControlUnitOperationType.FETCH_OPCODE, parameters);
+
+        this.publishControlUnitOperationStart(operation);
 
         try {
             opcode = this.memoryService.loadByte(this.nextIP);
@@ -453,10 +581,13 @@ export class CPUService {
             throw new Exception(ExceptionType.INSTRUCTION_FETCH_ERROR,
                 `Error when fetching instruction at ${this.nextIP}`, this.IP.value, this.SP.value);
         }
+
+        this.publishControlUnitOperationEnd(operation);
+
         this.nextIP += 1;
 
         parameters = <CUOperationParamsDecode> {
-            opcode: opcode 
+            opcode: opcode
         };
 
         this.publishControlUnitOperation(new ControlUnitOperation(ControlUnitOperationType.DECODE, parameters));
@@ -475,7 +606,9 @@ export class CPUService {
             operand2Type: instruction.operand2
         };
 
-        this.publishControlUnitOperation(new ControlUnitOperation(ControlUnitOperationType.FETCH_OPERANDS, parameters));
+        operation = new ControlUnitOperation(ControlUnitOperationType.FETCH_OPERANDS, parameters);
+
+        this.publishControlUnitOperationStart(operation);
 
         let byte, word, register, regaddress, offset, address;
 
@@ -615,25 +748,29 @@ export class CPUService {
                 break;
         }
 
+        this.publishControlUnitOperationEnd(operation);
+
         return instruction;
 
     }
 
     public step(): void {
 
-        if (this.SR.halt === 1) {
+        if (this.isFault === true) {
+
+            throw Error('CPU in FAULT mode: reset required');
+
+        } else if (this.isHalted === true) {
 
             this.clockService.consumeTicks(1);
 
             return;
 
-        } else if (this.SR.fault === 1) {
-
-            throw Error('CPU in FAULT mode: reset required');
-
         }
 
         this.nextIP = this.IP.value;
+
+        let operation;
 
         try {
 
@@ -648,10 +785,16 @@ export class CPUService {
                 operand2Value: args[1]
             };
 
-            this.publishControlUnitOperation(new ControlUnitOperation(ControlUnitOperationType.EXECUTE, parameters));
+            operation = new ControlUnitOperation(ControlUnitOperationType.EXECUTE, parameters);
+
+            this.publishControlUnitOperationStart(operation);
 
             if (this[instruction.methodName].apply(this, args) === true) {
+                this.publishControlUnitOperationEnd(operation);
+
                 this.IP.value = this.nextIP;
+            } else {
+                this.publishControlUnitOperationEnd(operation);
             }
 
             this.clockService.consumeTicks(1);
@@ -659,6 +802,10 @@ export class CPUService {
         } catch (e) {
 
             if (e instanceof Exception && this.SR.supervisor === 0) {
+
+                if (operation) {
+                    this.publishControlUnitOperationEnd(operation);
+                }
 
                 this.SR.supervisor = 1;
 
@@ -676,6 +823,8 @@ export class CPUService {
 
                 } catch (e) {
                     this.SR.fault = 1;
+                    this.isFault = true;
+                    this.publishControlUnitOperation(new ControlUnitOperation(ControlUnitOperationType.CPU_FAULT));
                     throw Error(`Exception occurred while creating the exception frame: ${e.message}`);
                 }
 
@@ -683,9 +832,13 @@ export class CPUService {
 
             } else if (e instanceof Exception) {
                 this.SR.fault = 1;
+                this.isFault = true;
+                this.publishControlUnitOperation(new ControlUnitOperation(ControlUnitOperationType.CPU_FAULT));
                 throw Error(`Exception occurred while in supervisor mode: ${e.message}`);
             } else {
                 this.SR.fault = 1;
+                this.isFault = true;
+                this.publishControlUnitOperation(new ControlUnitOperation(ControlUnitOperationType.CPU_FAULT));
                 throw e;
             }
         }

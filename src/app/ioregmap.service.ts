@@ -2,7 +2,7 @@ import { Injectable } from '@angular/core';
 
 import { Subject } from 'rxjs/Subject';
 import { Observable } from 'rxjs/Observable';
-import { SystemEvent } from './events-log.service';
+import { EventsLogService, SystemEvent } from './events-log.service';
 
 import { Utils } from './utils';
 
@@ -120,7 +120,7 @@ export class IORegMapService {
 
     public ioRegisterOperation$: Observable<IORegisterOperation>;
 
-    constructor() {
+    constructor(private eventLogService: EventsLogService) {
 
         this.ioRegisterOperation$ = this.ioRegisterOperationSource.asObservable();
 
@@ -128,6 +128,7 @@ export class IORegMapService {
 
     private publishIORegisterOperation(operation: IORegisterOperation) {
 
+        this.eventLogService.log(operation);
         this.ioRegisterOperationSource.next(operation);
 
     }

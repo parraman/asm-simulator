@@ -8,6 +8,9 @@ import {
     MemoryCellAccessPermission, MemoryOperationType
 } from '../memory.service';
 
+import { Utils } from '../utils';
+import { EventsLogService, SystemEvent } from '../events-log.service';
+
 const COLOR_PALETTE = [
 
     '#000000', '#252525', '#343434', '#4E4E4E', '#686868', '#757575', '#8E8E8E', '#A4A4A4', /* 0x00..0x07 */
@@ -48,6 +51,67 @@ const COLOR_PALETTE = [
 const RECTX = 6;
 const RECTY = 6;
 
+export enum VisualDisplayOperationType {
+
+    RESET = 0,
+    WRITE_PIXEL = 1
+
+}
+
+export interface VisualDisplayOperationParams {
+
+    pixel: number;
+    coordX: number;
+    coordY: number;
+    color: number;
+
+}
+
+enum VisualDisplayOperationState {
+
+    IN_PROGRESS = 0,
+    FINISHED = 1
+
+}
+
+export class VisualDisplayOperation implements SystemEvent {
+
+    public operationType: VisualDisplayOperationType;
+    public data: VisualDisplayOperationParams;
+    public state: VisualDisplayOperationState;
+
+    constructor(operationType: VisualDisplayOperationType, data?: VisualDisplayOperationParams,
+                state?: VisualDisplayOperationState) {
+
+        this.operationType = operationType;
+        this.data = data;
+        this.state = state;
+
+    }
+
+    toString(): string {
+
+        let ret;
+
+        switch (this.operationType) {
+            case VisualDisplayOperationType.RESET:
+                ret = `VDPL: Reset visual display`;
+                break;
+            case VisualDisplayOperationType.WRITE_PIXEL:
+                ret = `VDPL: Write pixel ${this.data.pixel} (x: ${this.data.coordX}, y: ${this.data.coordY}) ` +
+                      `with color 0x${Utils.pad(this.data.color, 16, 2)}`;
+                break;
+            default:
+                break;
+        }
+
+        return ret;
+
+    }
+
+}
+
+
 @Component({
     selector: 'app-visual-display',
     templateUrl: './visual-display.component.html'
@@ -59,23 +123,24 @@ export class VisualDisplayComponent implements OnInit, AfterViewInit {
     private canvas: any;
     private context: any;
 
-    private memoryOperationSource = new Subject<MemoryOperation>();
+    private visualDisplayOperationSource = new Subject<VisualDisplayOperation>();
+    private visualDisplayOperationSource$: Observable<VisualDisplayOperation>;
 
-    private memoryOperationSource$: Observable<MemoryOperation>;
+    constructor(private memoryService: MemoryService,
+                private eventsLogService: EventsLogService) {
 
-    constructor(private memoryService: MemoryService) {
+        this.visualDisplayOperationSource$ = this.visualDisplayOperationSource.asObservable();
 
-        this.memoryOperationSource$ = this.memoryOperationSource.asObservable();
-
-        this.memoryOperationSource$.subscribe(
-            (memoryOperation) => this.processMemoryOperation(memoryOperation)
+        this.visualDisplayOperationSource$.subscribe(
+            (visualDisplayOperation) => this.processVisualDisplayOperation(visualDisplayOperation)
         );
 
     }
 
-    private publishMemoryOperation(operation: MemoryOperation) {
+    private publishVisualDisplayOperation(operation: VisualDisplayOperation) {
 
-        this.memoryOperationSource.next(operation);
+        this.eventsLogService.log(operation);
+        this.visualDisplayOperationSource.next(operation);
 
     }
 
@@ -83,7 +148,7 @@ export class VisualDisplayComponent implements OnInit, AfterViewInit {
 
         this.memoryService.addMemoryRegion('VisualDisplayRegion', 0x300, 0x3FF,
             MemoryCellAccessPermission.READ_WRITE, undefined,
-            (op) => this.publishMemoryOperation(op));
+            (op) => this.processMemoryOperation(op));
 
     }
 
@@ -93,7 +158,16 @@ export class VisualDisplayComponent implements OnInit, AfterViewInit {
         const x = offset % 16;
         const y = Math.floor(offset / 16);
 
-        this.fillRect(x, y, value);
+        const parameters: VisualDisplayOperationParams = {
+
+            pixel: offset,
+            coordX: x,
+            coordY: y,
+            color: value
+
+        };
+
+        this.publishVisualDisplayOperation(new VisualDisplayOperation(VisualDisplayOperationType.WRITE_PIXEL, parameters));
 
     }
 
@@ -106,22 +180,52 @@ export class VisualDisplayComponent implements OnInit, AfterViewInit {
         let x = offset % 16;
         let y = Math.floor(offset / 16);
 
-        this.fillRect(x, y, msb);
+        const parameters: VisualDisplayOperationParams = {
+
+            pixel: offset,
+            coordX: x,
+            coordY: y,
+            color: value
+
+        };
+
+        this.publishVisualDisplayOperation(new VisualDisplayOperation(VisualDisplayOperationType.WRITE_PIXEL, parameters));
 
         if ((offset + 1) <= 255) {
             x = (offset + 1) % 16;
             y = Math.floor((offset + 1) / 16);
 
-            this.fillRect(x, y, lsb);
+            parameters.pixel = offset + 1;
+            parameters.coordX = x;
+            parameters.coordY = y;
+
+            this.publishVisualDisplayOperation(new VisualDisplayOperation(VisualDisplayOperationType.WRITE_PIXEL, parameters));
         }
 
     }
 
     public reset() {
 
+        this.publishVisualDisplayOperation(new VisualDisplayOperation(VisualDisplayOperationType.RESET));
+
         this.context.clearRect(0, 0, this.canvas.width, this.canvas.height);
 
         this.memoryService.storeBytes(0x300, 256);
+
+    }
+
+    private processVisualDisplayOperation(visualDisplayOperation: VisualDisplayOperation) {
+
+        switch (visualDisplayOperation.operationType) {
+
+            case VisualDisplayOperationType.WRITE_PIXEL:
+                const params = visualDisplayOperation.data;
+                this.fillRect(params.coordX, params.coordY, params.color);
+                break;
+            default:
+                break;
+
+        }
 
     }
 

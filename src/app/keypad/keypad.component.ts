@@ -6,9 +6,76 @@ import { IORegMapService, IORegisterOperation, IORegisterType,
 import { Subject } from 'rxjs/Subject';
 import { Observable } from 'rxjs/Observable';
 
+import { Utils } from '../utils';
+import { EventsLogService, SystemEvent } from '../events-log.service';
+
 
 const KPDSTATUS_REGISTER_ADDRESS = 5;
 const KPDDATA_REGISTER_ADDRESS = 6;
+
+export enum KeypadOperationType {
+
+    RESET = 0,
+    KEY_PRESSED = 1,
+    OVERLOAD = 2,
+    DATA_READ = 3
+
+}
+
+export interface KeypadOperationParams {
+
+    value: number;
+
+}
+
+enum KeypadOperationState {
+
+    IN_PROGRESS = 0,
+    FINISHED = 1
+
+}
+
+export class KeypadOperation implements SystemEvent {
+
+    public operationType: KeypadOperationType;
+    public data: KeypadOperationParams;
+    public state: KeypadOperationState;
+
+    constructor(operationType: KeypadOperationType, data?: KeypadOperationParams,
+                state?: KeypadOperationState) {
+
+        this.operationType = operationType;
+        this.data = data;
+        this.state = state;
+
+    }
+
+    toString(): string {
+
+        let ret;
+
+        switch (this.operationType) {
+            case KeypadOperationType.RESET:
+                ret = `KPD: Reset keypad`;
+                break;
+            case KeypadOperationType.KEY_PRESSED:
+                ret = `KPD: Key pressed -> ${this.data.value}`;
+                break;
+            case KeypadOperationType.OVERLOAD:
+                ret = `KPD: Overload on pressing new key`;
+                break;
+            case KeypadOperationType.DATA_READ:
+                ret = `KPD: Clear status on KPDDATA register read`;
+                break;
+            default:
+                break;
+        }
+
+        return ret;
+
+    }
+
+}
 
 
 @Component({
@@ -22,33 +89,47 @@ export class KeypadComponent implements OnInit {
 
     private interruptOutput = false;
 
-    private ioRegisterOperationSource = new Subject<IORegisterOperation>();
+    private keypadOperationSource = new Subject<KeypadOperation>();
 
-    private ioRegisterOperation$: Observable<IORegisterOperation>;
+    private keypadOperation$: Observable<KeypadOperation>;
 
     constructor(private ioRegMapService: IORegMapService,
-                private irqCtrlService: IrqCtrlService) {
+                private irqCtrlService: IrqCtrlService,
+                private eventsLogService: EventsLogService) {
 
-        this.ioRegisterOperation$ = this.ioRegisterOperationSource.asObservable();
-
-        this.ioRegisterOperation$.subscribe(
-            (ioRegisterOperation) => this.processRegisterOperation(ioRegisterOperation)
-        );
+        this.keypadOperation$ = this.keypadOperationSource.asObservable();
 
     }
 
-    private publishIORegisterOperation(operation: IORegisterOperation) {
+    private publishKeypadOperation(operation: KeypadOperation, flushGroups: boolean = false) {
 
-        this.ioRegisterOperationSource.next(operation);
+        this.eventsLogService.log(operation, flushGroups);
+        this.keypadOperationSource.next(operation);
+
+    }
+
+    protected publishKeypadOperationStart(operation: KeypadOperation) {
+
+        operation.state = KeypadOperationState.IN_PROGRESS;
+        this.eventsLogService.startEventGroup(operation);
+        this.keypadOperationSource.next(operation);
+
+    }
+
+    protected publishKeypadOperationEnd(operation: KeypadOperation) {
+
+        operation.state = KeypadOperationState.FINISHED;
+        this.eventsLogService.endEventGroup(operation);
+        this.keypadOperationSource.next(operation);
 
     }
 
     ngOnInit() {
 
         this.ioRegMapService.addRegister('KPDSTATUS', KPDSTATUS_REGISTER_ADDRESS, 0,
-            IORegisterType.READ_ONLY, (op) => this.publishIORegisterOperation(op), 'Keypad Status Register');
+            IORegisterType.READ_ONLY, (op) => this.processRegisterOperation(op), 'Keypad Status Register');
         this.ioRegMapService.addRegister('KPDDATA', KPDDATA_REGISTER_ADDRESS, 0,
-            IORegisterType.READ_ONLY, (op) => this.publishIORegisterOperation(op), 'Keypad Data Register');
+            IORegisterType.READ_ONLY, (op) => this.processRegisterOperation(op), 'Keypad Data Register');
 
     }
 
@@ -61,7 +142,13 @@ export class KeypadComponent implements OnInit {
             case KPDDATA_REGISTER_ADDRESS:
                 this.kpdStatusRegister = 0;
 
+                const operation = new KeypadOperation(KeypadOperationType.DATA_READ);
+
+                this.publishKeypadOperationStart(operation);
+
                 this.ioRegMapService.store(KPDSTATUS_REGISTER_ADDRESS, 0, false, false);
+
+                this.publishKeypadOperationEnd(operation);
 
                 if (this.interruptOutput === true) {
                     this.interruptOutput = false;
@@ -88,19 +175,34 @@ export class KeypadComponent implements OnInit {
 
     public processKey(key: number) {
 
+        let operation;
+
         if (this.kpdStatusRegister === 0) {
 
             this.kpdDataRegister = key;
             this.kpdStatusRegister = 1;
 
+            operation = new KeypadOperation(KeypadOperationType.KEY_PRESSED, { value: key });
+
+            this.publishKeypadOperationStart(operation);
+
             this.ioRegMapService.store(KPDDATA_REGISTER_ADDRESS, key, false, false);
             this.ioRegMapService.store(KPDSTATUS_REGISTER_ADDRESS, 1, false, false);
+
+            this.publishKeypadOperationEnd(operation);
+
 
         } else {
 
             this.kpdStatusRegister = 3;
 
+            operation = new KeypadOperation(KeypadOperationType.OVERLOAD);
+
+            this.publishKeypadOperationStart(operation);
+
             this.ioRegMapService.store(KPDSTATUS_REGISTER_ADDRESS, 3, false, false);
+
+            this.publishKeypadOperationEnd(operation);
 
         }
 
@@ -113,12 +215,18 @@ export class KeypadComponent implements OnInit {
 
     public reset() {
 
+        const operation = new KeypadOperation(KeypadOperationType.RESET);
+
+        this.publishKeypadOperationStart(operation);
+
         this.kpdStatusRegister = 0;
         this.kpdDataRegister = 0;
         this.interruptOutput = false;
 
         this.ioRegMapService.store(KPDSTATUS_REGISTER_ADDRESS, 0, false, false);
         this.ioRegMapService.store(KPDDATA_REGISTER_ADDRESS, 0, false, false);
+
+        this.publishKeypadOperationEnd(operation);
 
     }
 

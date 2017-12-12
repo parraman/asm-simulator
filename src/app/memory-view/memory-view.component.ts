@@ -335,7 +335,7 @@ export class MemoryViewComponent implements OnInit, OnDestroy, OnChanges {
             this.updateCellStyle(this.registerPointers.get(CPURegisterIndex.USP).value);
             return;
         }
-        
+
         const registerPointer = this.registerPointers.get(index);
 
         const previousRegisterPointer = registerPointer.value;

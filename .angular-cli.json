@@ -20,6 +20,7 @@
       "prefix": "app",
       "styles": [
         "../node_modules/codemirror/lib/codemirror.css",
+        "bootstrap.css",
         "styles.css"
       ],
       "scripts": [],

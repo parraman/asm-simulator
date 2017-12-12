@@ -218,7 +218,7 @@ export class ALUOperation implements SystemEvent {
             default:
                 break;
         }
-        
+
         return ret;
 
     }
@@ -440,11 +440,11 @@ export class ArithmeticLogicUnit {
 
         const ret = ArithmeticLogicUnit.check16bitsOperation(summand1 + summand2);
 
-        this.SR.carry = ret.carryFlag;
-        this.SR.zero = ret.zeroFlag;
-
         this.publishAddition(ALUOperationType.ADD,
             summand1, summand2, ret.result, ret.carryFlag, ret.zeroFlag);
+
+        this.SR.carry = ret.carryFlag;
+        this.SR.zero = ret.zeroFlag;
 
         return ret.result;
 
@@ -454,11 +454,11 @@ export class ArithmeticLogicUnit {
 
         const ret = ArithmeticLogicUnit.check8bitsOperation(summand1 + summand2);
 
-        this.SR.carry = ret.carryFlag;
-        this.SR.zero = ret.zeroFlag;
-
         this.publishAddition(ALUOperationType.ADDB,
             summand1, summand2, ret.result, ret.carryFlag, ret.zeroFlag);
+
+        this.SR.carry = ret.carryFlag;
+        this.SR.zero = ret.zeroFlag;
 
         return ret.result;
 
@@ -468,11 +468,11 @@ export class ArithmeticLogicUnit {
 
         const ret = ArithmeticLogicUnit.check16bitsOperation(minuend - subtrahend);
 
-        this.SR.carry = ret.carryFlag;
-        this.SR.zero = ret.zeroFlag;
-
         this.publishSubstraction(ALUOperationType.SUB,
             minuend, subtrahend, ret.result, ret.carryFlag, ret.zeroFlag);
+
+        this.SR.carry = ret.carryFlag;
+        this.SR.zero = ret.zeroFlag;
 
         return ret.result;
 
@@ -482,11 +482,11 @@ export class ArithmeticLogicUnit {
 
         const ret = ArithmeticLogicUnit.check8bitsOperation(minuend - subtrahend);
 
-        this.SR.carry = ret.carryFlag;
-        this.SR.zero = ret.zeroFlag;
-
         this.publishSubstraction(ALUOperationType.SUBB,
             minuend, subtrahend, ret.result, ret.carryFlag, ret.zeroFlag);
+
+        this.SR.carry = ret.carryFlag;
+        this.SR.zero = ret.zeroFlag;
 
         return ret.result;
 
@@ -496,11 +496,11 @@ export class ArithmeticLogicUnit {
 
         const ret = ArithmeticLogicUnit.check16bitsOperation(multiplicand * multiplier);
 
-        this.SR.carry = ret.carryFlag;
-        this.SR.zero = ret.zeroFlag;
-
         this.publishMultiplication(ALUOperationType.MUL,
             multiplicand, multiplier, ret.result, ret.carryFlag, ret.zeroFlag);
+
+        this.SR.carry = ret.carryFlag;
+        this.SR.zero = ret.zeroFlag;
 
         return ret.result;
 
@@ -510,11 +510,11 @@ export class ArithmeticLogicUnit {
 
         const ret = ArithmeticLogicUnit.check8bitsOperation(multiplicand * multiplier);
 
-        this.SR.carry = ret.carryFlag;
-        this.SR.zero = ret.zeroFlag;
-
         this.publishMultiplication(ALUOperationType.MULB,
             multiplicand, multiplier, ret.result, ret.carryFlag, ret.zeroFlag);
+
+        this.SR.carry = ret.carryFlag;
+        this.SR.zero = ret.zeroFlag;
 
         return ret.result;
 
@@ -529,11 +529,11 @@ export class ArithmeticLogicUnit {
 
         const ret = ArithmeticLogicUnit.check16bitsOperation(Math.floor(dividend / divisor));
 
-        this.SR.carry = ret.carryFlag;
-        this.SR.zero = ret.zeroFlag;
-
         this.publishDivision(ALUOperationType.DIV,
             dividend, divisor, ret.result, ret.carryFlag, ret.zeroFlag);
+
+        this.SR.carry = ret.carryFlag;
+        this.SR.zero = ret.zeroFlag;
 
         return ret.result;
 
@@ -548,11 +548,11 @@ export class ArithmeticLogicUnit {
 
         const ret = ArithmeticLogicUnit.check8bitsOperation(Math.floor(dividend / divisor));
 
-        this.SR.carry = ret.carryFlag;
-        this.SR.zero = ret.zeroFlag;
-
         this.publishDivision(ALUOperationType.DIVB,
             dividend, divisor, ret.result, ret.carryFlag, ret.zeroFlag);
+
+        this.SR.carry = ret.carryFlag;
+        this.SR.zero = ret.zeroFlag;
 
         return ret.result;
 
@@ -562,11 +562,11 @@ export class ArithmeticLogicUnit {
 
         const ret = ArithmeticLogicUnit.check16bitsOperation(operand1 & operand2);
 
-        this.SR.carry = ret.carryFlag;
-        this.SR.zero = ret.zeroFlag;
-
         this.publishBitwiseOp(ALUOperationType.AND,
             operand1, operand2, ret.result, ret.carryFlag, ret.zeroFlag);
+
+        this.SR.carry = ret.carryFlag;
+        this.SR.zero = ret.zeroFlag;
 
         return ret.result;
 
@@ -576,11 +576,11 @@ export class ArithmeticLogicUnit {
 
         const ret = ArithmeticLogicUnit.check8bitsOperation(operand1 & operand2);
 
-        this.SR.carry = ret.carryFlag;
-        this.SR.zero = ret.zeroFlag;
-
         this.publishBitwiseOp(ALUOperationType.ORB,
             operand1, operand2, ret.result, ret.carryFlag, ret.zeroFlag);
+
+        this.SR.carry = ret.carryFlag;
+        this.SR.zero = ret.zeroFlag;
 
         return ret.result;
 
@@ -590,11 +590,11 @@ export class ArithmeticLogicUnit {
 
         const ret = ArithmeticLogicUnit.check16bitsOperation(operand1 | operand2);
 
-        this.SR.carry = ret.carryFlag;
-        this.SR.zero = ret.zeroFlag;
-
         this.publishBitwiseOp(ALUOperationType.OR,
             operand1, operand2, ret.result, ret.carryFlag, ret.zeroFlag);
+
+        this.SR.carry = ret.carryFlag;
+        this.SR.zero = ret.zeroFlag;
 
         return ret.result;
 
@@ -604,11 +604,11 @@ export class ArithmeticLogicUnit {
 
         const ret = ArithmeticLogicUnit.check8bitsOperation(operand1 | operand2);
 
-        this.SR.carry = ret.carryFlag;
-        this.SR.zero = ret.zeroFlag;
-
         this.publishBitwiseOp(ALUOperationType.ORB,
             operand1, operand2, ret.result, ret.carryFlag, ret.zeroFlag);
+
+        this.SR.carry = ret.carryFlag;
+        this.SR.zero = ret.zeroFlag;
 
         return ret.result;
 
@@ -618,11 +618,11 @@ export class ArithmeticLogicUnit {
 
         const ret = ArithmeticLogicUnit.check16bitsOperation(operand1 ^ operand2);
 
-        this.SR.carry = ret.carryFlag;
-        this.SR.zero = ret.zeroFlag;
-
         this.publishBitwiseOp(ALUOperationType.XOR,
             operand1, operand2, ret.result, ret.carryFlag, ret.zeroFlag);
+
+        this.SR.carry = ret.carryFlag;
+        this.SR.zero = ret.zeroFlag;
 
         return ret.result;
 
@@ -632,11 +632,11 @@ export class ArithmeticLogicUnit {
 
         const ret = ArithmeticLogicUnit.check8bitsOperation(operand1 ^ operand2);
 
-        this.SR.carry = ret.carryFlag;
-        this.SR.zero = ret.zeroFlag;
-
         this.publishBitwiseOp(ALUOperationType.XORB,
             operand1, operand2, ret.result, ret.carryFlag, ret.zeroFlag);
+
+        this.SR.carry = ret.carryFlag;
+        this.SR.zero = ret.zeroFlag;
 
         return ret.result;
 
@@ -646,11 +646,11 @@ export class ArithmeticLogicUnit {
 
         const ret = ArithmeticLogicUnit.check16bitsOperation(~operand);
 
-        this.SR.carry = ret.carryFlag;
-        this.SR.zero = ret.zeroFlag;
-
         this.publishBitwiseNegation(ALUOperationType.NOT,
             operand, ret.result, ret.carryFlag, ret.zeroFlag);
+
+        this.SR.carry = ret.carryFlag;
+        this.SR.zero = ret.zeroFlag;
 
         return ret.result;
 
@@ -660,11 +660,11 @@ export class ArithmeticLogicUnit {
 
         const ret = ArithmeticLogicUnit.check8bitsOperation(~operand);
 
-        this.SR.carry = ret.carryFlag;
-        this.SR.zero = ret.zeroFlag;
-
         this.publishBitwiseNegation(ALUOperationType.NOTB,
             operand, ret.result, ret.carryFlag, ret.zeroFlag);
+
+        this.SR.carry = ret.carryFlag;
+        this.SR.zero = ret.zeroFlag;
 
         return ret.result;
 
@@ -674,11 +674,11 @@ export class ArithmeticLogicUnit {
 
         const ret = ArithmeticLogicUnit.check16bitsOperation(operand << places);
 
-        this.SR.carry = ret.carryFlag;
-        this.SR.zero = ret.zeroFlag;
-
         this.publishBitshiftOp(ALUOperationType.SHL,
             operand, places, ret.result, ret.carryFlag, ret.zeroFlag);
+
+        this.SR.carry = ret.carryFlag;
+        this.SR.zero = ret.zeroFlag;
 
         return ret.result;
 
@@ -688,11 +688,11 @@ export class ArithmeticLogicUnit {
 
         const ret = ArithmeticLogicUnit.check8bitsOperation(operand << places);
 
-        this.SR.carry = ret.carryFlag;
-        this.SR.zero = ret.zeroFlag;
-
         this.publishBitshiftOp(ALUOperationType.SHLB,
             operand, places, ret.result, ret.carryFlag, ret.zeroFlag);
+
+        this.SR.carry = ret.carryFlag;
+        this.SR.zero = ret.zeroFlag;
 
         return ret.result;
 
@@ -702,11 +702,11 @@ export class ArithmeticLogicUnit {
 
         const ret = ArithmeticLogicUnit.check16bitsOperation(operand >>> places);
 
-        this.SR.carry = ret.carryFlag;
-        this.SR.zero = ret.zeroFlag;
-
         this.publishBitshiftOp(ALUOperationType.SHR,
             operand, places, ret.result, ret.carryFlag, ret.zeroFlag);
+
+        this.SR.carry = ret.carryFlag;
+        this.SR.zero = ret.zeroFlag;
 
         return ret.result;
 
@@ -716,11 +716,11 @@ export class ArithmeticLogicUnit {
 
         const ret = ArithmeticLogicUnit.check8bitsOperation(operand >>> places);
 
-        this.SR.carry = ret.carryFlag;
-        this.SR.zero = ret.zeroFlag;
-
         this.publishBitshiftOp(ALUOperationType.SHRB,
             operand, places, ret.result, ret.carryFlag, ret.zeroFlag);
+
+        this.SR.carry = ret.carryFlag;
+        this.SR.zero = ret.zeroFlag;
 
         return ret.result;
 

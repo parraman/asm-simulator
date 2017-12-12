@@ -8,6 +8,22 @@ import {
     MemoryCellAccessPermission, MemoryOperationType
 } from '../memory.service';
 
+import { Utils } from '../utils';
+import { EventsLogService, SystemEvent } from '../events-log.service';
+
+function getStrValue(value: number) {
+
+    const character = String.fromCharCode(value);
+
+    if (character.trim() === '') {
+        return '\u00A0\u00A0';
+    } else {
+        return character;
+    }
+
+}
+
+
 class TextCellView {
 
     private _value: number;
@@ -37,12 +53,65 @@ class TextCellView {
     set value(newValue: number) {
 
         this._value = newValue;
-        const character = String.fromCharCode(newValue);
-        if (character.trim() === '') {
-            this._strValue = '\u00A0\u00A0';
-        } else {
-            this._strValue = character;
+        this._strValue = getStrValue(newValue);
+
+    }
+
+}
+
+export enum TextualDisplayOperationType {
+
+    RESET = 0,
+    WRITE_CHAR = 1
+
+}
+
+export interface TextualDisplayOperationParams {
+
+    cell: number;
+    value: number;
+    strValue: string;
+
+}
+
+enum TextualDisplayOperationState {
+
+    IN_PROGRESS = 0,
+    FINISHED = 1
+
+}
+
+export class TextualDisplayOperation implements SystemEvent {
+
+    public operationType: TextualDisplayOperationType;
+    public data: TextualDisplayOperationParams;
+    public state: TextualDisplayOperationState;
+
+    constructor(operationType: TextualDisplayOperationType, data?: TextualDisplayOperationParams,
+                state?: TextualDisplayOperationState) {
+
+        this.operationType = operationType;
+        this.data = data;
+        this.state = state;
+
+    }
+
+    toString(): string {
+
+        let ret;
+
+        switch (this.operationType) {
+            case TextualDisplayOperationType.RESET:
+                ret = `TDPL: Reset textual display`;
+                break;
+            case TextualDisplayOperationType.WRITE_CHAR:
+                ret = `TDPL: Write character ${this.data.value}: '${this.data.strValue}' into cell [${Utils.pad(this.data.cell, 16, 2)}]`;
+                break;
+            default:
+                break;
         }
+
+        return ret;
 
     }
 
@@ -57,11 +126,11 @@ export class TextualDisplayComponent implements OnInit {
 
     public textCellViews: Array<TextCellView> = new Array<TextCellView>(16);
 
-    private memoryOperationSource = new Subject<MemoryOperation>();
+    private textualDisplayOperationSource = new Subject<TextualDisplayOperation>();
+    private textualDisplayOperationSource$: Observable<TextualDisplayOperation>;
 
-    private memoryOperationSource$: Observable<MemoryOperation>;
-
-    constructor(private memoryService: MemoryService) {
+    constructor(private memoryService: MemoryService,
+                private eventsLogService: EventsLogService) {
 
         for (let i = 0; i < 16; i++) {
 
@@ -69,17 +138,18 @@ export class TextualDisplayComponent implements OnInit {
 
         }
 
-        this.memoryOperationSource$ = this.memoryOperationSource.asObservable();
+        this.textualDisplayOperationSource$ = this.textualDisplayOperationSource.asObservable();
 
-        this.memoryOperationSource$.subscribe(
-            (memoryOperation) => this.processMemoryOperation(memoryOperation)
+        this.textualDisplayOperationSource$.subscribe(
+            (textualDisplayOperation) => this.processTextualDisplayOperation(textualDisplayOperation)
         );
 
     }
 
-    private publishMemoryOperation(operation: MemoryOperation) {
+    private publishTextualDisplayOperation(operation: TextualDisplayOperation) {
 
-        this.memoryOperationSource.next(operation);
+        this.eventsLogService.log(operation);
+        this.textualDisplayOperationSource.next(operation);
 
     }
 
@@ -87,13 +157,27 @@ export class TextualDisplayComponent implements OnInit {
 
         this.memoryService.addMemoryRegion('TextualDisplayRegion', 0x2F0, 0x2FF,
             MemoryCellAccessPermission.READ_WRITE,
-            undefined, (op) => this.publishMemoryOperation(op));
+            undefined, (op) => this.processMemoryOperation(op));
+
+    }
+
+    private fillCharacter(index: number, value: number) {
+
+        this.textCellViews[index].value = value;
 
     }
 
     private operationStoreByte(address: number, value: number) {
 
-        this.textCellViews[address - 0x2F0].value = value;
+        const parameters: TextualDisplayOperationParams = {
+
+            cell: address - 0x2F0,
+            value: value,
+            strValue: getStrValue(value)
+
+        };
+
+        this.publishTextualDisplayOperation(new TextualDisplayOperation(TextualDisplayOperationType.WRITE_CHAR, parameters));
 
     }
 
@@ -102,13 +186,43 @@ export class TextualDisplayComponent implements OnInit {
         const msb = (value & 0xFF00) >>> 8;
         const lsb = (value & 0x00FF);
 
-        this.textCellViews[address - 0x2F0].value = msb;
+        const parameters: TextualDisplayOperationParams = {
+
+            cell: address - 0x2F0,
+            value: msb,
+            strValue: getStrValue(msb)
+
+        };
+
+        this.publishTextualDisplayOperation(new TextualDisplayOperation(TextualDisplayOperationType.WRITE_CHAR, parameters));
 
         if ((address + 1) <= 0x2FF) {
-            this.textCellViews[address + 1 - 0x2F0].value = lsb;
+
+            parameters.cell = address - 0x2F0 + 1;
+            parameters.value = lsb;
+            parameters.strValue = getStrValue(lsb);
+
+            this.publishTextualDisplayOperation(new TextualDisplayOperation(TextualDisplayOperationType.WRITE_CHAR, parameters));
+
         }
 
     }
+
+    private processTextualDisplayOperation(textualDisplayOperation: TextualDisplayOperation) {
+
+        switch (textualDisplayOperation.operationType) {
+
+            case TextualDisplayOperationType.WRITE_CHAR:
+                const params = textualDisplayOperation.data;
+                this.fillCharacter(params.cell, params.value);
+                break;
+            default:
+                break;
+
+        }
+
+    }
+
 
     private processMemoryOperation(memoryOperation: MemoryOperation) {
 
@@ -131,6 +245,8 @@ export class TextualDisplayComponent implements OnInit {
     }
 
     public reset() {
+
+        this.publishTextualDisplayOperation(new TextualDisplayOperation(TextualDisplayOperationType.RESET));
 
         for (let i = 0; i < this.textCellViews.length; i++) {
             this.textCellViews[i].value = 0;
