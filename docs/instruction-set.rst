@@ -115,7 +115,7 @@ Instructions description
 
 The assembler simulator supports the following instructions:
 
-* `:ref:instruction-add`
+* :ref:`instruction-add`
 
 +----------+-----------+------------+-----------+
 | ``ADD``  | ``ADDB``  | ``AND``    | ``ANDB``  |
