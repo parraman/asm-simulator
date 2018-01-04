@@ -145,6 +145,8 @@ The assembler simulator supports the following instructions.
 | ``SUBB``  | ``SVC``   | ``XOR``    | ``XORB``  |
 +-----------+-----------+------------+-----------+
 
+_add-instruction:
+
 ADD: 16-bits addition
 ^^^^^^^^^^^^^^^^^^^^^
 
