@@ -127,6 +127,7 @@ The assembler simulator supports the following instructions:
 * :ref:`instruction-decb`
 * :ref:`instruction-div`
 * :ref:`instruction-divb`
+* :ref:`instruction-hlt`
 
 +----------+-----------+------------+-----------+
 | ``HLT``  | ``IN``    | ``INC``    | ``INCB``  |
@@ -370,7 +371,7 @@ DIV: 16-bits division
 Divides the value stored in Register A by the 16-bits value referred to by
 Operand 1. The result will be stored into Register A. The operation will
 modify the values of the **carry** (C) and **zero** (Z) flags of the Status
-Register. 
+Register. If the instruction executes a divison-by-zero, an exception will be triggered.
 
 +-----------+-------------------+-----------+------------------+
 | Opcode    | Operand 1         | Operand 2 | Example          |
@@ -392,7 +393,8 @@ DIVB: 8-bits division
 Divides the value stored in Register AL by the 8-bits value referred to by
 Operand 1. The result will be stored into Register AL. The operation will
 modify the values of the **carry** (C) and **zero** (Z) flags of the Status
-Register. 
+Register. If the instruction executes a divison-by-zero, an exception will be
+triggered.
 
 +-----------+------------------+-----------+------------------+
 | Opcode    | Operand 1        | Operand 2 | Example          |
@@ -405,3 +407,21 @@ Register.
 +-----------+------------------+-----------+------------------+
 | 87 (0x57) | *BYTE*           | *NONE*    | ``DIVB 0x2``     |
 +-----------+------------------+-----------+------------------+
+
+.. _instruction-hlt:
+
+HLT: halt processor 
+^^^^^^^^^^^^^^^^^^^
+
+Sets the CPU in halt mode. The **halt** (H) flag of the Status Register will
+be set and the processor will be stopped from executing further instructions.
+Interrupts can occur if they are properly enabled. If an interrupt occurs,
+the CPU will abandon halt mode (**halt** flag will be cleared) and the
+execution will resume from the instruction service routine.
+
++---------+-----------+-----------+---------+
+| Opcode  | Operand 1 | Operand 2 | Example |
++=========+===========+===========+=========+
+| 0 (0x0) | *NONE*    | *NONE*    | ``HLT`` |
++---------+-----------+-----------+---------+
+
