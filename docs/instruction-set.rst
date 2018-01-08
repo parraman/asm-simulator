@@ -128,21 +128,35 @@ The assembler simulator supports the following instructions:
 * :ref:`instruction-div`
 * :ref:`instruction-divb`
 * :ref:`instruction-hlt`
+* :ref:`instruction-in`
+* :ref:`instruction-inc`
+* :ref:`instruction-incb`
+* :ref:`instruction-iret`
+* :ref:`instruction-ja`
+* :ref:`instruction-jae`
+* :ref:`instruction-jb`
+* :ref:`instruction-jbe`
+* :ref:`instruction-jc`
+* :ref:`instruction-je`
+* :ref:`instruction-jmp`
+* :ref:`instruction-jna`
+* :ref:`instruction-jnae`
+* :ref:`instruction-jnb`
+* :ref:`instruction-jnbe`
+* :ref:`instruction-jnc`
+* :ref:`instruction-jne`
+* :ref:`instruction-jnz`
+* :ref:`instruction-jz`
+* :ref:`instruction-mov`
+* :ref:`instruction-movb`
+* :ref:`instruction-mul`
+* :ref:`instruction-mulb`
+* :ref:`instruction-not`
+* :ref:`instruction-notb`
+* :ref:`instruction-or`
+* :ref:`instruction-orb`
+* :ref:`instruction-out`
 
-+----------+-----------+------------+-----------+
-| ``HLT``  | ``IN``    | ``INC``    | ``INCB``  |
-+----------+-----------+------------+-----------+
-| ``IRET`` | ``JA``    | ``JAE``    | ``JB``    |
-+----------+-----------+------------+-----------+
-| ``JBE``  | ``JC``    | ``JE``     | ``JMP``   |
-+----------+-----------+------------+-----------+
-| ``JNA``  | ``JNAE``  | ``JNB``    | ``JNBE``  |
-+----------+-----------+------------+-----------+
-| ``JNC``  | ``JNE``   | ``JNZ``    | ``JZ``    |
-+----------+-----------+------------+-----------+
-| ``MOV``  | ``MOVB``  | ``MUL``    | ``MULB``  |
-+----------+-----------+------------+-----------+
-| ``NOT``  | ``OR``    | ``ORB``    | ``OUT``   |
 +----------+-----------+------------+-----------+
 | ``POP``  | ``POPB``  | ``PUSH``   | ``PUSHB`` |
 +----------+-----------+------------+-----------+
@@ -350,18 +364,18 @@ stored in the same register. The operation will modify the values of the
 
 .. _instruction-decb:
 
-DEC: decrement 8-bits register 
+DECB: decrement 8-bits register 
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 Decrements the value of an 8-bits register by 1 unit. The result will be
 stored in the same register. The operation will modify the values of the
 **carry** (C) and **zero** (Z) flags of the Status Register. 
 
-+-----------+-------------------+-----------+-----------+
-| Opcode    | Operand 1         | Operand 2 | Example   |
-+===========+===================+===========+===========+
-| 36 (0x24) | *REGISTER_16BITS* | *NONE*    | ``DEC B`` |
-+-----------+-------------------+-----------+-----------+
++-----------+-------------------+-----------+-------------+
+| Opcode    | Operand 1         | Operand 2 | Example     |
++===========+===================+===========+=============+
+| 36 (0x24) | *REGISTER_16BITS* | *NONE*    | ``DECB BL`` |
++-----------+-------------------+-----------+-------------+
 
 .. _instruction-div:
 
@@ -425,3 +439,453 @@ execution will resume from the instruction service routine.
 | 0 (0x0) | *NONE*    | *NONE*    | ``HLT`` |
 +---------+-----------+-----------+---------+
 
+.. _instruction-in:
+
+IN: read input/output register 
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+Reads the value of an input/output register. The address of the register to be
+read is obtained from the value of Operand 1. The result will be stored into
+Register A.
+
++------------+-------------------+-----------+-----------------+
+| Opcode     | Operand 1         | Operand 2 | Example         |
++============+===================+===========+=================+
+| 135 (0x87) | *REGISTER_16BITS* | *NONE*    | ``IN B``        |
++------------+-------------------+-----------+-----------------+
+| 136 (0x88) | *REGADDRESS*      | *NONE*    | ``IN [A+100]``  |
++------------+-------------------+-----------+-----------------+
+| 137 (0x89) | *ADDRESS*         | *NONE*    | ``IN [0x1000]`` |
++------------+-------------------+-----------+-----------------+
+| 138 (0x8A) | *WORD*            | *NONE*    | ``IN 0x2``      |
++------------+-------------------+-----------+-----------------+
+
+.. _instruction-inc:
+
+INC: increment 16-bits register 
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+Increments the value of a 16-bits register by 1 unit. The result will be
+stored in the same register. The operation will modify the values of the
+**carry** (C) and **zero** (Z) flags of the Status Register. 
+
++-----------+-------------------+-----------+-----------+
+| Opcode    | Operand 1         | Operand 2 | Example   |
++===========+===================+===========+===========+
+| 33 (0x21) | *REGISTER_16BITS* | *NONE*    | ``INC C`` |
++-----------+-------------------+-----------+-----------+
+
+.. _instruction-incb:
+
+INCB: decrement 8-bits register 
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+Increments the value of an 8-bits register by 1 unit. The result will be stored
+in the same register. The operation will modify the values of the **carry** (C)
+and **zero** (Z) flags of the Status Register. 
+
++-----------+-------------------+-----------+-------------+
+| Opcode    | Operand 1         | Operand 2 | Example     |
++===========+===================+===========+=============+
+| 34 (0x22) | *REGISTER_16BITS* | *NONE*    | ``INCB DL`` |
++-----------+-------------------+-----------+-------------+
+
+.. _instruction-iret:
+
+IRET: return from ISR
+^^^^^^^^^^^^^^^^^^^^^
+
+Returns from an Interrupt Service Routiner (ISR). The execution of this
+instruction will recover the Instruction Pointer (IP), the Stack Pointer (SP)
+and the Status Register stored in the stack and jump to the IP address.
+
++------------+-----------+-----------+----------+
+| Opcode     | Operand 1 | Operand 2 | Example  |
++============+===========+===========+==========+
+| 132 (0x84) | *NONE*    | *NONE*    | ``IRET`` |
++------------+-----------+-----------+----------+
+
+.. _instruction-ja:
+
+JA: jump if above
+^^^^^^^^^^^^^^^^^
+
+Jumps to a given address if the **carry** (C) and **zero** (Z) flags of the
+Status Register are zero (see :ref:`instruction-cmp`). If the condition is met,
+the CPU will resume its execution from the address referenced by Operand 1.
+Otherwise, it will continue with the next instruction. The instruction has one
+mnemonic alias: ``JNBE``.
+
++-----------+--------------+-----------+---------------+
+| Opcode    | Operand 1    | Operand 2 | Example       |
++===========+==============+===========+===============+
+| 55 (0x37) | *REGADDRESS* | *NONE*    | ``JA [C+20]`` |
++-----------+--------------+-----------+---------------+
+| 56 (0x38) | *WORD*       | *NONE*    | ``JA 0x1000`` |
++-----------+--------------+-----------+---------------+
+
+.. _instruction-jae:
+
+JAE: jump if above or equal
+^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+See :ref:`instruction-jnc`.
+
+.. _instruction-jb:
+
+JB: jump if below 
+^^^^^^^^^^^^^^^^^
+
+See :ref:`instruction-jc`.
+
+.. _instruction-jbe:
+
+JBE: jump if below or equal
+^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+See :ref:`instruction-jna`.
+
+.. _instruction-jc:
+
+JC: jump if carry set 
+^^^^^^^^^^^^^^^^^^^^^
+
+Jumps to a given address if the **carry** (C) flag of the Status Register is
+set (see :ref:`instruction-cmp`). If the condition is met, the CPU will resume
+its execution from the address referenced by Operand 1. Otherwise, it will
+continue with the next instruction. The instruction has two mnemonic aliases:
+``JBE`` and ``JNAE``.
+
++-----------+--------------+-----------+---------------+
+| Opcode    | Operand 1    | Operand 2 | Example       |
++===========+==============+===========+===============+
+| 47 (0x2F) | *REGADDRESS* | *NONE*    | ``JC [C+50]`` |
++-----------+--------------+-----------+---------------+
+| 48 (0x30) | *WORD*       | *NONE*    | ``JC 0x2000`` |
++-----------+--------------+-----------+---------------+
+
+.. _instruction-je:
+
+JE: jump if equal
+^^^^^^^^^^^^^^^^^
+
+See :ref:`instruction-jz`.
+
+.. _instruction-jmp:
+
+JMP: jump to address
+^^^^^^^^^^^^^^^^^^^^
+
+Inconditionally jumps to a given address. The CPU will resume its execution
+from the address referenced by Operand 1. 
+
++-----------+--------------+-----------+----------------+
+| Opcode    | Operand 1    | Operand 2 | Example        |
++===========+==============+===========+================+
+| 45 (0x2D) | *REGADDRESS* | *NONE*    | ``JMP [A+24]`` |
++-----------+--------------+-----------+----------------+
+| 46 (0x2E) | *WORD*       | *NONE*    | ``JMP 0x1200`` |
++-----------+--------------+-----------+----------------+
+
+
+.. _instruction-jna:
+
+JNA: jump if not above
+^^^^^^^^^^^^^^^^^^^^^^
+
+Jumps to a given address if the **carry** (C) or **zero** (Z) flags of the
+Status Register are set (see :ref:`instruction-cmp`). If the condition is met,
+the CPU will resume its execution from the address referenced by Operand 1.
+Otherwise, it will continue with the next instruction. The instruction has one
+mnemonic alias: ``JBE``.
+
+
++-----------+--------------+-----------+----------------+
+| Opcode    | Operand 1    | Operand 2 | Example        |
++===========+==============+===========+================+
+| 57 (0x39) | *REGADDRESS* | *NONE*    | ``JNA [C+20]`` |
++-----------+--------------+-----------+----------------+
+| 58 (0x3A) | *WORD*       | *NONE*    | ``JNA 0x1000`` |
++-----------+--------------+-----------+----------------+
+
+.. _instruction-jnae:
+
+JNAE: jump if not above or equal 
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+See :ref:`instruction-jc`.
+
+.. _instruction-jnb:
+
+JNB: jump if not below 
+^^^^^^^^^^^^^^^^^^^^^^
+
+See :ref:`instruction-jnc`.
+
+.. _instruction-jnbe:
+
+JNBE: jump if not below or equal
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+See :ref:`instruction-jnbe`.
+
+.. _instruction-jnc:
+
+JNC: jump if not carry set 
+^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+Jumps to a given address if the **carry** (C) flag of the Status Register is
+zero (see :ref:`instruction-cmp`). If the condition is met, the CPU will resume
+its execution from the address referenced by Operand 1. Otherwise, it will
+continue with the next instruction. The instruction has two mnemonic aliases:
+``JNB`` and ``JAE``.
+
++-----------+--------------+-----------+----------------+
+| Opcode    | Operand 1    | Operand 2 | Example        |
++===========+==============+===========+================+
+| 49 (0x31) | *REGADDRESS* | *NONE*    | ``JNC [C+2]``  |
++-----------+--------------+-----------+----------------+
+| 50 (0x32) | *WORD*       | *NONE*    | ``JNC 0x4000`` |
++-----------+--------------+-----------+----------------+
+
+.. _instruction-jne:
+
+JNE: jump if not equal
+^^^^^^^^^^^^^^^^^^^^^^
+
+See :ref:`instruction-jnz`.
+
+.. _instruction-jnz:
+
+JNZ: jump if not zero 
+^^^^^^^^^^^^^^^^^^^^^
+
+Jumps to a given address if the **zero** (Z) flag of the Status Register is set
+(see :ref:`instruction-cmp`). If the condition is met, the CPU will resume its
+execution from the address referenced by Operand 1. Otherwise, it will
+continue with the next instruction. The instruction has one mnemonic alias:
+``JNE``.
+
++-----------+--------------+-----------+----------------+
+| Opcode    | Operand 1    | Operand 2 | Example        |
++===========+==============+===========+================+
+| 53 (0x35) | *REGADDRESS* | *NONE*    | ``JNZ [A+2]``  |
++-----------+--------------+-----------+----------------+
+| 54 (0x36) | *WORD*       | *NONE*    | ``JNZ 0x1000`` |
++-----------+--------------+-----------+----------------+
+
+.. _instruction-jz:
+
+JZ: jump if zero 
+^^^^^^^^^^^^^^^^
+
+Jumps to a given address if the **zero** (Z) flag of the Status Register is zero 
+(see :ref:`instruction-cmp`). If the condition is met, the CPU will resume its
+execution from the address referenced by Operand 1. Otherwise, it will
+continue with the next instruction. The instruction has one mnemonic alias:
+``JE``.
+
++-----------+--------------+-----------+---------------+
+| Opcode    | Operand 1    | Operand 2 | Example       |
++===========+==============+===========+===============+
+| 51 (0x33) | *REGADDRESS* | *NONE*    | ``JZ [A+20]`` |
++-----------+--------------+-----------+---------------+
+| 52 (0x34) | *WORD*       | *NONE*    | ``JZ 0x1000`` |
++-----------+--------------+-----------+---------------+
+
+.. _instruction-mov:
+
+MOV: 16-bits copy 
+^^^^^^^^^^^^^^^^^
+
+Copies a 16-bits value, referenced by Operand 2, to the location referred to by
+Operand 1. 
+
++----------+-------------------+-------------------+---------------------+
+| Opcode   | Operand 1         | Operand 2         | Example             |
++==========+===================+===================+=====================+
+| 1 (0x01) | *REGISTER_16BITS* | *REGISTER_16BITS* | ``MOV A, B``        |
++----------+-------------------+-------------------+---------------------+
+| 2 (0x02) | *REGISTER_16BITS* | *REGADDRESS*      | ``MOV C, [A-100]``  |
++----------+-------------------+-------------------+---------------------+
+| 3 (0x03) | *REGISTER_16BITS* | *ADDRESS*         | ``MOV D, [0x1000]`` |
++----------+-------------------+-------------------+---------------------+
+| 4 (0x04) | *REGADDRESS*      | *REGISTER_16BITS* | ``MOV [B-2], A``    |
++----------+-------------------+-------------------+---------------------+
+| 5 (0x05) | *ADDRESS*         | *REGISTER_16BITS* | ``MOV [0x100], D``  |
++----------+-------------------+-------------------+---------------------+
+| 6 (0x06) | *REGISTER_16BITS* | *WORD*            | ``MOV A, 0x100``    |
++----------+-------------------+-------------------+---------------------+
+| 7 (0x07) | *REGADDRESS*      | *WORD*            | ``MOV [D-4], B``    |
++----------+-------------------+-------------------+---------------------+
+| 8 (0x08) | *ADDRESS*         | *WORD*            | ``MOV [0x200], C``  |
++----------+-------------------+-------------------+---------------------+
+
+.. _instruction-movb:
+
+MOVB: 8-bits copy 
+^^^^^^^^^^^^^^^^^
+
+Copies an 8-bits value, referenced by Operand 2, to the location referred to by
+Operand 1. 
+
++-----------+------------------+------------------+-----------------------+
+| Opcode    | Operand 1        | Operand 2        | Example               |
++===========+==================+==================+=======================+
+| 9 (0x09)  | *REGISTER_8BITS* | *REGISTER_8BITS* | ``MOVB AH, BL``       |
++-----------+------------------+------------------+-----------------------+
+| 10 (0x0A) | *REGISTER_8BITS* | *REGADDRESS*     | ``MOVB BL, [A-100]``  |
++-----------+------------------+------------------+-----------------------+
+| 11 (0x0B) | *REGISTER_8BITS* | *ADDRESS*        | ``MOVB DH, [0x1000]`` |
++-----------+------------------+------------------+-----------------------+
+| 12 (0x0C) | *REGADDRESS*     | *REGISTER_8BITS* | ``MOVB [B-2], AH``    |
++-----------+------------------+------------------+-----------------------+
+| 13 (0x0D) | *ADDRESS*        | *REGISTER_8BITS* | ``MOVB [0x100], CL``  |
++-----------+------------------+------------------+-----------------------+
+| 14 (0x0E) | *REGISTER_8BITS* | *BYTE*           | ``MOVB AL, 0x80``     |
++-----------+------------------+------------------+-----------------------+
+| 15 (0x0F) | *REGADDRESS*     | *BYTE*           | ``MOVB [D-4], AL``    |
++-----------+------------------+------------------+-----------------------+
+| 16 (0x10) | *ADDRESS*        | *BYTE*           | ``MOVB [0x200], CH``  |
++-----------+------------------+------------------+-----------------------+
+
+.. _instruction-mul:
+
+MUL: 16-bits multiplication 
+^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+Multiplies the value stored in Register A by the 16-bits value referred to by
+Operand 1. The result will be stored into Register A. The operation will
+modify the values of the **carry** (C) and **zero** (Z) flags of the Status
+Register. 
+
++-----------+-------------------+-----------+------------------+
+| Opcode    | Operand 1         | Operand 2 | Example          |
++===========+===================+===========+==================+
+| 72 (0x48) | *REGISTER_16BITS* | *NONE*    | ``MUL A``        |
++-----------+-------------------+-----------+------------------+
+| 73 (0x49) | *REGADDRESS*      | *NONE*    | ``MUL [A+100]``  |
++-----------+-------------------+-----------+------------------+
+| 74 (0x4A) | *ADDRESS*         | *NONE*    | ``MUL [0x2000]`` |
++-----------+-------------------+-----------+------------------+
+| 75 (0x4B) | *WORD*            | *NONE*    | ``MUL 0x4``      |
++-----------+-------------------+-----------+------------------+
+
+.. _instruction-mulb:
+
+MULB: 8-bits multiplication
+^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+Multiplies the value stored in Register AL by the 8-bits value referred to by
+Operand 1. The result will be stored into Register AL. The operation will
+modify the values of the **carry** (C) and **zero** (Z) flags of the Status
+Register. 
+
++-----------+------------------+-----------+------------------+
+| Opcode    | Operand 1        | Operand 2 | Example          |
++===========+==================+===========+==================+
+| 76 (0x4C) | *REGISTER_8BITS* | *NONE*    | ``MULB CL``      |
++-----------+------------------+-----------+------------------+
+| 77 (0x4D) | *REGADDRESS*     | *NONE*    | ``MULB [A+100]`` |
++-----------+------------------+-----------+------------------+
+| 78 (0x4E) | *ADDRESS*        | *NONE*    | ``MULB [0x400]`` |
++-----------+------------------+-----------+------------------+
+| 79 (0x4F) | *BYTE*           | *NONE*    | ``MULB 0x8``     |
++-----------+------------------+-----------+------------------+
+
+.. _instruction-not:
+
+NOT: 16-bits bitwise NOT
+^^^^^^^^^^^^^^^^^^^^^^^^
+
+Performs a `bitwise NOT <https://en.wikipedia.org/wiki/Bitwise_operation#NOT>`_
+on the bits of a 16-bits register, referenced by Operand 1. The result of the
+operation will be stored in the same register. 
+
++------------+-------------------+-----------+-----------+
+| Opcode     | Operand 1         | Operand 2 | Example   |
++============+===================+===========+===========+
+| 112 (0x70) | *REGISTER_16BITS* | *NONE*    | ``NOT A`` |
++------------+-------------------+-----------+-----------+
+
+.. _instruction-notb:
+
+NOTB: 8-bits bitwise NOT
+^^^^^^^^^^^^^^^^^^^^^^^^
+
+Performs a `bitwise NOT <https://en.wikipedia.org/wiki/Bitwise_operation#NOT>`_
+on the bits of an 8-bits register, referenced by Operand 1. The result of the
+operation will be stored in the same register. 
+
++------------+------------------+-----------+-------------+
+| Opcode     | Operand 1        | Operand 2 | Example     |
++============+==================+===========+=============+
+| 113 (0x71) | *REGISTER_8BITS* | *NONE*    | ``NOTB AL`` |
++------------+------------------+-----------+-------------+
+
+.. _instruction-or:
+
+OR: 16-bits bitwise OR 
+^^^^^^^^^^^^^^^^^^^^^^
+
+Performs an bitwise logic OR of two 16-bits integers. Every form of the
+instruction will have two operands. Operand 1 will always be a reference to a
+16-bits register. A logic OR will be performed between the contents of the
+register and the value referenced by Operand 2. The result will be stored in
+the register referenced by Operand 1. 
+
++-----------+-------------------+-------------------+--------------------+
+| Opcode    | Operand 1         | Operand 2         | Example            |
++===========+===================+===================+====================+
+| 96 (0x60) | *REGISTER_16BITS* | *REGISTER_16BITS* | ``OR C, B``        |
++-----------+-------------------+-------------------+--------------------+
+| 97 (0x61) | *REGISTER_16BITS* | *REGADDRESS*      | ``OR C, [B-100]``  |
++-----------+-------------------+-------------------+--------------------+
+| 98 (0x62) | *REGISTER_16BITS* | *ADDRESS*         | ``OR D, [0x1000]`` |
++-----------+-------------------+-------------------+--------------------+
+| 99 (0x63) | *REGISTER_16BITS* | *WORD*            | ``OR D, 0xA5A5``   |
++-----------+-------------------+-------------------+--------------------+
+
+.. _instruction-orb:
+
+ORB: 8-bits bitwise OR 
+^^^^^^^^^^^^^^^^^^^^^^
+
+Performs an bitwise logic OR of two 8-bits integers. Every form of the
+instruction will have two operands. Operand 1 will always be a reference to an
+8-bits register. A logic OR will be performed between the contents of the
+register and the value referenced by Operand 2. The result will be stored in
+the register referenced by Operand 1.
+
++------------+------------------+------------------+--------------------+
+| Opcode     | Operand 1        | Operand 2        | Example            |
++============+==================+==================+====================+
+| 100 (0x64) | *REGISTER_8BITS* | *REGISTER_8BITS* | ``ORB CH, BL``     |
++------------+------------------+------------------+--------------------+
+| 101 (0x65) | *REGISTER_8BITS* | *REGADDRESS*     | ``ORB DL, [A+30]`` |
++------------+------------------+------------------+--------------------+
+| 102 (0x66) | *REGISTER_8BITS* | *ADDRESS*        | ``ORB CH, [0x30]`` |
++------------+------------------+------------------+--------------------+
+| 103 (0x67) | *REGISTER_8BITS* | *WORD*           | ``ORB BL, 0xA5``   |
++------------+------------------+------------------+--------------------+
+
+.. _instruction-out:
+
+OUT: write input/output register 
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+Writes the contents of General Purpose Register A into an input/output
+register. The address of the register to be written is obtained from the value
+of Operand 1.
+
++------------+-------------------+-----------+------------------+
+| Opcode     | Operand 1         | Operand 2 | Example          |
++============+===================+===========+==================+
+| 139 (0x8B) | *REGISTER_16BITS* | *NONE*    | ``OUT C``        |
++------------+-------------------+-----------+------------------+
+| 140 (0x8C) | *REGADDRESS*      | *NONE*    | ``OUT [B+100]``  |
++------------+-------------------+-----------+------------------+
+| 141 (0x8D) | *ADDRESS*         | *NONE*    | ``OUT [0x1000]`` |
++------------+-------------------+-----------+------------------+
+| 142 (0x8E) | *WORD*            | *NONE*    | ``OUT 0x2``      |
++------------+-------------------+-----------+------------------+
