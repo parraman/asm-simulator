@@ -4,7 +4,7 @@
 
 A web-based simulator of a 16-bit CPU. This project has been developed for
 educational purposes and it is based on a `previous project
-<https://github.com/Schweigi/assembler-simulator>` made by Marco Schweighauser.
+<https://github.com/Schweigi/assembler-simulator>`_ made by Marco Schweighauser.
 The simulator has the following features:
 
 * A 16-bit big-endian CPU.
