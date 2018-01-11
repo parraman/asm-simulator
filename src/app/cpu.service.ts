@@ -3086,7 +3086,7 @@ export class CPUService {
         return true;
     }
 
-    @Instruction(OpCode.NOT_REG8, 'NOTB', OperandType.REGISTER_8BITS)
+    @Instruction(OpCode.NOTB_REG8, 'NOTB', OperandType.REGISTER_8BITS)
     private instrNOT_REG8(toRegister: number): boolean {
 
         if (CPUService.is8bitsGPR(toRegister) === false) {
