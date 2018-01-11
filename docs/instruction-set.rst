@@ -100,16 +100,6 @@ The semantics of the operand types are the following:
   the offset added to the value stored on the given register. The offset is
   codified using two's complement [-128, 127]. 
 
-Numbering formats
------------------
-
-The assembler supports the following numbering formats:
-
-* Decimal: 10, 2939d, etc.
-* Octal: 0o237, 0o2332, etc.
-* Binary: 0000000010001000b, 1111111101010101b, etc.
-* Hexadecimal: 0x1000, 0x3FF, etc.
-
 Instructions description
 ------------------------
 
@@ -156,16 +146,22 @@ The assembler simulator supports the following instructions:
 * :ref:`instruction-or`
 * :ref:`instruction-orb`
 * :ref:`instruction-out`
-
-+----------+-----------+------------+-----------+
-| ``POP``  | ``POPB``  | ``PUSH``   | ``PUSHB`` |
-+----------+-----------+------------+-----------+
-| ``RET``  | ``SHL``   | ``SHLB``   | ``SHR``   |
-+----------+-----------+------------+-----------+
-| ``SHRB`` | ``SRET``  | ``STI``    | ``SUB``   |
-+----------+-----------+------------+-----------+
-| ``SUBB`` | ``SVC``   | ``XOR``    | ``XORB``  |
-+----------+-----------+------------+-----------+
+* :ref:`instruction-pop`
+* :ref:`instruction-popb`
+* :ref:`instruction-push`
+* :ref:`instruction-pushb`
+* :ref:`instruction-ret`
+* :ref:`instruction-shl`
+* :ref:`instruction-shlb`
+* :ref:`instruction-shr`
+* :ref:`instruction-shrb`
+* :ref:`instruction-sret`
+* :ref:`instruction-sti`
+* :ref:`instruction-sub`
+* :ref:`instruction-subb`
+* :ref:`instruction-svc`
+* :ref:`instruction-xor`
+* :ref:`instruction-xorb`
 
 .. _instruction-add:
 
@@ -218,11 +214,11 @@ by Operand 1.
 AND: 16-bits bitwise AND 
 ^^^^^^^^^^^^^^^^^^^^^^^^
 
-Performs an bitwise logic AND of two 16-bits integers. Every form of the
-instruction will have two operands. Operand 1 will always be a reference to a
-16-bits register. A logic AND will be performed between the contents of the
-register and the value referenced by Operand 2. The result will be stored in
-the register referenced by Operand 1. 
+Performs a `bitwise AND <https://en.wikipedia.org/wiki/Bitwise_operation#AND>`_
+of two 16-bits integers. Every form of the instruction will have two operands.
+Operand 1 will always be a reference to a 16-bits register. A logic AND will be
+performed between the contents of the register and the value referenced by
+Operand 2. The result will be stored in the register referenced by Operand 1. 
 
 +-----------+-------------------+-------------------+---------------------+
 | Opcode    | Operand 1         | Operand 2         | Example             |
@@ -241,11 +237,11 @@ the register referenced by Operand 1.
 ANDB: 8-bits bitwise AND 
 ^^^^^^^^^^^^^^^^^^^^^^^^
 
-Performs an bitwise logic AND of two 8-bits integers. Every form of the
-instruction will have two operands. Operand 1 will always be a reference to an
-8-bits register. A logic AND will be performed between the contents of the
-register and the value referenced by Operand 2. The result will be stored in
-the register referenced by Operand 1.
+Performs a `bitwise AND <https://en.wikipedia.org/wiki/Bitwise_operation#AND>`_
+of two 8-bits integers. Every form of the instruction will have two operands.
+Operand 1 will always be a reference to an 8-bits register. A logic AND will be
+performed between the contents of the register and the value referenced by
+Operand 2. The result will be stored in the register referenced by Operand 1.
 
 +-----------+------------------+------------------+---------------------+
 | Opcode    | Operand 1        | Operand 2        | Example             |
@@ -282,8 +278,9 @@ CLI: clear interrupt mask
 ^^^^^^^^^^^^^^^^^^^^^^^^^
 
 Clears the Interrupt Mask Bit of the Status Register. When the register is
-cleared, the CPU interrupts are masked and, thus, disabled. The instruction
-has no operands.
+cleared, the CPU interrupts are masked and, thus, disabled. The instruction has
+no operands. This is a priviledged instruction that can only be called when in
+Supervisor mode. 
 
 +------------+-----------+-----------+---------+
 | Opcode     | Operand 1 | Operand 2 | Example |
@@ -446,7 +443,8 @@ IN: read input/output register
 
 Reads the value of an input/output register. The address of the register to be
 read is obtained from the value of Operand 1. The result will be stored into
-Register A.
+Register A. This is a priviledged instruction that can only be called when in
+Supervisor mode.
 
 +------------+-------------------+-----------+-----------------+
 | Opcode     | Operand 1         | Operand 2 | Example         |
@@ -828,11 +826,12 @@ operation will be stored in the same register.
 OR: 16-bits bitwise OR 
 ^^^^^^^^^^^^^^^^^^^^^^
 
-Performs an bitwise logic OR of two 16-bits integers. Every form of the
-instruction will have two operands. Operand 1 will always be a reference to a
-16-bits register. A logic OR will be performed between the contents of the
-register and the value referenced by Operand 2. The result will be stored in
-the register referenced by Operand 1. 
+Performs a `bitwise OR <https://en.wikipedia.org/wiki/Bitwise_operation#OR>`_
+of two 16-bits integers. Every form of the instruction will have two
+operands. Operand 1 will always be a reference to a 16-bits register. A logic
+OR will be performed between the contents of the register and the value
+referenced by Operand 2. The result will be stored in the register referenced
+by Operand 1. 
 
 +-----------+-------------------+-------------------+--------------------+
 | Opcode    | Operand 1         | Operand 2         | Example            |
@@ -851,11 +850,11 @@ the register referenced by Operand 1.
 ORB: 8-bits bitwise OR 
 ^^^^^^^^^^^^^^^^^^^^^^
 
-Performs an bitwise logic OR of two 8-bits integers. Every form of the
-instruction will have two operands. Operand 1 will always be a reference to an
-8-bits register. A logic OR will be performed between the contents of the
-register and the value referenced by Operand 2. The result will be stored in
-the register referenced by Operand 1.
+Performs a `bitwise OR <https://en.wikipedia.org/wiki/Bitwise_operation#OR>`_
+of two 8-bits integers. Every form of the instruction will have two operands.
+Operand 1 will always be a reference to an 8-bits register. A logic OR will be
+performed between the contents of the register and the value referenced by
+Operand 2. The result will be stored in the register referenced by Operand 1.
 
 +------------+------------------+------------------+--------------------+
 | Opcode     | Operand 1        | Operand 2        | Example            |
@@ -876,7 +875,8 @@ OUT: write input/output register
 
 Writes the contents of General Purpose Register A into an input/output
 register. The address of the register to be written is obtained from the value
-of Operand 1.
+of Operand 1. This is a priviledged instruction that can only be called when in
+Supervisor mode.
 
 +------------+-------------------+-----------+------------------+
 | Opcode     | Operand 1         | Operand 2 | Example          |
@@ -889,3 +889,321 @@ of Operand 1.
 +------------+-------------------+-----------+------------------+
 | 142 (0x8E) | *WORD*            | *NONE*    | ``OUT 0x2``      |
 +------------+-------------------+-----------+------------------+
+
+.. _instruction-pop:
+
+POP: pop 16-bits from stack
+^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+Pops a 16-bits value from the top of the stack and stores it into the 16-bits
+register referenced by Operand 1. The instruction will update the Stack Pointer
+(SP), increasing it by 2 units.
+
++-----------+-------------------+-----------+-----------+
+| Opcode    | Operand 1         | Operand 2 | Example   |
++===========+===================+===========+===========+
+| 67 (0x43) | *REGISTER_16BITS* | *NONE*    | ``POP A`` |
++-----------+-------------------+-----------+-----------+
+
+.. _instruction-popb:
+
+POPB: pop 8-bits from stack
+^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+Pops an 8-bits value from the top of the stack and stores it into the 8-bits
+register referenced by Operand 1. The instruction will update the Stack Pointer
+(SP), increasing it by 1 unit.
+
++-----------+------------------+-----------+-------------+
+| Opcode    | Operand 1        | Operand 2 | Example     |
++===========+==================+===========+=============+
+| 68 (0x44) | *REGISTER_8BITS* | *NONE*    | ``POPB AL`` |
++-----------+------------------+-----------+-------------+
+
+.. _instruction-push:
+
+PUSH: push 16-bits to stack
+^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+Pushes a 16-bits value, referenced by Operand 1, to the top of the stack. The
+instruction will update the Stack Pointer (SP), decreasing it by 2 units.
+
++-----------+-------------------+-----------+-------------------+
+| Opcode    | Operand 1         | Operand 2 | Example           |
++===========+===================+===========+===================+
+| 59 (0x3B) | *REGISTER_16BITS* | *NONE*    | ``PUSH C``        |
++-----------+-------------------+-----------+-------------------+
+| 60 (0x3C) | *REGADDRESS*      | *NONE*    | ``PUSH [B+100]``  |
++-----------+-------------------+-----------+-------------------+
+| 61 (0x3D) | *ADDRESS*         | *NONE*    | ``PUSH [0x1000]`` |
++-----------+-------------------+-----------+-------------------+
+| 62 (0x3E) | *WORD*            | *NONE*    | ``PUSH 0x2``      |
++-----------+-------------------+-----------+-------------------+
+
+.. _instruction-pushb:
+
+PUSHB: push 8-bits to stack
+^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+Pushes an 8-bits value, referenced by Operand 1, to the top of the stack. The
+instruction will update the Stack Pointer (SP), decreasing it by 1 units.
+
++-----------+-------------------+-----------+-------------------+
+| Opcode    | Operand 1         | Operand 2 | Example           |
++===========+===================+===========+===================+
+| 63 (0x3F) | *REGISTER_16BITS* | *NONE*    | ``PUSHB CL``      |
++-----------+-------------------+-----------+-------------------+
+| 64 (0x40) | *REGADDRESS*      | *NONE*    | ``PUSHB [B+100]`` |
++-----------+-------------------+-----------+-------------------+
+| 65 (0x41) | *ADDRESS*         | *NONE*    | ``PUSHB [0x400]`` |
++-----------+-------------------+-----------+-------------------+
+| 66 (0x42) | *WORD*            | *NONE*    | ``PUSHB 0x80``    |
++-----------+-------------------+-----------+-------------------+
+
+.. _instruction-ret:
+
+RET: return from subroutine
+^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+Returns from a subroutine. The execution of this instruction will pop the
+Instruction Pointer (IP) stored in the stack and jump to the IP address. The
+instruction will update the Stack Pointer (SP).
+
++-----------+-----------+-----------+---------+
+| Opcode    | Operand 1 | Operand 2 | Example |
++===========+===========+===========+=========+
+| 71 (0x47) | *NONE*    | *NONE*    | ``RET`` |
++-----------+-----------+-----------+---------+
+
+.. _instruction-shl:
+
+SHL: 16-bits logical left shift
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+Performs a `logical left shift <https://en.wikipedia.org/wiki/Logical_shift>`_
+of the value of a 16-bits register. Every form of the instruction will have two
+operands.  Operand 1 will always be a reference to a 16-bits register. Operand
+2 will indicate the number of bit positions that the value shall be shifted.
+The result will be stored in the register referenced by Operand 1. 
+
++------------+-------------------+-------------------+---------------------+
+| Opcode     | Operand 1         | Operand 2         | Example             |
++============+===================+===================+=====================+
+| 114 (0x72) | *REGISTER_16BITS* | *REGISTER_16BITS* | ``SHL A, B``        |
++------------+-------------------+-------------------+---------------------+
+| 115 (0x73) | *REGISTER_16BITS* | *REGADDRESS*      | ``SHL C, [A-100]``  |
++------------+-------------------+-------------------+---------------------+
+| 116 (0x74) | *REGISTER_16BITS* | *ADDRESS*         | ``SHL D, [0x1000]`` |
++------------+-------------------+-------------------+---------------------+
+| 117 (0x75) | *REGISTER_16BITS* | *WORD*            | ``SHL B, 4``        |
++------------+-------------------+-------------------+---------------------+
+
+.. _instruction-shlb:
+
+SHLB: 8-bits logical left shift
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+Performs a `logical left shift <https://en.wikipedia.org/wiki/Logical_shift>`_
+of the value of an 8-bits register. Every form of the instruction will have two
+operands.  Operand 1 will always be a reference to an 8-bits register. Operand
+2 will indicate the number of bit positions that the value shall be shifted.
+The result will be stored in the register referenced by Operand 1. 
+
++------------+------------------+------------------+---------------------+
+| Opcode     | Operand 1        | Operand 2        | Example             |
++============+==================+==================+=====================+
+| 118 (0x76) | *REGISTER_8BITS* | *REGISTER_8BITS* | ``SHLB AH, BL``     |
++------------+------------------+------------------+---------------------+
+| 119 (0x77) | *REGISTER_8BITS* | *REGADDRESS*     | ``SHLB CL, [A+30]`` |
++------------+------------------+------------------+---------------------+
+| 120 (0x78) | *REGISTER_8BITS* | *ADDRESS*        | ``SHLB DH, [0x30]`` |
++------------+------------------+------------------+---------------------+
+| 121 (0x79) | *REGISTER_8BITS* | *WORD*           | ``SHLB BL, 4``      |
++------------+------------------+------------------+---------------------+
+
+.. _instruction-shr:
+
+SHR: 16-bits logical right shift
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+Performs a `logical right shift <https://en.wikipedia.org/wiki/Logical_shift>`_
+of the value of a 16-bits register. Every form of the instruction will have two
+operands.  Operand 1 will always be a reference to a 16-bits register. Operand
+2 will indicate the number of bit positions that the value shall be shifted.
+The result will be stored in the register referenced by Operand 1. 
+
++------------+-------------------+-------------------+---------------------+
+| Opcode     | Operand 1         | Operand 2         | Example             |
++============+===================+===================+=====================+
+| 122 (0x7A) | *REGISTER_16BITS* | *REGISTER_16BITS* | ``SHR A, B``        |
++------------+-------------------+-------------------+---------------------+
+| 123 (0x7B) | *REGISTER_16BITS* | *REGADDRESS*      | ``SHR C, [A-100]``  |
++------------+-------------------+-------------------+---------------------+
+| 124 (0x7C) | *REGISTER_16BITS* | *ADDRESS*         | ``SHR D, [0x1000]`` |
++------------+-------------------+-------------------+---------------------+
+| 125 (0x7D) | *REGISTER_16BITS* | *WORD*            | ``SHR B, 4``        |
++------------+-------------------+-------------------+---------------------+
+
+.. _instruction-shrb:
+
+SHRB: 8-bits logical right shift
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+Performs a `logical right shift <https://en.wikipedia.org/wiki/Logical_shift>`_
+of the value of an 8-bits register. Every form of the instruction will have two
+operands.  Operand 1 will always be a reference to an 8-bits register. Operand
+2 will indicate the number of bit positions that the value shall be shifted.
+The result will be stored in the register referenced by Operand 1. 
+
++------------+------------------+------------------+---------------------+
+| Opcode     | Operand 1        | Operand 2        | Example             |
++============+==================+==================+=====================+
+| 126 (0x7E) | *REGISTER_8BITS* | *REGISTER_8BITS* | ``SHRB AH, BL``     |
++------------+------------------+------------------+---------------------+
+| 127 (0x7F) | *REGISTER_8BITS* | *REGADDRESS*     | ``SHRB CL, [A+30]`` |
++------------+------------------+------------------+---------------------+
+| 128 (0x80) | *REGISTER_8BITS* | *ADDRESS*        | ``SHRB DH, [0x30]`` |
++------------+------------------+------------------+---------------------+
+| 129 (0x81) | *REGISTER_8BITS* | *WORD*           | ``SHRB BL, 4``      |
++------------+------------------+------------------+---------------------+
+
+.. _instruction-sret:
+
+SRET: return from system call 
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+Returns from an System Call (SVC). The execution of this instruction will
+recover the Instruction Pointer (IP) and the user Stack Pointer (SP) stored in
+the stack and jump to the IP address. This is a priviledged instruction that
+can only be called when in Supervisor mode. When executed, the CPU will be
+switched to User mode.
+
++------------+-----------+-----------+----------+
+| Opcode     | Operand 1 | Operand 2 | Example  |
++============+===========+===========+==========+
+| 134 (0x86) | *NONE*    | *NONE*    | ``SRET`` |
++------------+-----------+-----------+----------+
+
+.. _instruction-cli:
+
+STI: set interrupt mask 
+^^^^^^^^^^^^^^^^^^^^^^^
+
+Set the Interrupt Mask Bit of the Status Register. When the register is
+cleared, the CPU interrupts are unmasked and, thus, enabled. The instruction
+has no operands. This is a priviledged instruction that can only be called when
+in Supervisor mode. 
+
++------------+-----------+-----------+---------+
+| Opcode     | Operand 1 | Operand 2 | Example |
++============+===========+===========+=========+
+| 129 (0x81) | *NONE*    | *NONE*    | ``STI`` |
++------------+-----------+-----------+---------+
+
+.. _instruction-sub:
+
+SUB: 16-bits substraction 
+^^^^^^^^^^^^^^^^^^^^^^^^^
+
+Performs a substraction of two 16-bits integers. Every form of the instruction
+will have two operands. Operand 1 will always be a reference to a 16-bits
+register. The integer contained by the register will be substracted from the
+value referenced by Operand 2. The result will be stored in the register
+referenced by Operand 1. 
+
++-----------+-------------------+-------------------+---------------------+
+| Opcode    | Operand 1         | Operand 2         | Example             |
++===========+===================+===================+=====================+
+| 25 (0x19) | *REGISTER_16BITS* | *REGISTER_16BITS* | ``SUB A, B``        |
++-----------+-------------------+-------------------+---------------------+
+| 26 (0x1A) | *REGISTER_16BITS* | *REGADDRESS*      | ``SUB C, [A-100]``  |
++-----------+-------------------+-------------------+---------------------+
+| 27 (0x1B) | *REGISTER_16BITS* | *ADDRESS*         | ``SUB D, [0x1000]`` |
++-----------+-------------------+-------------------+---------------------+
+| 28 (0x1C) | *REGISTER_16BITS* | *WORD*            | ``SUB B, 12345``    |
++-----------+-------------------+-------------------+---------------------+
+
+.. _instruction-subb:
+
+SUBB: 16-bits substraction 
+^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+Performs a substraction of two 8-bits integers. Every form of the instruction
+will have two operands. Operand 1 will always be a reference to an 8-bits
+register. The integer contained by the register will be substracted from the
+value referenced by Operand 2. The result will be stored in the register
+referenced by Operand 1. 
+
++-----------+-------------------+-------------------+----------------------+
+| Opcode    | Operand 1         | Operand 2         | Example              |
++===========+===================+===================+======================+
+| 29 (0x1D) | *REGISTER_16BITS* | *REGISTER_16BITS* | ``SUBB BH, DL``      |
++-----------+-------------------+-------------------+----------------------+
+| 30 (0x1E) | *REGISTER_16BITS* | *REGADDRESS*      | ``SUBB CH, [A-100]`` |
++-----------+-------------------+-------------------+----------------------+
+| 31 (0x1F) | *REGISTER_16BITS* | *ADDRESS*         | ``SUBB DL, [0x400]`` |
++-----------+-------------------+-------------------+----------------------+
+| 32 (0x20) | *REGISTER_16BITS* | *WORD*            | ``SUBB BL, 0x10``    |
++-----------+-------------------+-------------------+----------------------+
+
+.. _instruction-svc:
+
+SVC: system call 
+^^^^^^^^^^^^^^^^
+
+Performs a System Call (SVC). This instruction can only be executed when the
+CPU is in User mode. The execution of this instruction will: setup the
+Supervisor stack; push to it the Instruction Pointer (IP) and the user Stack
+Pointer (SP); switch the CPU to Supervisor mode; and jump to address 0x0006.
+
++------------+-----------+-----------+---------+
+| Opcode     | Operand 1 | Operand 2 | Example |
++============+===========+===========+=========+
+| 133 (0x85) | *NONE*    | *NONE*    | ``SVC`` |
++------------+-----------+-----------+---------+
+
+.. _instruction-xor:
+
+XOR: 16-bits bitwise XOR
+^^^^^^^^^^^^^^^^^^^^^^^^
+
+Performs a `bitwise XOR <https://en.wikipedia.org/wiki/Bitwise_operation#XOR>`_
+of two 16-bits integers. Every form of the instruction will have two operands.
+Operand 1 will always be a reference to a 16-bits register. A logic XOR will be
+performed between the contents of the register and the value referenced by
+Operand 2. The result will be stored in the register referenced by Operand 1. 
+
++------------+-------------------+-------------------+--------------------+
+| Opcode     | Operand 1         | Operand 2         | Example            |
++============+===================+===================+====================+
+| 104 (0x68) | *REGISTER_16BITS* | *REGISTER_16BITS* | ``XOR C, B``       |
++------------+-------------------+-------------------+--------------------+
+| 105 (0x69) | *REGISTER_16BITS* | *REGADDRESS*      | ``XOR C, [B-100]`` |
++------------+-------------------+-------------------+--------------------+
+| 106 (0x6A) | *REGISTER_16BITS* | *ADDRESS*         | ``XOR D, [0x400]`` |
++------------+-------------------+-------------------+--------------------+
+| 107 (0x6B) | *REGISTER_16BITS* | *WORD*            | ``XOR D, 0xA5A5``  |
++------------+-------------------+-------------------+--------------------+
+
+.. _instruction-xorb:
+
+XORB: 8-bits bitwise XOR
+^^^^^^^^^^^^^^^^^^^^^^^^
+
+Performs a `bitwise XOR <https://en.wikipedia.org/wiki/Bitwise_operation#XOR>`_
+of two 8-bits integers. Every form of the instruction will have two operands.
+Operand 1 will always be a reference to an 8-bits register. A logic XOR will be
+performed between the contents of the register and the value referenced by
+Operand 2. The result will be stored in the register referenced by Operand 1. 
+
++------------+------------------+------------------+---------------------+
+| Opcode     | Operand 1        | Operand 2        | Example             |
++============+==================+==================+=====================+
+| 108 (0x6C) | *REGISTER_8BITS* | *REGISTER_8BITS* | ``XORB CH, BL``     |
++------------+------------------+------------------+---------------------+
+| 109 (0x6D) | *REGISTER_8BITS* | *REGADDRESS*     | ``XORB DL, [A+30]`` |
++------------+------------------+------------------+---------------------+
+| 110 (0x6E) | *REGISTER_8BITS* | *ADDRESS*        | ``XORB CH, [0x30]`` |
++------------+------------------+------------------+---------------------+
+| 111 (0x6F) | *REGISTER_8BITS* | *WORD*           | ``XORB BL, 0xA5``   |
++------------+------------------+------------------+---------------------+
