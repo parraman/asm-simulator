@@ -1084,7 +1084,7 @@ switched to User mode.
 | 134 (0x86) | *NONE*    | *NONE*    | ``SRET`` |
 +------------+-----------+-----------+----------+
 
-.. _instruction-cli:
+.. _instruction-sti:
 
 STI: set interrupt mask 
 ^^^^^^^^^^^^^^^^^^^^^^^
