@@ -209,9 +209,9 @@ export class MemoryViewComponent implements OnInit, OnDestroy, OnChanges {
     private operationAddRegion(regionID: string, name: string, startAddress: number, endAddress: number,
                                initialValues?: Array<number>) {
 
-        for (let i = startAddress; i <= endAddress; i++) {
+        for (let i = startAddress, j = 0; i <= endAddress; i++, j++) {
 
-            this.memoryCellViews[i].value = initialValues ? initialValues[i] : 0;
+            this.memoryCellViews[i].value = initialValues ? initialValues[j] : 0;
             this.memoryCellViews[i].isMemoryRegion = true;
             this.memoryCellViews[i].memoryRegionStyle =
                 name.replace(/([a-z])([A-Z])/g, '$1-$2').toLowerCase();
@@ -238,9 +238,9 @@ export class MemoryViewComponent implements OnInit, OnDestroy, OnChanges {
 
     private operationWriteCells(initialAddress: number, size: number, values: Array<number>) {
 
-        for (let i = initialAddress; i < initialAddress + size; i++) {
+        for (let i = initialAddress, j = 0; i < initialAddress + size; i++, j++) {
 
-            this.memoryCellViews[i].value = values ? values[i] : 0;
+            this.memoryCellViews[i].value = values ? values[j] : 0;
 
         }
 
