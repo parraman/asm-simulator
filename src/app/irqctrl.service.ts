@@ -198,7 +198,7 @@ export class IrqCtrlService {
                 break;
             case IRQEOI_REGISTER_ADDRESS:
                 const previousStatus = this.irqStatusRegister;
-                this.irqStatusRegister = 0;
+                this.irqStatusRegister ^= value;
                 this.irqStatusRegister |= this.irqLevelRegister;
                 clears = IrqCtrlService.getNewClears(previousStatus, this.irqStatusRegister);
                 clears.forEach((irqNumber) => {

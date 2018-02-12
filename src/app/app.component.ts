@@ -84,11 +84,11 @@ export class AppComponent implements AfterViewInit {
 
     private sample3 = '; Example 3:\n; Draws a sprite in the visual display that can be\n; moved using ' +
         'the keypad:\n; 2: UP, 4: LEFT; 6: RIGHT; 8: DOWN\n\n\tJMP start\n\tJMP ' +
-        'isr\n\nsprite:\tDB "\\x45\\x0F\\x0F\\x45"\t; Sprite line 0\n\t\tDB ' +
-        '"\\x0F\\x45\\x45\\x0F"\t; Sprite line 1\n\t\tDB "\\x0F\\x45\\x45\\x0F"\t; Sprite line ' +
-        '2\n\t\tDB "\\x45\\x0F\\x0F\\x45"\t; Sprite line 3\n\nclear:  DB "\\x0F\\x0F\\x0F\\x0F"\t; ' +
-        'Blank line 0\n\t\tDB "\\x0F\\x0F\\x0F\\x0F"\t; Blank line 1\n\t\tDB ' +
-        '"\\x0F\\x0F\\x0F\\x0F"\t; Blank line 2\n\t\tDB "\\x0F\\x0F\\x0F\\x0F"\t; Blank line ' +
+        'isr\n\nsprite:\tDB "\\x35\\xFF\\xFF\\x35"\t; Sprite line 0\n\t\tDB ' +
+        '"\\xFF\\x35\\x35\\xFF"\t; Sprite line 1\n\t\tDB "\\xFF\\x35\\x35\\xFF"\t; Sprite line ' +
+        '2\n\t\tDB "\\x35\\xFF\\xFF\\x35"\t; Sprite line 3\n\nclear:  DB "\\xFF\\xFF\\xFF\\xFF"\t; ' +
+        'Blank line 0\n\t\tDB "\\xFF\\xFF\\xFF\\xFF"\t; Blank line 1\n\t\tDB ' +
+        '"\\xFF\\xFF\\xFF\\xFF"\t; Blank line 2\n\t\tDB "\\xFF\\xFF\\xFF\\xFF"\t; Blank line ' +
         '3\n\npos:\tDB 0\t\t; Current row\n\t\tDB 0\t\t; Current column\n\t\nstart:\n\tMOV ' +
         'SP, 511\t\t; Set SP\n\tMOV C, sprite\t; Set to draw the sprite\n\tCALL draw\t\t; ' +
         'Call drawing function\n\tMOV A, 1\t\t; Set bit 0 of IRQMASK\n\tOUT 0\t\t\t; Unmask ' +
@@ -106,7 +106,7 @@ export class AppComponent implements AfterViewInit {
         '== 4 -> .end\n\tJZ .end\t\t\n.save:\n\tMOV C, clear\t; Set to clear the ' +
         'sprite\n\tCALL draw\t\t; Call drawing function\n\tMOV [pos], B\t; Store the new ' +
         'position\n\tMOV C, sprite\t; Set to draw the sprite\n\tCALL draw\t\t; Call ' +
-        'drawing function\n.end:\tOUT 2\t\t; Write to signal IRQEOI\n\tPOP B\n\tPOP ' +
+        'drawing function\n.end:\n\tMOV A, 1\n\tOUT 2\t\t; Write to signal IRQEOI\n\tPOP B\n\tPOP ' +
         'A\n\tIRET\t\t\t; Return from IRQ\n\ndraw:\t\t\t\t; Draw (C: pointer to img)\n\tPUSH ' +
         'A\n\tPUSH B\n\tPUSH C\n\tPUSH D\n\tMOV D, 0x300\t; Point register D to ' +
         'framebuffer\n\tMOV B, [pos]\t; Load current position\n\tMOVB AL, 64\t\t; Initial ' +
@@ -128,7 +128,7 @@ export class AppComponent implements AfterViewInit {
         'counter\n\tCMP A, 100\t\t\t; [0 to 99]\n\tJNZ .print\n\tMOV A, 0\n\n.print:\n\tMOV ' +
         '[counter], A\t; Print the\n\tMOV B, A\t\t\t; decimal value\n\tDIV 10\t\t\t\t; of ' +
         'the counter\n\tMOV C, A\n\tMUL 10\n\tSUB B, A\n\tADDB CL, 0x30\n\tADDB BL, ' +
-        '0x30\n\tMOVB [0x2F0], CL\n\tMOVB [0x2F1], BL\n\tOUT 2\t\t\t\t; Write to signal ' +
+        '0x30\n\tMOVB [0x2F0], CL\n\tMOVB [0x2F1], BL\n\tMOV A, 2\n\tOUT 2\t\t\t\t; Write to signal ' +
         'IRQEOI\n\tPOP C\n\tPOP B\n\tPOP A\n\tIRET';
 
     private sample5 = '; Example 5:\n; A user mode task accesses the keypad\n; registers using two ' +
@@ -149,7 +149,7 @@ export class AppComponent implements AfterViewInit {
         'loop\n\tMOVB BL, AL\t\t; If key was pressed use\n\tCALL putchar\t; putchar to ' +
         'print it\n\tJMP loop \n\nisr:\t\t\t\n\tPUSH A\t\t; Read the key pressed\n\tIN ' +
         '6\t\t; and store the ASCII\n\tADDB AL, 0x30\n\tMOVB [value], AL\n\tMOVB AL, ' +
-        '1\n\tMOVB [keypressed], AL\n\tOUT 2\n\tPOP A\n\tIRET\n\nsvc:\t\t\t\t; Supervisor ' +
+        '1\n\tMOVB [keypressed], AL\n\tMOV A, 1\n\tOUT 2\n\tPOP A\n\tIRET\n\nsvc:\t\t\t\t; Supervisor ' +
         'call\n\tCMP A, 0\t\t; A = syscall number\n\tJNZ .not0\t\t; 0 -> ' +
         'readchar\n\tCLI\n\tMOV A, [keypressed]\t; Write vars\n\tPUSH B\t\t\t\t; with ' +
         'IRQs\n\tMOV B, 0\t\t\t; disabled\n\tMOV [keypressed], B\n\tPOP B\n\tSTI\n\tJMP ' +
