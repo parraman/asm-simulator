@@ -817,9 +817,9 @@ export class CPUService {
                         this.pushWord(e.memoryAddress);
                     }
 
+                    this.pushWord(e.type);
                     this.pushWord(e.SP);
                     this.pushWord(e.IP);
-                    this.pushWord(e.type);
 
                 } catch (e) {
                     this.SR.fault = 1;
