@@ -16,14 +16,16 @@ export class Exception {
     public type: ExceptionType;
     public IP: number;
     public SP: number;
+    public SR: number;
     public memoryAddress: number;
 
-    constructor(type: ExceptionType, message: string, IP: number, SP: number, memoryAddress?: number) {
+    constructor(type: ExceptionType, message: string, IP: number, SP: number, SR: number, memoryAddress?: number) {
 
         this.type = type;
         this.message = message;
         this.IP = IP;
         this.SP = SP;
+        this.SR = SR;
         this.memoryAddress = memoryAddress;
 
     }

@@ -138,10 +138,10 @@ export class AppComponent implements AfterViewInit {
         'pressed\n\tDB 0\t\t; 0 = No key pressed\n\nvalue:\t\t\t; The number of ' +
         'the\n\tDB 0\t\t; key pressed in ASCII\n\nstart:\n\tMOV SP, 0x7F\t; Set ' +
         'Supervisor SP\n\tMOV A, 1\t\t; Set bit 0 of IRQMASK\n\tOUT 0\t\t\t; Unmask ' +
-        'keypad IRQ\n\tSTI\t\t\t\t; Enable interrupts\n\tPUSH 0x17F\t\t; Setup User SP = ' +
-        '0x17F\n\tPUSH task\t\t; Setup initial user IP\n\tSRET\t\t\t; Jump to user ' +
-        'mode\n\tHLT\t\t\t\t; Parachute\n\nisr:\t\t\t\n\tPUSH A\t\t; Read the key ' +
-        'pressed\n\tIN 6\t\t; and store the ASCII\n\tADDB AL, 0x30\n\tMOVB [value], ' +
+        'keypad IRQ\n\tPUSH 0x0010\t\t; User Task SR: IRQMASK = 1\n\tPUSH 0x17F\t\t; ' +
+        'User Task SP = 0x17F\n\tPUSH task\t\t; User Task IP = task\n\tSRET\t\t\t; Jump ' +
+        'to user mode\n\tHLT\t\t\t\t; Parachute\n\nisr:\t\t\t\n\tPUSH A\t\t; Read the ' +
+        'key pressed\n\tIN 6\t\t; and store the ASCII\n\tADDB AL, 0x30\n\tMOVB [value], ' +
         'AL\n\tMOVB AL, 1\n\tMOVB [keypressed], AL\n\tMOV A, 1\n\tOUT 2\t\t; Write to ' +
         'signal IRQEOI\n\tPOP A\n\tIRET\n\nsvc:\t\t\t\t; Supervisor call\n\tCMP A, ' +
         '0\t\t; A = syscall number\n\tJNZ .not0\t\t; 0 -> readchar\n\tCLI\n\tMOV A, ' +
@@ -149,7 +149,7 @@ export class AppComponent implements AfterViewInit {
         'disabled\n\tMOV [keypressed], B\n\tPOP B\n\tSTI\n\tJMP .return\n.not0:\n\tCMP ' +
         'A, 1\t\t; 1 -> putchar\n\tJNZ .return\n\tMOVB [0x2F0], ' +
         'BL\n.return:\n\tSRET\t\t\t; Return to user space\n\n\tORG 0x100\t; Following ' +
-        'instructions\n\t\t\t\t; will be linked at 0x100\n\ntask:\t\t\t; The user ' +
+        'instructions\n\t\t\t\t; will be assembled at 0x100\n\ntask:\t\t\t; The user ' +
         'task\n\tMOV A, 0\n\tMOV B, 0\nloop:\n\tCALL readchar\t; Polls the ' +
         'keypad\n\tCMPB AH, 1\t\t; using readchar\n\tJNZ loop\n\tMOVB BL, AL\t\t; If key ' +
         'was pressed use\n\tCALL putchar\t; putchar to print it\n\tJMP loop ' +
