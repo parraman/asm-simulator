@@ -136,25 +136,28 @@ export class AppComponent implements AfterViewInit {
         'the value on the textual display.\n\n\tJMP start\n\tJMP isr\t\t; Interrupt ' +
         'vector\n\tJMP svc\t\t; System call vector\n\nkeypressed:\t\t; 1 = key ' +
         'pressed\n\tDB 0\t\t; 0 = No key pressed\n\nvalue:\t\t\t; The number of ' +
-        'the\n\tDB 0\t\t; key pressed in ASCII\n\nstart:\n\tMOV SP, 0xFF\t; Set ' +
-        'Supervisor SP\n\tMOV A, 1\t\t; Set bit 0 of IRQMASK\n\tOUT 0\t\t\t; Unmask keypad ' +
-        'IRQ\n\tSTI\t\t\t\t; Enable interrupts\n\tPUSH 0xCF\t\t; Setup User SP\n\tPUSH task\t\t; ' +
-        'Setup initial user IP\n\tSRET\t\t\t; Jump to user mode\n\tHLT\t\t\t\t; ' +
-        'Parachute\n\nreadchar:\t\t; User space wrapper\n\tMOV A, 0\t; for readchar ' +
-        'syscall\n\tSVC\t\t\t; Syscall #0\n\tRET\t\t\t; A -> syscall number\n\nputchar:\t\t; ' +
-        'User space wrapper\n\tPUSH A\t\t; for putchar syscall\n\tMOV A, 1\t; Syscall ' +
-        '#1\n\tSVC\t\t\t; A -> syscall number\n\tPOP A\t\t; BL -> char to ' +
-        'print\n\tRET\n\ntask:\t\t\t; The user task\n\tMOV A, 0\n\tMOV B, 0\nloop:\n\tCALL ' +
-        'readchar\t; Polls the keypad\n\tCMPB AH, 1\t\t; using readchar\n\tJNZ ' +
-        'loop\n\tMOVB BL, AL\t\t; If key was pressed use\n\tCALL putchar\t; putchar to ' +
-        'print it\n\tJMP loop \n\nisr:\t\t\t\n\tPUSH A\t\t; Read the key pressed\n\tIN ' +
-        '6\t\t; and store the ASCII\n\tADDB AL, 0x30\n\tMOVB [value], AL\n\tMOVB AL, ' +
-        '1\n\tMOVB [keypressed], AL\n\tMOV A, 1\n\tOUT 2\n\tPOP A\n\tIRET\n\nsvc:\t\t\t\t; Supervisor ' +
-        'call\n\tCMP A, 0\t\t; A = syscall number\n\tJNZ .not0\t\t; 0 -> ' +
-        'readchar\n\tCLI\n\tMOV A, [keypressed]\t; Write vars\n\tPUSH B\t\t\t\t; with ' +
-        'IRQs\n\tMOV B, 0\t\t\t; disabled\n\tMOV [keypressed], B\n\tPOP B\n\tSTI\n\tJMP ' +
-        '.return\n.not0:\n\tCMP A, 1\t\t; 1 -> putchar\n\tJNZ .return\n\tMOVB [0x2F0], ' +
-        'BL\n.return:\n\tSRET\t\t\t; Return to user space\n';
+        'the\n\tDB 0\t\t; key pressed in ASCII\n\nstart:\n\tMOV SP, 0x7F\t; Set ' +
+        'Supervisor SP\n\tMOV A, 1\t\t; Set bit 0 of IRQMASK\n\tOUT 0\t\t\t; Unmask ' +
+        'keypad IRQ\n\tSTI\t\t\t\t; Enable interrupts\n\tPUSH 0x17F\t\t; Setup User SP = ' +
+        '0x17F\n\tPUSH task\t\t; Setup initial user IP\n\tSRET\t\t\t; Jump to user ' +
+        'mode\n\tHLT\t\t\t\t; Parachute\n\nisr:\t\t\t\n\tPUSH A\t\t; Read the key ' +
+        'pressed\n\tIN 6\t\t; and store the ASCII\n\tADDB AL, 0x30\n\tMOVB [value], ' +
+        'AL\n\tMOVB AL, 1\n\tMOVB [keypressed], AL\n\tMOV A, 1\n\tOUT 2\t\t; Write to ' +
+        'signal IRQEOI\n\tPOP A\n\tIRET\n\nsvc:\t\t\t\t; Supervisor call\n\tCMP A, ' +
+        '0\t\t; A = syscall number\n\tJNZ .not0\t\t; 0 -> readchar\n\tCLI\n\tMOV A, ' +
+        '[keypressed]\t; Write vars\n\tPUSH B\t\t\t\t; with IRQs\n\tMOV B, 0\t\t\t; ' +
+        'disabled\n\tMOV [keypressed], B\n\tPOP B\n\tSTI\n\tJMP .return\n.not0:\n\tCMP ' +
+        'A, 1\t\t; 1 -> putchar\n\tJNZ .return\n\tMOVB [0x2F0], ' +
+        'BL\n.return:\n\tSRET\t\t\t; Return to user space\n\n\tORG 0x100\t; Following ' +
+        'instructions\n\t\t\t\t; will be linked at 0x100\n\ntask:\t\t\t; The user ' +
+        'task\n\tMOV A, 0\n\tMOV B, 0\nloop:\n\tCALL readchar\t; Polls the ' +
+        'keypad\n\tCMPB AH, 1\t\t; using readchar\n\tJNZ loop\n\tMOVB BL, AL\t\t; If key ' +
+        'was pressed use\n\tCALL putchar\t; putchar to print it\n\tJMP loop ' +
+        '\n\nreadchar:\t\t; User space wrapper\n\tMOV A, 0\t; for readchar ' +
+        'syscall\n\tSVC\t\t\t; Syscall #0\n\tRET\t\t\t; A -> syscall ' +
+        'number\n\nputchar:\t\t; User space wrapper\n\tPUSH A\t\t; for putchar ' +
+        'syscall\n\tMOV A, 1\t; Syscall #1\n\tSVC\t\t\t; A -> syscall number\n\tPOP ' +
+        'A\t\t; BL -> char to print\n\tRET';
 
     public codeText = '';
     private instance: any;

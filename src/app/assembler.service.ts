@@ -412,6 +412,28 @@ export class AssemblerService {
                     }
 
                     continue;
+                } else if (instr === 'ORG') {
+
+                    try {
+                        p1 = AssemblerService.getValue(match[OP1_GROUP]);
+                    } catch (e) {
+                        throw {error: e.toString(), line: i + 1};
+                    }
+
+                    if (p1.type === OperandType.NUMBER) {
+
+                        const offset = p1.value - this.code.length;
+
+                        if (offset < 0) {
+                            throw {error: 'ORG cannot set an address that already has been superseded', line: i + 1};
+                        }
+
+                        this.code = this.code.concat(Array<number>(offset).fill(0));
+
+                    } else {
+                        throw {error: 'ORG does not support this operand', line: i + 1};
+                    }
+                    continue;
                 }
 
                 this.mapping.set(this.code.length, i);
