@@ -5,7 +5,7 @@ import { Observable } from 'rxjs/Observable';
 
 import {
     MemoryOperation, MemoryService, MemoryOperationParamsLoadStore,
-    MemoryCellAccessPermission, MemoryOperationType
+    MemoryOperationType
 } from '../memory.service';
 
 import { Utils } from '../utils';
@@ -153,8 +153,7 @@ export class VisualDisplayComponent implements OnInit, AfterViewInit {
     ngOnInit() {
 
         this.memoryService.addMemoryRegion('VisualDisplayRegion', 0x300, 0x3FF,
-            MemoryCellAccessPermission.READ_WRITE, this.initialValues,
-            (op) => this.processMemoryOperation(op));
+            this.initialValues, (op) => this.processMemoryOperation(op));
 
     }
 

@@ -7,7 +7,8 @@ import {
     MemoryOperation, MemoryService, MemoryOperationType,
     MemoryOperationParamsLoadStore,
     MemoryOperationParamsStoreBytes,
-    MemoryOperationParamsAddRegion
+    MemoryOperationParamsAddRegion,
+    MemoryAccessActor, MemoryOperationParamsChangeProtectionUnit
 } from '../memory.service';
 
 import { Subscription } from 'rxjs/Subscription';
@@ -21,6 +22,62 @@ import {
 } from '../cpuregs';
 
 
+class MemoryProtectionUnitView {
+
+    public isActive: boolean;
+    public startAddress: number;
+    public endAddress: number;
+    public blockProtect: boolean;
+    public userMode: boolean;
+    public supervisorMode: boolean;
+
+    constructor (isActive: boolean = false, startAddress: number = 0, endAddress: number = 0xFFFF,
+                 blockProtect: boolean = true, supervisorMode: boolean = true, userMode: boolean = true) {
+
+        this.isActive = isActive;
+        this.startAddress = startAddress;
+        this.endAddress = endAddress;
+        this.blockProtect = blockProtect;
+        this.supervisorMode = supervisorMode;
+        this.userMode = userMode;
+
+    }
+
+    public checkMemoryCell(address: number, isSupervisorMode: boolean): boolean {
+
+        /* If the unit is inactive, then all accesses are allowed.
+         * Also, if the user is a device, then the memory protection does not apply */
+        if (this.isActive === false) {
+            return true;
+        }
+
+        /* If blockProtect is set, then the protected memory is WITHIN the limits */
+        if (this.blockProtect === true && address >= this.startAddress && address <= this.endAddress) {
+
+            /* We must check the access */
+            if (isSupervisorMode && this.supervisorMode === false) {
+                return false;
+            } else {
+
+            } return !(isSupervisorMode === false && this.userMode === false);
+        } else if (this.blockProtect === false && (address < this.startAddress || address > this.endAddress)) {
+
+            /* We must check the access */
+            if (isSupervisorMode === true && this.supervisorMode === false) {
+                return false;
+            } else {
+                return !(isSupervisorMode === false && this.userMode === false);
+            }
+
+        } else {
+            return true;
+        }
+
+    }
+
+}
+
+
 class MemoryCellView {
 
     private _value: number;
@@ -31,14 +88,20 @@ class MemoryCellView {
     public memoryRegionStyle: string;
     public address: number;
     public isInstruction: boolean;
+    public supervisorEnabled: boolean;
+    public userEnabled: boolean;
 
-    constructor(address: number, initialValue: number = 0, initialStyle?: string, isInstruction: boolean = false) {
+    constructor(address: number, initialValue: number = 0, supervisorEnabled: boolean = true,
+                userEnabled: boolean = true,
+                initialStyle?: string, isInstruction: boolean = false) {
 
         this.style = initialStyle;
         this._value = initialValue;
         this._strValue = Utils.pad(initialValue, 16, 2);
         this.address = address;
         this.isInstruction = isInstruction;
+        this.supervisorEnabled = supervisorEnabled;
+        this.userEnabled = userEnabled;
 
     }
 
@@ -118,6 +181,8 @@ export class MemoryViewComponent implements OnInit, OnDestroy, OnChanges {
 
     private registerSR: number;
 
+    private protectionUnit: MemoryProtectionUnitView;
+
     constructor(private memoryService: MemoryService,
                 private cpuService: CPUService,
                 private errorBarService: ErrorBarService) {
@@ -170,6 +235,11 @@ export class MemoryViewComponent implements OnInit, OnDestroy, OnChanges {
         this.updateCellStyle(registerIPPointer.value);
         this.updateCellStyle(registerSSPPointer.value);
         this.updateCellStyle(registerUSPPointer.value);
+
+        const protUnit = this.memoryService.protectionUnit;
+
+        this.protectionUnit = new MemoryProtectionUnitView(protUnit.isActive, protUnit.startAddress,
+            protUnit.endAddress, protUnit.blockProtect, protUnit.supervisorMode, protUnit.userMode);
 
         this.memoryOperationSubscription = this.memoryService.memoryOperation$.subscribe(
             (memoryOperation) => this.processMemoryOperation(memoryOperation)
@@ -250,9 +320,15 @@ export class MemoryViewComponent implements OnInit, OnDestroy, OnChanges {
 
         for (let i = 0; i < this.size; i++) {
 
+            this.memoryCellViews[i].supervisorEnabled = true;
+            this.memoryCellViews[i].userEnabled = true;
+
             if (this.memoryCellViews[i].isMemoryRegion === false) {
                 this.memoryCellViews[i].value = 0;
+                this.updateCellStyle(i);
             }
+
+
 
         }
 
@@ -330,9 +406,19 @@ export class MemoryViewComponent implements OnInit, OnDestroy, OnChanges {
         let display;
 
         if (index === CPURegisterIndex.SR) {
+
+            const previousMode = this.isSupervisorMode();
+
             this.registerSR = value;
-            this.updateCellStyle(this.registerPointers.get(CPURegisterIndex.SSP).value);
-            this.updateCellStyle(this.registerPointers.get(CPURegisterIndex.USP).value);
+
+            if (previousMode !== this.isSupervisorMode()) {
+
+                for (let i = 0; i < this.size; i++) {
+                    this.updateCellStyle(i);
+                }
+
+            }
+
             return;
         }
 
@@ -400,15 +486,50 @@ export class MemoryViewComponent implements OnInit, OnDestroy, OnChanges {
 
         if (index === CPURegisterIndex.SR) {
 
+            const previousMode = this.isSupervisorMode();
+
             if (value === 0) {
                 this.registerSR &= ~(1 << bitNumber);
             } else {
                 this.registerSR |= (1 << bitNumber);
             }
 
-            this.updateCellStyle(this.registerPointers.get(CPURegisterIndex.SSP).value);
-            this.updateCellStyle(this.registerPointers.get(CPURegisterIndex.USP).value);
+            if (previousMode !== this.isSupervisorMode()) {
 
+                for (let i = 0; i < this.size; i++) {
+                    this.updateCellStyle(i);
+                }
+
+            }
+
+        }
+
+    }
+
+    private operationChangeMemoryProtection(isActive: boolean, startAddress: number, endAddress: number,
+                                            blockProtect: boolean, supervisorMode: boolean, userMode: boolean) {
+
+        const previouslyActive = this.protectionUnit.isActive;
+
+        this.protectionUnit.isActive = isActive;
+        this.protectionUnit.startAddress = startAddress;
+        this.protectionUnit.endAddress = endAddress;
+        this.protectionUnit.blockProtect = blockProtect;
+        this.protectionUnit.supervisorMode = supervisorMode;
+        this.protectionUnit.userMode = userMode;
+
+        if (isActive === false && previouslyActive === true) {
+            for (let i = 0; i < this.size; i++) {
+                this.memoryCellViews[i].supervisorEnabled = true;
+                this.memoryCellViews[i].userEnabled = true;
+                this.updateCellStyle(i);
+            }
+        } else if (isActive === true) {
+            for (let i = 0; i < this.size; i++) {
+                this.memoryCellViews[i].supervisorEnabled = this.protectionUnit.checkMemoryCell(i, true);
+                this.memoryCellViews[i].userEnabled = this.protectionUnit.checkMemoryCell(i, false);
+                this.updateCellStyle(i);
+            }
         }
 
     }
@@ -456,6 +577,15 @@ export class MemoryViewComponent implements OnInit, OnDestroy, OnChanges {
                     (<MemoryOperationParamsAddRegion>memoryOperation.data).endAddress,
                     (<MemoryOperationParamsAddRegion>memoryOperation.data).initialValues);
                 break;
+            case MemoryOperationType.CHANGE_MEMPROT:
+                this.operationChangeMemoryProtection(
+                    (<MemoryOperationParamsChangeProtectionUnit>memoryOperation.data).isActive,
+                    (<MemoryOperationParamsChangeProtectionUnit>memoryOperation.data).startAddress,
+                    (<MemoryOperationParamsChangeProtectionUnit>memoryOperation.data).endAddress,
+                    (<MemoryOperationParamsChangeProtectionUnit>memoryOperation.data).blockProtect,
+                    (<MemoryOperationParamsChangeProtectionUnit>memoryOperation.data).supervisorMode,
+                    (<MemoryOperationParamsChangeProtectionUnit>memoryOperation.data).userMode);
+                break;
             case MemoryOperationType.STORE_BYTE:
                 this.operationWriteByte(
                     (<MemoryOperationParamsLoadStore>memoryOperation.data).address,
@@ -485,7 +615,7 @@ export class MemoryViewComponent implements OnInit, OnDestroy, OnChanges {
 
 
         try {
-            this.memoryService.storeByte(address, parseInt(this.newCellValue, 16), false);
+            this.memoryService.storeByte(address, parseInt(this.newCellValue, 16), MemoryAccessActor.DEVICE);
 
             if (this.memoryCellViews[address].isInstruction === true) {
                 this.memoryCellViews[address].isInstruction = false;
@@ -518,13 +648,14 @@ export class MemoryViewComponent implements OnInit, OnDestroy, OnChanges {
          * - stack
          * - mapped instruction >
          * - region
+         * - access
          */
 
         if (address < 0 || address >= this.size) {
             return;
         }
 
-        this.memoryCellViews[address].style = undefined;
+        this.memoryCellViews[address].style = '';
 
         if (this.memoryCellViews[address].memoryRegionStyle !== undefined) {
             this.memoryCellViews[address].style = this.memoryCellViews[address].memoryRegionStyle;
@@ -573,6 +704,12 @@ export class MemoryViewComponent implements OnInit, OnDestroy, OnChanges {
 
         if (this.registerPointers.get(CPURegisterIndex.IP).value === address) {
             this.memoryCellViews[address].style = 'marker marker-ip';
+        }
+
+        if (this.isSupervisorMode() === true) {
+            this.memoryCellViews[address].style += (this.memoryCellViews[address].supervisorEnabled === false) ? ' muted' : '';
+        } else {
+            this.memoryCellViews[address].style += (this.memoryCellViews[address].userEnabled === false) ? ' muted' : '';
         }
 
     }

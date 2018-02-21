@@ -5,7 +5,7 @@ import { Observable } from 'rxjs/Observable';
 import { Subscription } from 'rxjs/Subscription';
 
 import { OpCode, OperandType, Instruction, instructionSet, InstructionSpec } from './instrset';
-import { MemoryService } from './memory.service';
+import { MemoryService, MemoryAccessActor } from './memory.service';
 import { IORegMapService } from './ioregmap.service';
 import { ClockService} from './clock.service';
 import { Exception, ExceptionType } from './exceptions';
@@ -439,7 +439,8 @@ export class CPUService {
     protected pushByte(value: number) {
 
         const currentSP = this.SP.value;
-        this.memoryService.storeByte(currentSP, value);
+        this.memoryService.storeByte(currentSP, value,
+            (this.SR.supervisor === 1 ? MemoryAccessActor.CPU_SUPERVISOR : MemoryAccessActor.CPU_USER));
         this.SP.pushByte();
 
     }
@@ -447,7 +448,8 @@ export class CPUService {
     protected pushWord(value: number) {
 
         const currentSP = this.SP.value;
-        this.memoryService.storeWord(currentSP - 1, value);
+        this.memoryService.storeWord(currentSP - 1, value,
+            (this.SR.supervisor === 1 ? MemoryAccessActor.CPU_SUPERVISOR : MemoryAccessActor.CPU_USER));
         this.SP.pushWord();
 
     }
@@ -925,7 +927,8 @@ export class CPUService {
         }
 
         try {
-            this.memoryService.storeWord(toAddress, this.registersBank.get(fromRegister).value);
+            this.memoryService.storeWord(toAddress, this.registersBank.get(fromRegister).value,
+                (this.SR.supervisor === 1 ? MemoryAccessActor.CPU_SUPERVISOR : MemoryAccessActor.CPU_USER));
         } catch (e) {
             throw new Exception(ExceptionType.MEMORY_ACCESS_ERROR,
                 e.message, this.IP.value, this.SP.value, this.SR.value, toAddress);
@@ -946,7 +949,8 @@ export class CPUService {
         }
 
         try {
-            this.memoryService.storeWord(toAddress, this.registersBank.get(fromRegister).value);
+            this.memoryService.storeWord(toAddress, this.registersBank.get(fromRegister).value,
+                (this.SR.supervisor === 1 ? MemoryAccessActor.CPU_SUPERVISOR : MemoryAccessActor.CPU_USER));
         } catch (e) {
             throw new Exception(ExceptionType.MEMORY_ACCESS_ERROR,
                 e.message, this.IP.value, this.SP.value, this.SR.value, toAddress);
@@ -974,7 +978,8 @@ export class CPUService {
     private instrMOV_WORD_TO_ADDRESS(toAddress: number, word: number): boolean {
 
         try {
-            this.memoryService.storeWord(toAddress, word);
+            this.memoryService.storeWord(toAddress, word,
+                (this.SR.supervisor === 1 ? MemoryAccessActor.CPU_SUPERVISOR : MemoryAccessActor.CPU_USER));
         } catch (e) {
             throw new Exception(ExceptionType.MEMORY_ACCESS_ERROR,
                 e.message, this.IP.value, this.SP.value, this.SR.value, toAddress);
@@ -988,7 +993,8 @@ export class CPUService {
     private instrMOV_WORD_TO_REGADDRESS(toAddress: number, word: number): boolean {
 
         try {
-            this.memoryService.storeWord(toAddress, word);
+            this.memoryService.storeWord(toAddress, word,
+                (this.SR.supervisor === 1 ? MemoryAccessActor.CPU_SUPERVISOR : MemoryAccessActor.CPU_USER));
         } catch (e) {
             throw new Exception(ExceptionType.MEMORY_ACCESS_ERROR,
                 e.message, this.IP.value, this.SP.value, this.SR.value, toAddress);
@@ -1084,7 +1090,8 @@ export class CPUService {
         const byteFromRegister = CPUService.getByteFrom8bitsGPR(fromRegister);
 
         try {
-            this.memoryService.storeByte(toAddress, this.registersBank.get(fromRegister)[byteFromRegister]);
+            this.memoryService.storeByte(toAddress, this.registersBank.get(fromRegister)[byteFromRegister],
+                (this.SR.supervisor === 1 ? MemoryAccessActor.CPU_SUPERVISOR : MemoryAccessActor.CPU_USER));
         } catch (e) {
             throw new Exception(ExceptionType.MEMORY_ACCESS_ERROR,
                 e.message, this.IP.value, this.SP.value, this.SR.value, toAddress);
@@ -1107,7 +1114,8 @@ export class CPUService {
         const byteFromRegister = CPUService.getByteFrom8bitsGPR(fromRegister);
 
         try {
-            this.memoryService.storeByte(toAddress, this.registersBank.get(fromRegister)[byteFromRegister]);
+            this.memoryService.storeByte(toAddress, this.registersBank.get(fromRegister)[byteFromRegister],
+                (this.SR.supervisor === 1 ? MemoryAccessActor.CPU_SUPERVISOR : MemoryAccessActor.CPU_USER));
         } catch (e) {
             throw new Exception(ExceptionType.MEMORY_ACCESS_ERROR,
                 e.message, this.IP.value, this.SP.value, this.SR.value, toAddress);
@@ -1138,7 +1146,8 @@ export class CPUService {
     private instrMOVB_BYTE_TO_ADDRESS(toAddress: number, byte: number): boolean {
 
         try {
-            this.memoryService.storeByte(toAddress, byte);
+            this.memoryService.storeByte(toAddress, byte,
+                (this.SR.supervisor === 1 ? MemoryAccessActor.CPU_SUPERVISOR : MemoryAccessActor.CPU_USER));
         } catch (e) {
             throw new Exception(ExceptionType.MEMORY_ACCESS_ERROR,
                 e.message, this.IP.value, this.SP.value, this.SR.value, toAddress);
@@ -1152,7 +1161,8 @@ export class CPUService {
     private instrMOVB_BYTE_TO_REGADDRESS(toAddress: number, byte: number): boolean {
 
         try {
-            this.memoryService.storeByte(toAddress, byte);
+            this.memoryService.storeByte(toAddress, byte,
+                (this.SR.supervisor === 1 ? MemoryAccessActor.CPU_SUPERVISOR : MemoryAccessActor.CPU_USER));
         } catch (e) {
             throw new Exception(ExceptionType.MEMORY_ACCESS_ERROR,
                 e.message, this.IP.value, this.SP.value, this.SR.value, toAddress);

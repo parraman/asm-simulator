@@ -3,13 +3,128 @@ import { Injectable } from '@angular/core';
 import { Subject } from 'rxjs/Subject';
 import { Observable } from 'rxjs/Observable';
 
+import { IORegisterOperation, IORegMapService,
+    IORegisterType, IORegisterOperationType,
+    IORegisterOperationParamsReadWrite } from './ioregmap.service';
+
 import { Utils } from './utils';
 import { EventsLogService, SystemEvent } from './events-log.service';
 
-export enum MemoryCellAccessPermission {
+const MEMPTSTART_REGISTER_ADDRESS = 7;
+const MEMPTEND_REGISTER_ADDRESS = 8;
 
-    READ_WRITE = 0,
-    READ_ONLY = 1
+export enum MemoryAccessActor {
+
+    DEVICE = 0,
+    CPU_SUPERVISOR = 1,
+    CPU_USER = 2
+
+}
+
+class MemoryProtectionUnit {
+
+    public isActive: boolean;
+    public startAddress: number;
+    public endAddress: number;
+    public blockProtect: boolean;
+    public userMode: boolean;
+    public supervisorMode: boolean;
+
+    protected _startRegister: number;
+    protected _endRegister: number;
+
+
+    constructor (isActive: boolean = false, startAddress: number = 0, endAddress: number = 0xFFFF,
+                 blockProtect: boolean = true, supervisorMode: boolean = true, userMode: boolean = true) {
+
+        this.isActive = isActive;
+        this.startAddress = startAddress;
+        this.endAddress = endAddress;
+        this.blockProtect = blockProtect;
+        this.supervisorMode = supervisorMode;
+        this.userMode = userMode;
+
+        this._startRegister = this.startAddress & 0xFFF0;
+        if (this.isActive === true) {
+            this._startRegister |= 0x0001;
+        }
+        if (this.blockProtect === true) {
+            this._startRegister |= 0x0002;
+        }
+        if (this.userMode === true) {
+            this._startRegister |= 0x0004;
+        }
+        if (this.supervisorMode === true) {
+            this._startRegister |= 0x0008;
+        }
+
+        this._endRegister = this.endAddress;
+
+    }
+
+    get startRegister(): number {
+
+        return this._startRegister;
+
+    }
+
+    set startRegister(newValue: number) {
+
+        this._startRegister = newValue;
+
+        this.startAddress = (newValue & 0xFFF0);
+        this.isActive = ((newValue & 0x0001) !== 0);
+        this.blockProtect = ((newValue & 0x0002) !== 0);
+        this.userMode = ((newValue & 0x0004) !== 0);
+        this.supervisorMode = ((newValue & 0x0008) !== 0);
+
+    }
+
+    get endRegister(): number {
+
+        return this._endRegister;
+
+    }
+
+    set endRegister(newValue: number) {
+
+        this._endRegister = newValue;
+        this.endAddress = newValue;
+
+    }
+
+    public checkMemoryAccess(address: number, actor: MemoryAccessActor): boolean {
+
+        /* If the unit is inactive, then all accesses are allowed.
+         * Also, if the user is a device, then the memory protection does not apply */
+        if (this.isActive === false || actor === MemoryAccessActor.DEVICE) {
+            return true;
+        }
+
+        /* If blockProtect is set, then the protected memory is WITHIN the limits */
+        if (this.blockProtect === true && address >= this.startAddress && address <= this.endAddress) {
+
+            /* We must check the access */
+            if (actor === MemoryAccessActor.CPU_SUPERVISOR && this.supervisorMode === false) {
+                return false;
+            } else {
+
+            } return !(actor === MemoryAccessActor.CPU_USER && this.userMode === false);
+        } else if (this.blockProtect === false && (address < this.startAddress || address > this.endAddress)) {
+
+            /* We must check the access */
+            if (actor === MemoryAccessActor.CPU_SUPERVISOR && this.supervisorMode === false) {
+                return false;
+            } else {
+                return !(actor === MemoryAccessActor.CPU_USER && this.userMode === false);
+            }
+
+        } else {
+            return true;
+        }
+
+    }
+
 
 }
 
@@ -21,7 +136,8 @@ export enum MemoryOperationType {
     STORE_BYTES = 3,
     LOAD_WORD = 4,
     STORE_WORD = 5,
-    ADD_REGION = 6
+    ADD_REGION = 6,
+    CHANGE_MEMPROT = 7
 
 }
 
@@ -46,18 +162,36 @@ export interface MemoryOperationParamsAddRegion {
     name: string;
     startAddress: number;
     endAddress: number;
-    accessPermissions: MemoryCellAccessPermission;
     initialValues: Array<number>;
 
 }
 
+export interface MemoryOperationParamsChangeProtectionUnit {
+
+    isActive: boolean;
+    startAddress: number;
+    endAddress: number;
+    blockProtect: boolean;
+    userMode: boolean;
+    supervisorMode: boolean;
+
+}
+
 type MemoryOperationParams = MemoryOperationParamsLoadStore | MemoryOperationParamsStoreBytes |
-    MemoryOperationParamsAddRegion;
+    MemoryOperationParamsAddRegion | MemoryOperationParamsChangeProtectionUnit;
+
+enum MemoryOperationState {
+
+    IN_PROGRESS = 0,
+    FINISHED = 1
+
+}
 
 export class MemoryOperation implements SystemEvent {
 
     public operationType: MemoryOperationType;
     public data: MemoryOperationParams;
+    public state: MemoryOperationState;
 
     constructor(operationType: MemoryOperationType, data?: MemoryOperationParams) {
 
@@ -104,6 +238,18 @@ export class MemoryOperation implements SystemEvent {
                 ret = `MEM: Add region ${params.name} at addresses ` +
                     `[0x${Utils.pad(params.startAddress, 16, 4)}, 0x${Utils.pad(params.endAddress, 16, 4)}]`;
                 break;
+            case MemoryOperationType.CHANGE_MEMPROT:
+                params = <MemoryOperationParamsChangeProtectionUnit>this.data;
+                if (params.isActive === true) {
+                    ret = `MEM: Enabled protection unit with mode ` + (params.blockProtect === true ? `block ` : `segment `) +
+                        `with permissions ` +
+                        (params.supervisorMode === true ? `S` : `-`) +
+                        (params.supervisorMode === true ? `U` : `-`) + ` at addresses ` +
+                        `[0x${Utils.pad(params.startAddress, 16, 4)}, 0x${Utils.pad(params.endAddress, 16, 4)}]`;
+                } else {
+                    ret = `MEM: Disabled protection unit`;
+                }
+                break;
             default:
                 break;
         }
@@ -117,16 +263,13 @@ export class MemoryOperation implements SystemEvent {
 class MemoryCell {
 
     public address: number;
-    public accessPermissions: MemoryCellAccessPermission;
     public dataValue: number;
     public memoryRegion: MemoryRegion;
 
     constructor(address: number,
-                accessPermissions: MemoryCellAccessPermission = MemoryCellAccessPermission.READ_WRITE,
                 initialValue: number = 0, memoryRegion?: MemoryRegion) {
 
         this.address = address;
-        this.accessPermissions = accessPermissions;
         this.dataValue = initialValue;
         this.memoryRegion = memoryRegion;
 
@@ -154,11 +297,6 @@ export class MemoryRegion {
     public endAddress: number;
 
     /**
-     * Access permissions (Read/write or Read-only).
-     */
-    public accessPermissions: MemoryCellAccessPermission;
-
-    /**
      * Size in bytes of the memory region.
      */
     public size: number;
@@ -176,14 +314,12 @@ export class MemoryRegion {
     public lastAccess = -1;
 
     constructor(regionID: string, name: string, startAddress: number, endAddress: number,
-                accessPermissions: MemoryCellAccessPermission = MemoryCellAccessPermission.READ_WRITE,
                 publishMemoryOperation?: PublishMemoryOperation) {
 
         this.regionID = regionID;
         this.name = name;
         this.startAddress = startAddress;
         this.endAddress = endAddress;
-        this.accessPermissions = accessPermissions;
         this.publishMemoryOperation = publishMemoryOperation;
         this.size = endAddress - startAddress + 1;
 
@@ -206,12 +342,23 @@ export class MemoryService {
 
     public memoryOperation$: Observable<MemoryOperation>;
 
-    constructor(private eventsLogService: EventsLogService) {
+    public protectionUnit: MemoryProtectionUnit = new MemoryProtectionUnit();
+
+    constructor(private ioRegMapService: IORegMapService,
+                private eventsLogService: EventsLogService) {
 
         this.memoryCells = Array<MemoryCell>(this.size);
         for (let i = 0; i < this.size; i++) {
             this.memoryCells[i] = new MemoryCell(i);
         }
+
+        ioRegMapService.addRegister('MEMPTSTART', MEMPTSTART_REGISTER_ADDRESS, this.protectionUnit.startRegister,
+            IORegisterType.READ_WRITE, (op) => this.processRegisterOperation(op),
+            'Memory Protection Unit Start Register');
+
+        ioRegMapService.addRegister('MEMPTEND', MEMPTEND_REGISTER_ADDRESS, this.protectionUnit.endRegister,
+            IORegisterType.READ_WRITE, (op) => this.processRegisterOperation(op),
+            'Memory Protection Unit End Register');
 
         this.memoryOperation$ = this.memoryOperationSource.asObservable();
 
@@ -230,8 +377,23 @@ export class MemoryService {
 
     }
 
+    protected publishMemoryOperationStart(operation: MemoryOperation) {
+
+        operation.state = MemoryOperationState.IN_PROGRESS;
+        this.eventsLogService.startEventGroup(operation);
+        this.memoryOperationSource.next(operation);
+
+    }
+
+    protected publishMemoryOperationEnd(operation: MemoryOperation) {
+
+        operation.state = MemoryOperationState.FINISHED;
+        this.eventsLogService.endEventGroup(operation);
+        this.memoryOperationSource.next(operation);
+
+    }
+
     public addMemoryRegion(name: string, startAddress: number, endAddress: number,
-                           accessPermissions: MemoryCellAccessPermission = MemoryCellAccessPermission.READ_WRITE,
                            initialValues?: Array<number>, publishMemoryOperation?: PublishMemoryOperation): string {
 
         /* We need to first check that startAddress and endAddress are valid, i.e.:
@@ -295,12 +457,10 @@ export class MemoryService {
         }
 
         /* Now we can insert the new memory region */
-        const newMemoryRegion = new MemoryRegion(newID, name, startAddress, endAddress,
-            accessPermissions, publishMemoryOperation);
+        const newMemoryRegion = new MemoryRegion(newID, name, startAddress, endAddress, publishMemoryOperation);
         this.memoryRegions.set(newID, newMemoryRegion);
 
         for (let i = startAddress; i <= endAddress; i++) {
-            this.memoryCells[i].accessPermissions = accessPermissions;
             this.memoryCells[i].dataValue = initialValues ? initialValues[i] : 0;
             this.memoryCells[i].memoryRegion = newMemoryRegion;
         }
@@ -310,7 +470,6 @@ export class MemoryService {
             name: name,
             startAddress: startAddress,
             endAddress: endAddress,
-            accessPermissions: accessPermissions,
             initialValues: initialValues
         };
 
@@ -353,7 +512,7 @@ export class MemoryService {
 
     }
 
-    public storeByte(address: number, value: number, isInstruction: boolean = true,
+    public storeByte(address: number, value: number, actor: MemoryAccessActor,
                      publish: boolean = true) {
 
         if (address < 0 || address > this.size) {
@@ -368,11 +527,8 @@ export class MemoryService {
             throw Error(`Invalid data value ${value}`);
         }
 
-        if (isInstruction === true &&
-            (this.memoryCells[address].accessPermissions === MemoryCellAccessPermission.READ_ONLY)) {
-
-            throw Error(`Invalid storage into read-only cell ${address} in supervisor mode`);
-
+        if (this.protectionUnit.checkMemoryAccess(address, actor) === false) {
+            throw Error(`Invalid storage into protected cell ${address}`);
         }
 
         this.lastAccess = address;
@@ -473,7 +629,7 @@ export class MemoryService {
 
     }
 
-    public storeWord(address: number, value: number, isInstruction: boolean = true,
+    public storeWord(address: number, value: number, actor: MemoryAccessActor,
                      publish: boolean = true) {
 
         if (address < 0 || address >= this.size) {
@@ -488,12 +644,9 @@ export class MemoryService {
             throw Error(`Invalid data value ${value}`);
         }
 
-        if (isInstruction === true &&
-            (this.memoryCells[address].accessPermissions === MemoryCellAccessPermission.READ_ONLY ||
-             this.memoryCells[address + 1].accessPermissions === MemoryCellAccessPermission.READ_ONLY)) {
-
-            throw Error(`Invalid storage into read-only cell ${address}`);
-
+        if (this.protectionUnit.checkMemoryAccess(address, actor) === false ||
+            this.protectionUnit.checkMemoryAccess(address + 1, actor) === false) {
+            throw Error(`Invalid storage into protected cell ${address}`);
         }
 
         this.lastAccess = address;
@@ -526,7 +679,50 @@ export class MemoryService {
 
     }
 
+    private processWriteOperation(address: number, value: number) {
+
+        switch (address) {
+            case MEMPTSTART_REGISTER_ADDRESS:
+                this.protectionUnit.startRegister = value;
+                break;
+            case MEMPTEND_REGISTER_ADDRESS:
+                this.protectionUnit.endRegister = value;
+                break;
+        }
+
+        const parameters: MemoryOperationParamsChangeProtectionUnit = {
+            isActive: this.protectionUnit.isActive,
+            blockProtect: this.protectionUnit.blockProtect,
+            startAddress: this.protectionUnit.startAddress,
+            endAddress: this.protectionUnit.endAddress,
+            supervisorMode: this.protectionUnit.supervisorMode,
+            userMode: this.protectionUnit.userMode
+        };
+
+        this.publishMemoryOperation(new MemoryOperation(MemoryOperationType.CHANGE_MEMPROT, parameters));
+
+    }
+
+
+    private processRegisterOperation(ioRegisterOperation: IORegisterOperation) {
+
+        switch (ioRegisterOperation.operationType) {
+            case IORegisterOperationType.READ:
+                break;
+            case IORegisterOperationType.WRITE:
+                this.processWriteOperation(
+                    (<IORegisterOperationParamsReadWrite>ioRegisterOperation.data).address,
+                    (<IORegisterOperationParamsReadWrite>ioRegisterOperation.data).value);
+                break;
+        }
+
+    }
+
     public reset() {
+
+        const operation = new MemoryOperation(MemoryOperationType.RESET);
+
+        this.publishMemoryOperationStart(operation);
 
         this.lastAccess = -1;
 
@@ -538,7 +734,13 @@ export class MemoryService {
 
         }
 
-        this.publishMemoryOperation(new MemoryOperation(MemoryOperationType.RESET));
+        this.protectionUnit.startRegister = 0x000E;
+        this.protectionUnit.endRegister = 0xFFFF;
+
+        this.ioRegMapService.store(MEMPTSTART_REGISTER_ADDRESS, 0x000E, false, false);
+        this.ioRegMapService.store(MEMPTEND_REGISTER_ADDRESS, 0xFFFF, false, false);
+
+        this.publishMemoryOperationEnd(operation);
 
     }
 

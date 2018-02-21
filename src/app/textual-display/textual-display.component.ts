@@ -5,7 +5,7 @@ import { Observable } from 'rxjs/Observable';
 
 import {
     MemoryOperation, MemoryService, MemoryOperationParamsLoadStore,
-    MemoryCellAccessPermission, MemoryOperationType
+    MemoryOperationType
 } from '../memory.service';
 
 import { Utils } from '../utils';
@@ -156,7 +156,6 @@ export class TextualDisplayComponent implements OnInit {
     ngOnInit() {
 
         this.memoryService.addMemoryRegion('TextualDisplayRegion', 0x2F0, 0x2FF,
-            MemoryCellAccessPermission.READ_WRITE,
             undefined, (op) => this.processMemoryOperation(op));
 
     }
