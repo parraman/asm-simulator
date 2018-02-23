@@ -10,7 +10,7 @@ interrupts and system calls. It has been written in Typescript using Angular 2+
 and Bootstrap and uses
 [CodeMirror](https://codemirror.net) as a component for code editing.
 
-You can try it online [here](https://parraman.github.io/asm-simulator/)
+You can try it online [here](https://parraman.github.io/asm-simulator/).
 
 
 ## Features
@@ -20,6 +20,7 @@ You can try it online [here](https://parraman.github.io/asm-simulator/)
   has its own SP register.
 - 4 general purpose registers, which can be accessed in word or byte modes.
 - 1024 bytes of memory.
+- A Memory Protection Unit (MPU).
 - 16-bit input/output address map which can be accessed using IN/OUT instructions.
 - An interrupt controller that supports up to 16 interrupt sources.
 - A programmable 16-bit timer.
