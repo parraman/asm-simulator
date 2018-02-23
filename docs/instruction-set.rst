@@ -1125,8 +1125,8 @@ referenced by Operand 1.
 
 .. _instruction-subb:
 
-SUBB: 16-bits substraction 
-^^^^^^^^^^^^^^^^^^^^^^^^^^
+SUBB: 8-bits substraction 
+^^^^^^^^^^^^^^^^^^^^^^^^^
 
 Performs a substraction of two 8-bits integers. Every form of the instruction
 will have two operands. Operand 1 will always be a reference to an 8-bits
@@ -1134,17 +1134,17 @@ register. The integer contained by the register will be substracted from the
 value referenced by Operand 2. The result will be stored in the register
 referenced by Operand 1. 
 
-+-----------+-------------------+-------------------+----------------------+
-| Opcode    | Operand 1         | Operand 2         | Example              |
-+===========+===================+===================+======================+
-| 29 (0x1D) | *REGISTER_16BITS* | *REGISTER_16BITS* | ``SUBB BH, DL``      |
-+-----------+-------------------+-------------------+----------------------+
-| 30 (0x1E) | *REGISTER_16BITS* | *REGADDRESS*      | ``SUBB CH, [A-100]`` |
-+-----------+-------------------+-------------------+----------------------+
-| 31 (0x1F) | *REGISTER_16BITS* | *ADDRESS*         | ``SUBB DL, [0x400]`` |
-+-----------+-------------------+-------------------+----------------------+
-| 32 (0x20) | *REGISTER_16BITS* | *WORD*            | ``SUBB BL, 0x10``    |
-+-----------+-------------------+-------------------+----------------------+
++-----------+------------------+------------------+----------------------+
+| Opcode    | Operand 1        | Operand 2        | Example              |
++===========+==================+==================+======================+
+| 29 (0x1D) | *REGISTER_8BITS* | *REGISTER_8BITS* | ``SUBB BH, DL``      |
++-----------+------------------+------------------+----------------------+
+| 30 (0x1E) | *REGISTER_8BITS* | *REGADDRESS*     | ``SUBB CH, [A-100]`` |
++-----------+------------------+------------------+----------------------+
+| 31 (0x1F) | *REGISTER_8BITS* | *ADDRESS*        | ``SUBB DL, [0x400]`` |
++-----------+------------------+------------------+----------------------+
+| 32 (0x20) | *REGISTER_8BITS* | *WORD*           | ``SUBB BL, 0x10``    |
++-----------+------------------+------------------+----------------------+
 
 .. _instruction-svc:
 
