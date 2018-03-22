@@ -62,7 +62,7 @@ The architectural description of the simulator comprises the following component
 ## License
 **The MIT License**
 
-Copyright (c) 2017 Pablo Parra
+Copyright (c) 2017-2018 Pablo Parra
 
 Original work Copyright (c) 2015 Marco Schweighauser
 
