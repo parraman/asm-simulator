@@ -402,13 +402,30 @@ export class AssemblerService {
                     }
 
                     if (p1.type === OperandType.NUMBER) {
-                        this.code.push(p1.value);
+                        p1.type = AssemblerService.checkOperandTypeValue(OperandType.BYTE, p1.value);
+                        this.pushOperandToCode(p1);
                     } else if (p1.type === OperandType.ARRAY) {
                         for (let j = 0, k = p1.value.length; j < k; j++) {
                             this.code.push(p1.value[j]);
                         }
                     } else {
                         throw {error: 'DB does not support this operand', line: i + 1};
+                    }
+
+                    continue;
+                } else if (instr === 'DW') {
+
+                    try {
+                        p1 = AssemblerService.getValue(match[OP1_GROUP]);
+                    } catch (e) {
+                        throw {error: e.toString(), line: i + 1};
+                    }
+
+                    if (p1.type === OperandType.NUMBER) {
+                        p1.type = AssemblerService.checkOperandTypeValue(OperandType.WORD, p1.value);
+                        this.pushOperandToCode(p1);
+                    } else {
+                        throw {error: 'DW does not support this operand', line: i + 1};
                     }
 
                     continue;

@@ -121,7 +121,7 @@ export class AppComponent implements AfterViewInit {
 
     private sample4 = '; Example 4:\n; Program a periodic interrupt that increments\n; a counter [0 to ' +
         '99] and prints its value into\n; the textual display\n \n\tJMP start\n\tJMP ' +
-        'isr\n\ncounter:\t\t; the counter\n\tDB 0\n\tDB 0\n\nstart:\n\tMOV SP, 255\t\t; ' +
+        'isr\n\ncounter:\t\t; the counter\n\tDW 0\n\nstart:\n\tMOV SP, 255\t\t; ' +
         'Set SP\n\tMOV A, 2\t\t; Set bit 1 of IRQMASK\n\tOUT 0\t\t\t; Unmask timer ' +
         'IRQ\n\tMOV A, 0x20\t\t; Set timer preload\n\tOUT 3\n\tSTI\n\tHLT\n\nisr:\n\tPUSH ' +
         'A\n\tPUSH B\n\tPUSH C\n\tMOV A, [counter]\t; Increment the\n\tINC A\t\t\t\t; ' +
@@ -240,6 +240,8 @@ export class AppComponent implements AfterViewInit {
         }
 
         start.push({regex: /DB\b/, token: 'keyword'});
+        start.push({regex: /DW\b/, token: 'keyword'});
+        start.push({regex: /ORG\b/, token: 'keyword'});
 
         for (const item of instructionSet.getMnemonics()) {
 
