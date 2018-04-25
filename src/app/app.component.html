@@ -46,15 +46,13 @@
           <app-registers-view [displayA]="displayA" [displayB]="displayB" [displayC]="displayC" [displayD]="displayD"></app-registers-view>
           <app-memory-view [mapping]="mapping" [displayA]="displayA" [displayB]="displayB" [displayC]="displayC" [displayD]="displayD" [showInstructions]="showInstructions" (onMemoryCellClick)="memoryCellClick($event)"></app-memory-view>
           <div class="small" style="margin-top:10px;"><span>Clock speed: </span>
-            <select [(ngModel)]="speed">
-              <option [ngValue]="1000">1 HZ</option>
-              <option [ngValue]="250">4 HZ</option>
-              <option [ngValue]="125">8 HZ</option>
-              <option [ngValue]="64">16 HZ</option>
-              <option [ngValue]="32">32 HZ</option>
-              <option [ngValue]="16">64 HZ</option>
-              <option [ngValue]="8">128 HZ</option>
-              <option [ngValue]="4">256 HZ</option>
+            <select [(ngModel)]="speed" title="CPU Speed">
+              <option [ngValue]="0">4 HZ</option>
+              <option [ngValue]="1">16 HZ</option>
+              <option [ngValue]="2">64 HZ</option>
+              <option [ngValue]="3">256 HZ</option>
+              <option [ngValue]="4">1 KHZ</option>
+              <option [ngValue]="5">4 KHZ</option>
             </select><span style="margin-left:5px;">Instructions: </span><a (click)="showInstructions = false" *ngIf="showInstructions === true">Hide</a><a (click)="showInstructions = true" *ngIf="showInstructions === false">Show</a></div>
           <div class="small" style="margin-bottom: 20px;"><span>Register addressing: </span>
             <span style="margin-left:5px;">A: </span>

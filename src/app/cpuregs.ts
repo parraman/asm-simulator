@@ -307,6 +307,12 @@ export class CPURegister {
 
     }
 
+    get silentValue(): number {
+
+        return this._value;
+
+    }
+
     set value(newValue: number) {
 
         this._value = newValue;

@@ -424,15 +424,15 @@ export class CPUService {
 
     }
 
-    protected get SP(): CPUStackPointerRegister {
+    public get SP(): CPUStackPointerRegister {
         return <CPUStackPointerRegister>this.registersBank.get(CPURegisterIndex.SP);
     }
 
-    protected get IP(): CPURegister {
+    public get IP(): CPURegister {
         return this.registersBank.get(CPURegisterIndex.IP);
     }
 
-    protected get SR(): CPUStatusRegister {
+    public get SR(): CPUStatusRegister {
         return <CPUStatusRegister>this.registersBank.get(CPURegisterIndex.SR);
     }
 

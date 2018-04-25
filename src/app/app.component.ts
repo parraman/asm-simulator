@@ -8,10 +8,6 @@ import { Subscription } from 'rxjs/Subscription';
 import { Observable } from 'rxjs/Observable';
 import 'rxjs/add/observable/timer';
 
-import {
-    CPURegisterIndex, CPURegisterOperation, CPURegisterOperationType, SRBit,
-    CPURegisterRegularOpParams, CPURegisterBitOpParams
-} from './cpuregs';
 import { IrqCtrlService } from './irqctrl.service';
 import { TimerService } from './timer.service';
 import { KeypadComponent } from './keypad/keypad.component';
@@ -26,6 +22,16 @@ const WRAP_CLS = 'CodeMirror-activeline';
 const BACK_CLS = 'CodeMirror-activeline-background';
 const GUTT_CLS = 'CodeMirror-activeline-gutter';
 
+export enum CPUSpeed {
+
+    _4HZ = 0,
+    _16HZ = 1,
+    _64HZ = 2,
+    _256HZ = 3,
+    _1KHZ = 4,
+    _4KHZ = 5
+
+}
 
 @Component({
     selector: 'app-root',
@@ -177,11 +183,7 @@ export class AppComponent implements AfterViewInit {
 
     public isRunning = false;
 
-    public isCPUHalted = false;
-
-    public speed = 250;
-
-    private currentIP = 0;
+    public speed: CPUSpeed = CPUSpeed._4HZ;
 
     @ViewChild('codeTextArea') codeTextArea: ElementRef;
     @ViewChild(KeypadComponent) keypadComponent: KeypadComponent;
@@ -189,7 +191,6 @@ export class AppComponent implements AfterViewInit {
     @ViewChild(TextualDisplayComponent) textualDisplayComponent: TextualDisplayComponent;
     @ViewChild(ErrorBarComponent) errorBar: ErrorBarComponent;
 
-    private cpuRegisterOperationSubscription: Subscription;
     private timerSubscription: Subscription;
 
     constructor (private assemblerService: AssemblerService,
@@ -199,10 +200,6 @@ export class AppComponent implements AfterViewInit {
                  private irqCtrlService: IrqCtrlService,
                  private timerService: TimerService,
                  private renderer: Renderer2) {
-
-        this.cpuRegisterOperationSubscription = this.cpuService.cpuRegisterOperation$.subscribe(
-            (cpuRegisterOperation) => this.processCPURegisterOperation(cpuRegisterOperation)
-        );
 
     }
 
@@ -289,71 +286,6 @@ export class AppComponent implements AfterViewInit {
 
     }
 
-    private processCPURegisterOperation(cpuRegisterOperation: CPURegisterOperation) {
-
-        if (cpuRegisterOperation.operationType === CPURegisterOperationType.WRITE &&
-            cpuRegisterOperation.data.index === CPURegisterIndex.IP) {
-
-            this.currentIP = cpuRegisterOperation.data.value;
-
-            if (this.isRunning === true) {
-
-                if (this.mapping && this.mapping.has(this.currentIP)) {
-
-                    const lineNumber = this.mapping.get(this.currentIP);
-                    const info = this.instance.lineInfo(lineNumber);
-
-                    if (info.gutterMarkers) {
-
-                        this.isRunning = false;
-                        if (this.timerSubscription && this.timerSubscription.closed === false) {
-                            this.timerSubscription.unsubscribe();
-                        }
-
-                    }
-
-                }
-
-            }
-
-            if (this.isRunning === false) {
-
-                if (this.mapping && this.mapping.has(this.currentIP)) {
-
-                    const line = this.mapping.get(this.currentIP);
-                    this.markLine(line);
-
-                    const clientHeight = this.instance.getScrollInfo().clientHeight;
-                    const scrollTop = this.instance.getScrollInfo().top;
-                    const lineCoordinates = this.instance.charCoords({line: line, ch: 0}, 'local');
-                    const topLine = this.instance.coordsChar({left: 0, top: scrollTop}, 'local').line;
-                    const bottomLine =
-                        this.instance.coordsChar({left: 0, top: (scrollTop + clientHeight)}, 'local').line;
-
-                    if (line <= topLine) {
-                        this.instance.scrollTo(null, lineCoordinates.top);
-                    } else if (line >= bottomLine) {
-                        this.instance.scrollTo(null, lineCoordinates.top - clientHeight + 20);
-                    }
-
-                }
-            }
-
-        } else if (cpuRegisterOperation.operationType === CPURegisterOperationType.WRITE &&
-                   (<CPURegisterRegularOpParams>cpuRegisterOperation.data).index === CPURegisterIndex.SR) {
-
-            this.isCPUHalted = (cpuRegisterOperation.data.value & (1 << SRBit.HALT)) !== 0;
-
-        } else if (cpuRegisterOperation.operationType === CPURegisterOperationType.WRITE_BIT &&
-                   (<CPURegisterBitOpParams>cpuRegisterOperation.data).index === CPURegisterIndex.SR &&
-                   (<CPURegisterBitOpParams>cpuRegisterOperation.data).bitNumber === SRBit.HALT) {
-
-            this.isCPUHalted = cpuRegisterOperation.data.value === 1;
-
-        }
-
-    }
-
     public assemble() {
 
         let result;
@@ -377,6 +309,23 @@ export class AppComponent implements AfterViewInit {
         this.labels = result.labels;
 
         this.memoryService.storeBytes(0, this.code.length, this.code);
+
+    }
+
+    private scrollToLine(line: number) {
+
+        const clientHeight = this.instance.getScrollInfo().clientHeight;
+        const scrollTop = this.instance.getScrollInfo().top;
+        const lineCoordinates = this.instance.charCoords({line: line, ch: 0}, 'local');
+        const topLine = this.instance.coordsChar({left: 0, top: scrollTop}, 'local').line;
+        const bottomLine =
+            this.instance.coordsChar({left: 0, top: (scrollTop + clientHeight)}, 'local').line;
+
+        if (line <= topLine) {
+            this.instance.scrollTo(null, lineCoordinates.top);
+        } else if (line >= bottomLine) {
+            this.instance.scrollTo(null, lineCoordinates.top - clientHeight + 20);
+        }
 
     }
 
@@ -410,10 +359,7 @@ export class AppComponent implements AfterViewInit {
 
             const line = this.mapping.get(address);
             this.markLine(line);
-
-            const coordinates = this.instance.charCoords({line: line, ch: 0}, 'local');
-            const clientHeight = this.instance.getScrollInfo().clientHeight;
-            this.instance.scrollTo(null, (coordinates.top + coordinates.bottom - clientHeight) / 2);
+            this.scrollToLine(line);
 
         }
 
@@ -424,6 +370,14 @@ export class AppComponent implements AfterViewInit {
         try {
 
             this.cpuService.step();
+
+            if (this.mapping && this.mapping.has(this.cpuService.IP.silentValue)) {
+
+                const line = this.mapping.get(this.cpuService.IP.silentValue);
+                this.markLine(line);
+                this.scrollToLine(line);
+
+            }
 
         } catch (e) {
 
@@ -437,12 +391,70 @@ export class AppComponent implements AfterViewInit {
 
         this.isRunning = true;
 
-        this.timerSubscription = Observable.timer(1, this.speed).subscribe(
+        let steps = 1;
+        let period;
+
+        switch (this.speed) {
+
+            case CPUSpeed._4HZ: {
+                period = 250;
+                break;
+            }
+            case CPUSpeed._16HZ: {
+                period = 125;
+                break;
+            }
+            case CPUSpeed._64HZ: {
+                period = 32;
+                steps = 2;
+                break;
+            }
+            case CPUSpeed._256HZ: {
+                period = 32;
+                steps = 8;
+                break;
+            }
+            case CPUSpeed._1KHZ: {
+                period = 32;
+                steps = 32;
+                break;
+            }
+            case CPUSpeed._4KHZ: {
+                period = 32;
+                steps = 128;
+                break;
+            }
+
+        }
+
+        this.timerSubscription = Observable.timer(1, period).subscribe(
             () => {
 
                 try {
 
-                    this.cpuService.step();
+                    for (let i = 0; i < steps; i++) {
+
+                        this.cpuService.step();
+
+                        if (this.mapping && this.mapping.has(this.cpuService.IP.silentValue)) {
+
+                            const line = this.mapping.get(this.cpuService.IP.silentValue);
+                            const info = this.instance.lineInfo(line);
+
+                            if (info.gutterMarkers) {
+
+                                this.isRunning = false;
+                                if (this.timerSubscription && this.timerSubscription.closed === false) {
+                                    this.timerSubscription.unsubscribe();
+                                }
+                                this.markLine(line);
+                                this.scrollToLine(line);
+                                break;
+
+                            }
+
+                        }
+                    }
 
                 } catch (e) {
 
