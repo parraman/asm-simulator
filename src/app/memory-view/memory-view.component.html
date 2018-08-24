@@ -1,15 +1,17 @@
-<div style="width: 425px; line-height: 15px;">
-  <h5 style="display: inline-block;">Memory</h5>
-  <div class="small" style="float: right; margin-top: 15px; margin-bottom: 5px;">
-    <a *ngIf="splitMemoryArea === false" (click)="splitMemoryArea = true">Split</a>
-    <a *ngIf="splitMemoryArea === true" (click)="splitMemoryArea = false">Merge</a>
-  </div>
-</div>
+<p-panel styleClass="memory-view-panel">
+  <p-header>
+    <div class="ui-helper-clearfix">
+      <span class="ui-panel-title" style="display:inline-block;">Memory</span>
+      <div class="panel-header-btn-group">
+        <p-toggleButton [(ngModel)]="splitMemoryArea" onLabel="Split" offLabel="Split" styleClass="ui-button-small"></p-toggleButton>
+      </div>
+    </div>
+  </p-header>
 <div class="memory-map">
   <div class="text-muted memory-index-lsb-bar">
     <div *ngFor="let i of memoryColsIndexes" class="memory-index-lsb"><small>{{i}}</small></div>
   </div>
-  <div class="memory-area" appPreventScroll [ngClass]="{'splitted-top': splitMemoryArea}">
+  <div class="memory-area" [ngClass]="{'splitted-top': splitMemoryArea}">
     <div class="text-muted memory-index-msb-bar">
       <div class="memory-index-msb" *ngFor="let i of memoryRowsIndexes"><small>{{i}}</small></div>
     </div>
@@ -25,7 +27,7 @@
       </div>
     </div>
   </div>
-  <div class="memory-area splitted-bottom" appPreventScroll *ngIf="splitMemoryArea">
+  <div class="memory-area splitted-bottom" *ngIf="splitMemoryArea">
     <div class="text-muted memory-index-msb-bar">
       <div class="memory-index-msb" *ngFor="let i of memoryRowsIndexes"><small>{{i}}</small></div>
     </div>
@@ -41,4 +43,6 @@
       </div>
     </div>
   </div>
+  <p-messages></p-messages>
 </div>
+</p-panel>

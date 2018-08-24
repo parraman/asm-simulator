@@ -173,20 +173,20 @@ export class KeypadComponent implements OnInit {
 
     }
 
-    public processKey(key: number) {
+    public processKey(key: string) {
 
         let operation;
 
         if (this.kpdStatusRegister === 0) {
 
-            this.kpdDataRegister = key;
+            this.kpdDataRegister = key.charCodeAt(0);
             this.kpdStatusRegister = 1;
 
-            operation = new KeypadOperation(KeypadOperationType.KEY_PRESSED, { value: key });
+            operation = new KeypadOperation(KeypadOperationType.KEY_PRESSED, { value: key.charCodeAt(0) });
 
             this.publishKeypadOperationStart(operation);
 
-            this.ioRegMapService.store(KPDDATA_REGISTER_ADDRESS, key, false, false);
+            this.ioRegMapService.store(KPDDATA_REGISTER_ADDRESS, key.charCodeAt(0), false, false);
             this.ioRegMapService.store(KPDSTATUS_REGISTER_ADDRESS, 1, false, false);
 
             this.publishKeypadOperationEnd(operation);

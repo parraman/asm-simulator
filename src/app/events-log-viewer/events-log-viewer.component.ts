@@ -15,6 +15,8 @@ import { VisualDisplayOperation } from '../visual-display/visual-display.compone
 import { TextualDisplayOperation } from '../textual-display/textual-display.component';
 import { KeypadOperation } from '../keypad/keypad.component';
 
+import { SelectItem } from 'primeng/api';
+
 class LogLine {
 
     public text: string;
@@ -41,16 +43,13 @@ export class EventsLogViewerComponent implements AfterViewInit {
 
     public enableLogging = false;
 
-    public enableControlUnit = true;
-    public enableCPURegisters = true;
-    public enableALU = true;
-    public enableMemory = true;
-    public enableIORegisters = true;
-    public enableIRQController = true;
-    public enableTimer = true;
-    public enableTextualDisplay = true;
-    public enableVisualDisplay = true;
-    public enableKeypad = true;
+    public loggingSources: SelectItem[];
+    public selectedSources = [
+        'ControlUnit', 'CPURegisters', 'ALU',
+        'Memory', 'IORegisters', 'IRQController',
+        'Timer', 'TextualDisplay', 'VisualDisplay',
+        'Keypad'
+    ];
 
     public logLines: Array<LogLine> = [];
 
@@ -86,7 +85,52 @@ export class EventsLogViewerComponent implements AfterViewInit {
 
     }
 
-    constructor(private eventsLogService: EventsLogService) { }
+    constructor(private eventsLogService: EventsLogService) {
+   
+        this.loggingSources = [
+            {
+                label: 'Control Unit',
+                value: 'ControlUnit'
+            },
+            {
+                label: 'CPU Registers',
+                value: 'CPURegisters'
+            },
+            {
+                label: 'Arithmetic Logic Unit',
+                value: 'ALU'
+            },
+            {
+                label: 'Memory',
+                value: 'Memory'
+            },
+            {
+                label: 'I/O Registers',
+                value: 'IORegisters'
+            },
+            {
+                label: 'IRQ Controller',
+                value: 'IRQController'
+            },
+            {
+                label: 'Timer',
+                value: 'Timer'
+            },
+            {
+                label: 'Textual Display',
+                value: 'TextualDisplay'
+            },
+            {
+                label: 'Visual Display',
+                value: 'VisualDisplay'
+            },
+            {
+                label: 'Keypad',
+                value: 'Keypad'
+            },
+        ];
+   
+    }
 
     ngAfterViewInit() {
 
@@ -121,29 +165,29 @@ export class EventsLogViewerComponent implements AfterViewInit {
 
         let ret = false;
 
-        if (systemEvent instanceof MemoryOperation && this.enableMemory === true && (
+        if (systemEvent instanceof MemoryOperation && this.selectedSources.includes('Memory') && (
             systemEvent.operationType !== MemoryOperationType.RESET &&
             systemEvent.operationType !== MemoryOperationType.ADD_REGION &&
             systemEvent.operationType !== MemoryOperationType.STORE_BYTES)) {
                 ret = true;
-        } else if (systemEvent instanceof ControlUnitOperation && this.enableControlUnit === true) {
+        } else if (systemEvent instanceof ControlUnitOperation && this.selectedSources.includes('ControlUnit')) {
             ret = true;
-        } else if (systemEvent instanceof ALUOperation && this.enableALU === true) {
+        } else if (systemEvent instanceof ALUOperation && this.selectedSources.includes('ALU')) {
             ret = true;
-        } else if (systemEvent instanceof CPURegisterOperation && this.enableCPURegisters === true) {
+        } else if (systemEvent instanceof CPURegisterOperation && this.selectedSources.includes('CPURegisters')) {
             ret = true;
-        } else if (systemEvent instanceof IORegisterOperation && this.enableIORegisters === true &&
+        } else if (systemEvent instanceof IORegisterOperation && this.selectedSources.includes('IORegisters') &&
             (systemEvent.operationType !== IORegisterOperationType.ADD_REGISTER)) {
             ret = true;
-        } else if (systemEvent instanceof IrqCtrlOperation && this.enableIRQController === true) {
+        } else if (systemEvent instanceof IrqCtrlOperation && this.selectedSources.includes('IRQController')) {
             ret = true;
-        } else if (systemEvent instanceof TimerOperation && this.enableTimer === true) {
+        } else if (systemEvent instanceof TimerOperation && this.selectedSources.includes('Timer')) {
             ret = true;
-        } else if (systemEvent instanceof VisualDisplayOperation && this.enableVisualDisplay === true) {
+        } else if (systemEvent instanceof VisualDisplayOperation && this.selectedSources.includes('VisualDisplay')) {
             ret = true;
-        } else if (systemEvent instanceof TextualDisplayOperation && this.enableTextualDisplay === true) {
+        } else if (systemEvent instanceof TextualDisplayOperation && this.selectedSources.includes('TextualDisplay')) {
             ret = true;
-        } else if (systemEvent instanceof KeypadOperation && this.enableKeypad === true) {
+        } else if (systemEvent instanceof KeypadOperation && this.selectedSources.includes('Keypad')) {
             ret = true;
         }
 

@@ -1,4 +1,4 @@
-import { Component, OnInit } from '@angular/core';
+import { Component } from '@angular/core';
 
 import { Subject } from 'rxjs/Subject';
 import { Observable } from 'rxjs/Observable';
@@ -122,9 +122,9 @@ export class TextualDisplayOperation implements SystemEvent {
     selector: 'app-textual-display',
     templateUrl: './textual-display.component.html'
 })
-export class TextualDisplayComponent implements OnInit {
+export class TextualDisplayComponent {
 
-    public textCellViews: Array<TextCellView> = new Array<TextCellView>(16);
+    public textCellViews: Array<TextCellView> = new Array<TextCellView>(32);
 
     private textualDisplayOperationSource = new Subject<TextualDisplayOperation>();
     private textualDisplayOperationSource$: Observable<TextualDisplayOperation>;
@@ -132,11 +132,14 @@ export class TextualDisplayComponent implements OnInit {
     constructor(private memoryService: MemoryService,
                 private eventsLogService: EventsLogService) {
 
-        for (let i = 0; i < 16; i++) {
+        for (let i = 0; i < 32; i++) {
 
             this.textCellViews[i] = new TextCellView(i, 0);
 
         }
+
+        this.memoryService.addMemoryRegion('TextualDisplayRegion', 0x2E0, 0x2FF,
+            undefined, (op) => this.processMemoryOperation(op));
 
         this.textualDisplayOperationSource$ = this.textualDisplayOperationSource.asObservable();
 
@@ -153,13 +156,6 @@ export class TextualDisplayComponent implements OnInit {
 
     }
 
-    ngOnInit() {
-
-        this.memoryService.addMemoryRegion('TextualDisplayRegion', 0x2F0, 0x2FF,
-            undefined, (op) => this.processMemoryOperation(op));
-
-    }
-
     private fillCharacter(index: number, value: number) {
 
         this.textCellViews[index].value = value;
@@ -170,7 +166,7 @@ export class TextualDisplayComponent implements OnInit {
 
         const parameters: TextualDisplayOperationParams = {
 
-            cell: address - 0x2F0,
+            cell: address - 0x2E0,
             value: value,
             strValue: getStrValue(value)
 
@@ -187,7 +183,7 @@ export class TextualDisplayComponent implements OnInit {
 
         const parameters: TextualDisplayOperationParams = {
 
-            cell: address - 0x2F0,
+            cell: address - 0x2E0,
             value: msb,
             strValue: getStrValue(msb)
 
@@ -197,7 +193,7 @@ export class TextualDisplayComponent implements OnInit {
 
         if ((address + 1) <= 0x2FF) {
 
-            parameters.cell = address - 0x2F0 + 1;
+            parameters.cell = address - 0x2E0 + 1;
             parameters.value = lsb;
             parameters.strValue = getStrValue(lsb);
 
@@ -251,7 +247,7 @@ export class TextualDisplayComponent implements OnInit {
             this.textCellViews[i].value = 0;
         }
 
-        this.memoryService.storeBytes(0x2F0, 16);
+        this.memoryService.storeBytes(0x2E0, 32);
 
     }
 

@@ -1,17 +1,22 @@
 # 16-bit Assembler Simulator
 
 A simulator of a 16-bit CPU. This project has been developed for educational
-purposes and it is based on a [previous
+purposes to support the teaching of operating systems.
+
+The simulator is based on a [previous
 project](https://github.com/Schweigi/assembler-simulator) made by Marco
-Schweighauser. It project reuses the original page layout and the instruction
-parsing mechanism, based on the use of regular expressions; and extends the
-full instruction set with new instructions to handle byte-mode accesses and
-interrupts and system calls. It has been written in Typescript using Angular 2+
-and Bootstrap and uses
-[CodeMirror](https://codemirror.net) as a component for code editing.
+Schweighauser. This project reuses the instruction parsing mechanism, based on
+the use of regular expressions, and extends the original instruction set with
+new instructions to handle byte-mode accesses, interrupts, dual-mode execution,
+system calls and exceptions. It has been fully written in Typescript using
+Angular 2+ and [PrimeNG](https://www.primefaces.org/primeng/) and uses
+[CodeMirror](https://codemirror.net) as a component for code editing. It also
+uses the [angular-split](https://github.com/bertrandg/angular-split) module to
+split the different panel views. The GitHub link icon on the uppermost right
+corner of the application is a [GitHub
+corner](https://github.com/tholman/github-corners).
 
 You can try it online [here](https://parraman.github.io/asm-simulator/).
-
 
 ## Features
 
@@ -26,9 +31,10 @@ You can try it online [here](https://parraman.github.io/asm-simulator/).
 - A programmable 16-bit timer.
 - Three input/output devices:
   - Visual display with a resolution of 16x16.
-  - Textual display of 16 characters.
-  - 10-keys numeric keypad.
+  - Textual display of 2x16 characters.
+  - 3x4-keys numeric keypad.
 - Inline memory editing.
+- Execution breakpoints.
 
 ## Simulator's architecture
 
@@ -64,7 +70,7 @@ The architectural description of the simulator comprises the following component
 
 Copyright (c) 2017-2018 Pablo Parra
 
-Original work Copyright (c) 2015 Marco Schweighauser
+Original ISA Copyright (c) 2015 Marco Schweighauser
 
 Permission is hereby granted, free of charge, to any person obtaining a copy of this software and associated documentation files (the "Software"), to deal in the Software without restriction, including without limitation the rights to use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of the Software, and to permit persons to whom the Software is furnished to do so, subject to the following conditions:
 

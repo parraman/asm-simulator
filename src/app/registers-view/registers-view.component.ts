@@ -1,4 +1,4 @@
-import { Component, OnDestroy, OnInit, Input } from '@angular/core';
+import { Component, OnDestroy, OnInit, Output, EventEmitter } from '@angular/core';
 
 import { Subscription } from 'rxjs/Subscription';
 import { Utils } from '../utils';
@@ -8,6 +8,7 @@ import {
     CPURegisterIndex, CPURegisterOperation, CPURegisterOperationType,
     CPURegisterRegularOpParams, CPURegisterBitOpParams
 } from '../cpuregs';
+import {register} from "ts-node";
 
 class CPURegisterView {
 
@@ -83,10 +84,12 @@ export class RegistersViewComponent implements OnInit, OnDestroy {
     public SSP: CPURegisterView;
     public USP: CPURegisterView;
 
-    @Input() displayA: boolean;
-    @Input() displayB: boolean;
-    @Input() displayC: boolean;
-    @Input() displayD: boolean;
+    public displayA = false;
+    public displayB = false;
+    public displayC = false;
+    public displayD = false;
+
+    @Output() onRegisterClick = new EventEmitter<CPURegisterIndex>();
 
     private registersMap: Map<number, CPURegisterView> = new Map<number, CPURegisterView>();
 
@@ -212,6 +215,29 @@ export class RegistersViewComponent implements OnInit, OnDestroy {
             default:
                 break;
 
+        }
+
+    }
+
+    public toggleDisplayRegister(registerIndex: CPURegisterIndex) {
+
+        switch (registerIndex) {
+            case CPURegisterIndex.A:
+                this.displayA = !this.displayA;
+                this.onRegisterClick.next(CPURegisterIndex.A);
+                break;
+            case CPURegisterIndex.B:
+                this.displayB = !this.displayB;
+                this.onRegisterClick.next(CPURegisterIndex.B);
+                break;
+            case CPURegisterIndex.C:
+                this.displayC = !this.displayC;
+                this.onRegisterClick.next(CPURegisterIndex.C);
+                break;
+            case CPURegisterIndex.D:
+                this.displayD = !this.displayD;
+                this.onRegisterClick.next(CPURegisterIndex.D);
+                break;
         }
 
     }

@@ -1,103 +1,107 @@
-<h5>CPU Registers</h5>
-<div class="register-line">
-  <div class="register">
-    <div class="register-name" title="General Purpose Register A"><span>A</span></div>
-    <div class="source-code register-value-byte" [ngClass]="{ 'marker marker-a': displayA }"><span>{{A.strValue}}</span></div>
-  </div>
-  <div class="register">
-    <div class="register-name" title="General Purpose Register B"><span>B </span></div>
-    <div class="source-code register-value-byte" [ngClass]="{ 'marker marker-b': displayB }"><span>{{B.strValue}}</span></div>
-  </div>
-  <div class="register">
-    <div class="register-name" title="General Purpose Register C"><span>C </span></div>
-    <div class="source-code register-value-byte" [ngClass]="{ 'marker marker-c': displayC }"><span>{{C.strValue}}</span></div>
-  </div>
-  <div class="register">
-    <div class="register-name" title="General Purpose Register D"><span>D </span></div>
-    <div class="source-code register-value-byte" [ngClass]="{ 'marker marker-d': displayD }"><span>{{D.strValue}}</span></div>
-  </div>
+<div class="registers-container">
+  <p-panel header="CPU Registers" styleClass="registers-panel">
+    <div class="registers-content">
+      <div class="register-line">
+        <div class="register" (click)="toggleDisplayRegister(0)">
+          <div class="register-name cursor-pointer" title="General Purpose Register A"><span>A</span></div>
+          <div class="source-code register-value-byte cursor-pointer" [ngClass]="{ 'marker marker-a': displayA }"><span>{{A.strValue}}</span></div>
+        </div>
+        <div class="register" (click)="toggleDisplayRegister(1)">
+          <div class="register-name cursor-pointer" title="General Purpose Register B"><span>B </span></div>
+          <div class="source-code register-value-byte cursor-pointer" [ngClass]="{ 'marker marker-b': displayB }"><span>{{B.strValue}}</span></div>
+        </div>
+        <div class="register" (click)="toggleDisplayRegister(2)">
+          <div class="register-name cursor-pointer" title="General Purpose Register C"><span>C </span></div>
+          <div class="source-code register-value-byte cursor-pointer" [ngClass]="{ 'marker marker-c': displayC }"><span>{{C.strValue}}</span></div>
+        </div>
+        <div class="register" (click)="toggleDisplayRegister(3)">
+          <div class="register-name cursor-pointer" title="General Purpose Register D"><span>D </span></div>
+          <div class="source-code register-value-byte cursor-pointer" [ngClass]="{ 'marker marker-d': displayD }"><span>{{D.strValue}}</span></div>
+        </div>
+      </div>
+      <div class="register-line" style="float: left; width: 169px">
+        <div class="register" style="margin-right: 5px">
+          <div class="register-name" title="Instruction Pointer Register"><span>IP </span></div>
+          <div class="source-code register-value-byte marker marker-ip"><span>{{IP.strValue}}</span></div>
+        </div>
+        <div class="register sp-register" style="margin-right:0">
+          <div class="register-name sp-register-name" [ngClass]="{'text-muted': !isSupervisorMode()}" title="Supervisor Stack Pointer Register"><span>SSP </span></div>
+          <div class="source-code register-value-byte" [ngClass]="{'marker marker-ssp': isSupervisorMode(), 'text-muted': !isSupervisorMode()}">{{SSP.strValue}}</div>
+        </div>
+        <div class="register sp-register" style="margin-left:80px; margin-right: 0; margin-top: 4px">
+          <div class="register-name sp-register-name" [ngClass]="{'text-muted': isSupervisorMode()}" title="User Stack Pointer Register"><span>USP </span></div>
+          <div class="source-code register-value-byte" [ngClass]="{'marker marker-usp': !isSupervisorMode(), 'text-muted': isSupervisorMode()}"><span>{{USP.strValue}}</span></div>
+        </div>
+      </div>
+      <div class="register-line" style="height: 45px; display: inline-block">
+        <div class="status-register">
+          <div class="register-name" style="padding-left:8px;padding-right:5px;padding-bottom:26px;margin-right:6px;width:34px" title="Status Register"><span>SR </span></div>
+          <div class="source-code status-register-bit">
+            <div class="status-register-bit-label" style="font-weight:700;" title="Supervisor Mode Bit"><small class="very-small">S </small></div>
+            <div class="status-register-bit-value"><span>{{SR.bitField[15]}}</span></div>
+          </div>
+          <div class="source-code status-register-bit">
+            <div class="status-register-bit-label"><small class="very-small">-</small></div>
+            <div class="status-register-bit-value"><span>0</span></div>
+          </div>
+          <div class="source-code status-register-bit">
+            <div class="status-register-bit-label"><small class="very-small">-</small></div>
+            <div class="status-register-bit-value"><span>0</span></div>
+          </div>
+          <div class="source-code status-register-bit">
+            <div class="status-register-bit-label"><small class="very-small">-</small></div>
+            <div class="status-register-bit-value"><span>0</span></div>
+          </div>
+          <div class="source-code status-register-bit">
+            <div class="status-register-bit-label"><small class="very-small">-</small></div>
+            <div class="status-register-bit-value"><span>0</span></div>
+          </div>
+          <div class="source-code status-register-bit">
+            <div class="status-register-bit-label"><small class="very-small">-</small></div>
+            <div class="status-register-bit-value"><span>0</span></div>
+          </div>
+          <div class="source-code status-register-bit">
+            <div class="status-register-bit-label"><small class="very-small">-</small></div>
+            <div class="status-register-bit-value"><span>0</span></div>
+          </div>
+          <div class="source-code status-register-bit">
+            <div class="status-register-bit-label"><small class="very-small">-</small></div>
+            <div class="status-register-bit-value"><span>0</span></div>
+          </div>
+          <div class="source-code status-register-bit">
+            <div class="status-register-bit-label"><small class="very-small">-</small></div>
+            <div class="status-register-bit-value"><span>0</span></div>
+          </div>
+          <div class="source-code status-register-bit">
+            <div class="status-register-bit-label"><small class="very-small">-</small></div>
+            <div class="status-register-bit-value"><span>0</span></div>
+          </div>
+          <div class="source-code status-register-bit">
+            <div class="status-register-bit-label"><small class="very-small">- </small></div>
+            <div class="status-register-bit-value"><span>0</span></div>
+          </div>
+          <div class="source-code status-register-bit">
+            <div class="status-register-bit-label" style="font-weight:700;" title="Interrupt Mask Bit"><small class="very-small">M </small></div>
+            <div class="status-register-bit-value"><span>{{SR.bitField[4]}}</span></div>
+          </div>
+          <div class="source-code status-register-bit">
+            <div class="status-register-bit-label" style="font-weight:700;" title="Carry Flag Bit"><small class="very-small">C </small></div>
+            <div class="status-register-bit-value"><span>{{SR.bitField[3]}}</span></div>
+          </div>
+          <div class="source-code status-register-bit">
+            <div class="status-register-bit-label" style="font-weight:700;" title="Zero Flag Bit"><small class="very-small">Z </small></div>
+            <div class="status-register-bit-value"><span>{{SR.bitField[2]}}</span></div>
+          </div>
+          <div class="source-code status-register-bit">
+            <div class="status-register-bit-label" style="font-weight:700;" title="Fault Flag Bit"><small class="very-small">F </small></div>
+            <div class="status-register-bit-value"><span>{{SR.bitField[1]}}</span></div>
+          </div>
+          <div class="source-code status-register-bit">
+            <div class="status-register-bit-label" style="font-weight:700;" title="CPU Halt Bit"><small class="very-small">H </small></div>
+            <div class="status-register-bit-value"><span>{{SR.bitField[0]}}</span></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </p-panel>
 </div>
-<div class="register-line" style="float: left; width: 169px">
-  <div class="register" style="margin-right: 5px">
-    <div class="register-name" title="Instruction Pointer Register"><span>IP </span></div>
-    <div class="source-code register-value-byte marker marker-ip"><span>{{IP.strValue}}</span></div>
-  </div>
-  <div class="register sp-register" style="margin-right:0">
-    <div class="register-name sp-register-name" [ngClass]="{'text-muted': !isSupervisorMode()}" title="Supervisor Stack Pointer Register"><span>SSP </span></div>
-    <div class="source-code register-value-byte" [ngClass]="{'marker marker-ssp': isSupervisorMode(), 'text-muted': !isSupervisorMode()}">{{SSP.strValue}}</div>
-  </div>
-  <div class="register sp-register" style="margin-left:80px; margin-right: 0; margin-top: 4px">
-    <div class="register-name sp-register-name" [ngClass]="{'text-muted': isSupervisorMode()}" title="User Stack Pointer Register"><span>USP </span></div>
-    <div class="source-code register-value-byte" [ngClass]="{'marker marker-usp': !isSupervisorMode(), 'text-muted': isSupervisorMode()}"><span>{{USP.strValue}}</span></div>
-  </div>
-</div>
-<div class="register-line" style="height: 45px; display: inline-block">
-  <div class="status-register">
-    <div class="register-name" style="padding-left:8px;padding-right:5px;padding-bottom:26px;margin-right:6px;width:34px" title="Status Register"><span>SR </span></div>
-    <div class="source-code status-register-bit">
-      <div class="status-register-bit-label" style="font-weight:700;" title="Supervisor Mode Bit"><small class="very-small">S </small></div>
-      <div class="status-register-bit-value"><span>{{SR.bitField[15]}}</span></div>
-    </div>
-    <div class="source-code status-register-bit">
-      <div class="status-register-bit-label"><small class="very-small">-</small></div>
-      <div class="status-register-bit-value"><span>0</span></div>
-    </div>
-    <div class="source-code status-register-bit">
-      <div class="status-register-bit-label"><small class="very-small">-</small></div>
-      <div class="status-register-bit-value"><span>0</span></div>
-    </div>
-    <div class="source-code status-register-bit">
-      <div class="status-register-bit-label"><small class="very-small">-</small></div>
-      <div class="status-register-bit-value"><span>0</span></div>
-    </div>
-    <div class="source-code status-register-bit">
-      <div class="status-register-bit-label"><small class="very-small">-</small></div>
-      <div class="status-register-bit-value"><span>0</span></div>
-    </div>
-    <div class="source-code status-register-bit">
-      <div class="status-register-bit-label"><small class="very-small">-</small></div>
-      <div class="status-register-bit-value"><span>0</span></div>
-    </div>
-    <div class="source-code status-register-bit">
-      <div class="status-register-bit-label"><small class="very-small">-</small></div>
-      <div class="status-register-bit-value"><span>0</span></div>
-    </div>
-    <div class="source-code status-register-bit">
-      <div class="status-register-bit-label"><small class="very-small">-</small></div>
-      <div class="status-register-bit-value"><span>0</span></div>
-    </div>
-    <div class="source-code status-register-bit">
-      <div class="status-register-bit-label"><small class="very-small">-</small></div>
-      <div class="status-register-bit-value"><span>0</span></div>
-    </div>
-    <div class="source-code status-register-bit">
-      <div class="status-register-bit-label"><small class="very-small">-</small></div>
-      <div class="status-register-bit-value"><span>0</span></div>
-    </div>
-    <div class="source-code status-register-bit">
-      <div class="status-register-bit-label"><small class="very-small">- </small></div>
-      <div class="status-register-bit-value"><span>0</span></div>
-    </div>
-    <div class="source-code status-register-bit">
-      <div class="status-register-bit-label" style="font-weight:700;" title="Interrupt Mask Bit"><small class="very-small">M </small></div>
-      <div class="status-register-bit-value"><span>{{SR.bitField[4]}}</span></div>
-    </div>
-    <div class="source-code status-register-bit">
-      <div class="status-register-bit-label" style="font-weight:700;" title="Carry Flag Bit"><small class="very-small">C </small></div>
-      <div class="status-register-bit-value"><span>{{SR.bitField[3]}}</span></div>
-    </div>
-    <div class="source-code status-register-bit">
-      <div class="status-register-bit-label" style="font-weight:700;" title="Zero Flag Bit"><small class="very-small">Z </small></div>
-      <div class="status-register-bit-value"><span>{{SR.bitField[2]}}</span></div>
-    </div>
-    <div class="source-code status-register-bit">
-      <div class="status-register-bit-label" style="font-weight:700;" title="Fault Flag Bit"><small class="very-small">F </small></div>
-      <div class="status-register-bit-value"><span>{{SR.bitField[1]}}</span></div>
-    </div>
-    <div class="source-code status-register-bit">
-      <div class="status-register-bit-label" style="font-weight:700;" title="CPU Halt Bit"><small class="very-small">H </small></div>
-      <div class="status-register-bit-value"><span>{{SR.bitField[0]}}</span></div>
-    </div>
-  </div>
-</div>
-

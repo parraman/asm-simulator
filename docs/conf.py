@@ -47,7 +47,7 @@ master_doc = 'index'
 
 # General information about the project.
 project = 'asm-simulator'
-copyright = '2017, Pablo Parra'
+copyright = '2017-2018, Pablo Parra'
 author = 'Pablo Parra'
 
 # The version info for the project you're documenting, acts as replacement for

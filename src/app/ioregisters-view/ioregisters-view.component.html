@@ -1,19 +1,20 @@
-<h5>Input / Output Registers</h5>
-<div>
-  <table class="table table-striped table-condensed codelabel">
-    <thead>
+<p-panel header="Input / Output Registers" styleClass="ioregisters-panel">
+  <div class="ioregisters-container">
+    <p-table [value]="registerAddresses.sort()">
+  <ng-template pTemplate="header">
     <tr>
       <th>Address</th>
       <th>Name</th>
       <th>Value</th>
     </tr>
-    </thead>
-    <tbody class="source-code">
-    <tr *ngFor="let i of registerAddresses.sort()">
-      <td>{{registersViewMap.get(i).strAddress}}</td>
-      <td title="{{registersViewMap.get(i).description}}">{{registersViewMap.get(i).name}}</td>
-      <td>{{registersViewMap.get(i).strValue}}</td>
+  </ng-template>
+  <ng-template pTemplate="body" let-address>
+    <tr class="source-code">
+      <td>{{registersViewMap.get(address).strAddress}}</td>
+      <td title="{{registersViewMap.get(address).description}}">{{registersViewMap.get(address).name}}</td>
+      <td>{{registersViewMap.get(address).strValue}}</td>
     </tr>
-    </tbody>
-  </table>
-</div>
+  </ng-template>
+</p-table>
+  </div>
+</p-panel>

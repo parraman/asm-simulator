@@ -1,79 +1,60 @@
-<nav class="navbar navbar-inverse navbar-fixed-top">
-  <div class="container">
-    <div class="nav navbar-nav">
-      <div class="btn-group">
-        <button type="button" class="btn btn-success navbar-btn" (click)="run()" *ngIf="!isRunning"><span class="glyphicon glyphicon-play"></span> Run</button>
-        <button type="button" class="btn btn-default navbar-btn" (click)="stop()" *ngIf="isRunning"><span class="glyphicon glyphicon-stop"></span> Stop</button>
-        <button type="button" class="btn btn-default navbar-btn" (click)="executeStep()" [disabled]="isRunning"><span class="glyphicon glyphicon-forward"></span> Step</button>
-      </div>
-      <button type="button" class="btn btn-default navbar-btn" (click)="reset()">Reset</button>
+<div class="simulator-screen">
+<p-menubar [model]="items">
+    <div style="font-size: 16px; line-height: 26px; margin-right: 50px">
+        16-bit Assembler Simulator
     </div>
-    <div class="nav navbar-nav navbar-right"><a class="navbar-brand navbar-link" href="#">16-bit Assembler Simulator</a></div>
-  </div>
-</nav>
-<div class="container">
-  <div class="row">
-    <div class="col-xs-6">
-      <div class="panel panel-default">
-        <div class="panel-body">
-          <h4>Code <small>(<a (click)="setCodeSample(1)">Sample 1</a>, <a (click)="setCodeSample(2)">Sample 2</a>, <a (click)="setCodeSample(3)">Sample 3</a>, <a (click)="setCodeSample(4)">Sample 4</a>, <a (click)="setCodeSample(5)">Sample 5</a>)</small></h4>
-          <form>
+</p-menubar>
+<a target="_blank" href="https://github.com/parraman/asm-simulator" class="github-corner" aria-label="View source on Github"><svg width="36" height="36" viewBox="0 0 250 250" style="fill:#428BCA; color:#fff; position: absolute; top: 0; border: 0; right: 0;" aria-hidden="true"><path d="M0,0 L115,115 L130,115 L142,142 L250,250 L250,0 Z"></path><path d="M128.3,109.0 C113.8,99.7 119.0,89.6 119.0,89.6 C122.0,82.7 120.5,78.6 120.5,78.6 C119.2,72.0 123.4,76.3 123.4,76.3 C127.3,80.9 125.5,87.3 125.5,87.3 C122.9,97.6 130.6,101.9 134.4,103.2" fill="currentColor" style="transform-origin: 130px 106px;" class="octo-arm"></path><path d="M115.0,115.0 C114.9,115.1 118.7,116.5 119.8,115.4 L133.7,101.6 C136.9,99.2 139.9,98.4 142.2,98.6 C133.8,88.0 127.5,74.4 143.8,58.0 C148.5,53.4 154.0,51.2 159.7,51.0 C160.3,49.4 163.2,43.6 171.4,40.1 C171.4,40.1 176.1,42.5 178.8,56.2 C183.1,58.6 187.2,61.8 190.9,65.4 C194.5,69.0 197.7,73.2 200.1,77.6 C213.8,80.2 216.3,84.9 216.3,84.9 C212.7,93.1 206.9,96.0 205.4,96.6 C205.1,102.4 203.0,107.8 198.3,112.5 C181.9,128.9 168.3,122.5 157.7,114.1 C157.9,116.9 156.7,120.9 152.7,124.9 L141.0,136.5 C139.8,137.7 141.6,141.9 141.8,141.8 Z" fill="currentColor" class="octo-body"></path></svg></a><style>.github-corner:hover .octo-arm{animation:octocat-wave 560ms ease-in-out}@keyframes octocat-wave{0%,100%{transform:rotate(0)}20%,60%{transform:rotate(-25deg)}40%,80%{transform:rotate(10deg)}}@media (max-width:500px){.github-corner:hover .octo-arm{animation:none}.github-corner .octo-arm{animation:octocat-wave 560ms ease-in-out}}</style>
+<a #fileDownload style="display: none;" download="source.asm"></a>
+<input #fileInput type="file" (change)="onFileChange($event)" accept=".asm" style="display: none;">
+<div class="main-container">
+  <div class="left-pane" [ngClass]="{'with-center-pane': showCentralPane}">
+    <split direction="vertical" gutterSize="2" (dragEnd)="onDragEnd(0, $event)">
+      <split-area *ngIf="config.codePanel.visible" [size]="config.codePanel.size" order="0">
+        <div style="height: 100%; width: 100%; position: relative">
+          <form style="height: 100%; width: 100%">
             <textarea #codeTextArea name="code" class="source-code"></textarea>
-            <button class="btn btn-default btn-secondary" type="button" style="background-image:none;" (click)="assemble()">Assemble </button>
           </form>
+          <p-messages></p-messages>
         </div>
-      </div>
-      <div class="panel panel-default">
-        <div class="panel-body" style="padding-bottom: 10px">
+      </split-area>
+      <split-area *ngIf="config.eventsLogPanel.visible" [size]="config.eventsLogPanel.size" order="1">
+        <div class="events-log-viewer-container">
           <app-events-log-viewer [isRunning]="isRunning"></app-events-log-viewer>
         </div>
-      </div>
+      </split-area>
+    </split>
+  </div>
+  <div class="center-pane" *ngIf="showCentralPane">
+    <div class="memory-view-container">
+      <app-memory-view [mapping]="mapping" [displayA]="displayA" [displayB]="displayB" [displayC]="displayC" [displayD]="displayD" (onMemoryCellClick)="memoryCellClick($event)"></app-memory-view>
     </div>
-    <div class="col-xs-6">
-      <div class="panel panel-default">
-        <div class="panel-body">
-          <div style="width:60%;display:inline-block;float:left;text-align:center;">
+  </div>
+  <div class="right-pane">
+    <split direction="vertical" gutterSize="2" (dragEnd)="onDragEnd(1, $event)">
+      <split-area *ngIf="config.ioDevicesPanel.visible" [size]="config.ioDevicesPanel.size" order="0">
+        <p-panel header="Input / Output Devices" styleClass="registers-panel">
+          <div style="width:280px;display:inline-block;float:left;text-align:center; padding-top: 10px; padding-bottom: 10px">
             <app-visual-display></app-visual-display>
             <app-textual-display></app-textual-display>
           </div>
-          <div style="width:40%;display:inline-block;text-align:center;">
-          <app-keypad></app-keypad>
+          <div style="width:135px;display:inline-block;text-align:center; padding-top: 10px">
+            <app-keypad></app-keypad>
           </div>
+        </p-panel>
+      </split-area>
+      <split-area *ngIf="config.cpuRegistersPanel.visible" [size]="config.cpuRegistersPanel.size" order="1">
+        <app-registers-view (onRegisterClick)="toggleDisplayRegister($event)"></app-registers-view>
+      </split-area>
+      <split-area *ngIf="config.memoryPanel.visible" [size]="config.memoryPanel.size" order="2">
+        <div class="memory-view-container">
+          <app-memory-view [mapping]="mapping" [displayA]="displayA" [displayB]="displayB" [displayC]="displayC" [displayD]="displayD" (onMemoryCellClick)="memoryCellClick($event)"></app-memory-view>
         </div>
-      </div>
-      <div class="panel panel-default">
-        <div class="panel-body">
-          <app-registers-view [displayA]="displayA" [displayB]="displayB" [displayC]="displayC" [displayD]="displayD"></app-registers-view>
-          <app-memory-view [mapping]="mapping" [displayA]="displayA" [displayB]="displayB" [displayC]="displayC" [displayD]="displayD" [showInstructions]="showInstructions" (onMemoryCellClick)="memoryCellClick($event)"></app-memory-view>
-          <div class="small" style="margin-top:10px;"><span>Clock speed: </span>
-            <select [(ngModel)]="speed" title="CPU Speed">
-              <option [ngValue]="0">4 HZ</option>
-              <option [ngValue]="1">16 HZ</option>
-              <option [ngValue]="2">64 HZ</option>
-              <option [ngValue]="3">256 HZ</option>
-              <option [ngValue]="4">1 KHZ</option>
-              <option [ngValue]="5">4 KHZ</option>
-            </select><span style="margin-left:5px;">Instructions: </span><a (click)="showInstructions = false" *ngIf="showInstructions === true">Hide</a><a (click)="showInstructions = true" *ngIf="showInstructions === false">Show</a></div>
-          <div class="small" style="margin-bottom: 20px;"><span>Register addressing: </span>
-            <span style="margin-left:5px;">A: </span>
-            <a *ngIf="displayA === false" (click)="displayA = true">Show</a>
-            <a *ngIf="displayA === true" (click)="displayA = false">Hide</a>
-            <span style="margin-left:5px;">B: </span>
-            <a *ngIf="displayB === false" (click)="displayB = true">Show</a>
-            <a *ngIf="displayB === true" (click)="displayB = false">Hide</a>
-            <span style="margin-left:5px;">C: </span>
-            <a *ngIf="displayC === false" (click)="displayC = true">Show</a>
-            <a *ngIf="displayC === true" (click)="displayC = false">Hide</a>
-            <span style="margin-left:5px;">D: </span>
-            <a *ngIf="displayD === false" (click)="displayD = true">Show</a>
-            <a *ngIf="displayD === true" (click)="displayD = false">Hide</a>
-          </div>
-          <app-ioregisters-view></app-ioregisters-view>
-        </div>
-      </div>
-    </div>
+      </split-area>
+      <split-area *ngIf="config.ioRegistersPanel.visible" [size]="config.ioRegistersPanel.size" order="3">
+        <app-ioregisters-view></app-ioregisters-view>
+      </split-area>
+    </split>
   </div>
-  <hr style="margin-top:10px;margin-bottom:10px;"/>
-  <p><small>by Pablo Parra (2017-2018) | MIT License</small></p>
 </div>
-<app-error-bar></app-error-bar>
+</div>

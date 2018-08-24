@@ -330,13 +330,13 @@ export class MemoryRegion {
 @Injectable()
 export class MemoryService {
 
-    private memoryCells: Array<MemoryCell>;
+    public memoryCells: Array<MemoryCell>;
 
     private size = 1024;
 
     private lastAccess = -1;
 
-    private memoryRegions: Map<string, MemoryRegion> = new Map<string, MemoryRegion>();
+    public memoryRegions: Map<string, MemoryRegion> = new Map<string, MemoryRegion>();
 
     private memoryOperationSource = new Subject<MemoryOperation>();
 
@@ -460,8 +460,8 @@ export class MemoryService {
         const newMemoryRegion = new MemoryRegion(newID, name, startAddress, endAddress, publishMemoryOperation);
         this.memoryRegions.set(newID, newMemoryRegion);
 
-        for (let i = startAddress; i <= endAddress; i++) {
-            this.memoryCells[i].dataValue = initialValues ? initialValues[i] : 0;
+        for (let i = startAddress, j = 0; i <= endAddress; i++, j++) {
+            this.memoryCells[i].dataValue = initialValues ? initialValues[j] : 0;
             this.memoryCells[i].memoryRegion = newMemoryRegion;
         }
 

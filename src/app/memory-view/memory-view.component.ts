@@ -1,5 +1,5 @@
 import {
-    Component, OnInit, Input, OnDestroy, SimpleChanges, OnChanges,
+    Component, Input, OnDestroy, SimpleChanges, OnChanges,
     EventEmitter, Output
 } from '@angular/core';
 
@@ -13,7 +13,7 @@ import {
 
 import { Subscription } from 'rxjs/Subscription';
 
-import { ErrorBarService } from '../error-bar.service';
+import { MessageService } from 'primeng/components/common/messageservice';
 import { Utils } from '../utils';
 import { CPUService } from '../cpu.service';
 import {
@@ -143,16 +143,18 @@ class CPURegisterPointer {
 
 @Component({
     selector: 'app-memory-view',
-    templateUrl: './memory-view.component.html'
+    templateUrl: './memory-view.component.html',
+    providers: [
+        MessageService
+    ]
 })
-export class MemoryViewComponent implements OnInit, OnDestroy, OnChanges {
+export class MemoryViewComponent implements OnDestroy, OnChanges {
 
     @Input() mapping: Map<number, number>;
     @Input() displayA: boolean;
     @Input() displayB: boolean;
     @Input() displayC: boolean;
     @Input() displayD: boolean;
-    @Input() showInstructions: boolean;
 
     @Output() onMemoryCellClick = new EventEmitter<number>();
 
@@ -185,7 +187,7 @@ export class MemoryViewComponent implements OnInit, OnDestroy, OnChanges {
 
     constructor(private memoryService: MemoryService,
                 private cpuService: CPUService,
-                private errorBarService: ErrorBarService) {
+                private messageService: MessageService) {
 
         this.size = memoryService.getSize();
 
@@ -195,7 +197,7 @@ export class MemoryViewComponent implements OnInit, OnDestroy, OnChanges {
 
         for (let i = 0; i < this.size; i++) {
 
-            this.memoryCellViews[i] = new MemoryCellView(i, 0);
+            this.memoryCellViews[i] = new MemoryCellView(i, this.memoryService.memoryCells[i].dataValue);
 
         }
 
@@ -236,10 +238,34 @@ export class MemoryViewComponent implements OnInit, OnDestroy, OnChanges {
         this.updateCellStyle(registerSSPPointer.value);
         this.updateCellStyle(registerUSPPointer.value);
 
+        for (const key of Array.from(this.memoryService.memoryRegions.keys())) {
+
+            const region = this.memoryService.memoryRegions.get(key);
+            for (let i = region.startAddress, j = 0; i <= region.endAddress; i++, j++) {
+
+                this.memoryCellViews[i].isMemoryRegion = true;
+                this.memoryCellViews[i].memoryRegionStyle =
+                    region.name.replace(/([a-z])([A-Z])/g, '$1-$2').toLowerCase();
+                this.updateCellStyle(i);
+            }
+
+            this.memoryRegionViews.set(region.regionID,
+                {'startAddress': region.startAddress, 'endAddress': region.endAddress});
+
+        }
+
         const protUnit = this.memoryService.protectionUnit;
 
         this.protectionUnit = new MemoryProtectionUnitView(protUnit.isActive, protUnit.startAddress,
             protUnit.endAddress, protUnit.blockProtect, protUnit.supervisorMode, protUnit.userMode);
+
+        if (this.protectionUnit.isActive === true) {
+            for (let i = 0; i < this.size; i++) {
+                this.memoryCellViews[i].supervisorEnabled = this.protectionUnit.checkMemoryCell(i, true);
+                this.memoryCellViews[i].userEnabled = this.protectionUnit.checkMemoryCell(i, false);
+                this.updateCellStyle(i);
+            }
+        }
 
         this.memoryOperationSubscription = this.memoryService.memoryOperation$.subscribe(
             (memoryOperation) => this.processMemoryOperation(memoryOperation)
@@ -267,7 +293,9 @@ export class MemoryViewComponent implements OnInit, OnDestroy, OnChanges {
 
     }
 
-    ngOnInit() {
+    private pushErrorMessage(detail: string) {
+        this.messageService.clear();
+        this.messageService.add({severity: 'error', detail: detail});
     }
 
     ngOnDestroy() {
@@ -623,7 +651,7 @@ export class MemoryViewComponent implements OnInit, OnDestroy, OnChanges {
             }
 
         } catch (e) {
-            this.errorBarService.setErrorMessage(e.toString());
+            this.pushErrorMessage(e.toString());
         }
 
         this.editingCell[view] = -1;
@@ -661,8 +689,7 @@ export class MemoryViewComponent implements OnInit, OnDestroy, OnChanges {
             this.memoryCellViews[address].style = this.memoryCellViews[address].memoryRegionStyle;
         }
 
-        if (this.showInstructions &&
-            this.memoryCellViews[address].isInstruction === true) {
+        if (this.memoryCellViews[address].isInstruction === true) {
             this.memoryCellViews[address].style = 'instr-bg';
         }
 

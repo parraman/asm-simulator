@@ -1,8 +1,16 @@
-import {Component, ElementRef, ViewChild, AfterViewInit, Renderer2 } from '@angular/core';
+import {
+    Component, ElementRef, ViewChild,
+    AfterViewInit, Renderer2, HostListener, NgZone
+} from '@angular/core';
+import { HttpClient } from '@angular/common/http';
 import { AssemblerService } from './assembler.service';
 import { MemoryService } from './memory.service';
-import { ErrorBarService } from './error-bar.service';
+import { MessageService } from 'primeng/components/common/messageservice';
 import { CPUService } from './cpu.service';
+
+import { CPURegisterIndex } from './cpuregs';
+
+import { MenuItem } from 'primeng/api';
 
 import { Subscription } from 'rxjs/Subscription';
 import { Observable } from 'rxjs/Observable';
@@ -13,7 +21,6 @@ import { TimerService } from './timer.service';
 import { KeypadComponent } from './keypad/keypad.component';
 import { VisualDisplayComponent } from './visual-display/visual-display.component';
 import { TextualDisplayComponent } from './textual-display/textual-display.component';
-import { ErrorBarComponent } from './error-bar/error-bar.component';
 
 import * as CodeMirror from 'codemirror';
 import { instructionSet } from './instrset';
@@ -24,148 +31,47 @@ const GUTT_CLS = 'CodeMirror-activeline-gutter';
 
 export enum CPUSpeed {
 
-    _4HZ = 0,
-    _16HZ = 1,
-    _64HZ = 2,
-    _256HZ = 3,
-    _1KHZ = 4,
-    _4KHZ = 5
+    _4Hz = 0,
+    _16Hz = 1,
+    _64Hz = 2,
+    _256Hz = 3,
+    _1kHz = 4,
+    _4kHz = 5
+
+}
+
+interface IPanelConfiguration {
+
+    visible: boolean;
+    size: number;
+
+}
+
+interface IConfiguration {
+
+    /* CPU Speed */
+    cpuSpeed: number;
+
+    ioRegistersPanel: IPanelConfiguration;
+    memoryPanel: IPanelConfiguration;
+    cpuRegistersPanel: IPanelConfiguration;
+    ioDevicesPanel: IPanelConfiguration;
+    codePanel: IPanelConfiguration;
+    eventsLogPanel: IPanelConfiguration;
 
 }
 
 @Component({
     selector: 'app-root',
-    templateUrl: './app.component.html'
+    templateUrl: './app.component.html',
+    providers: [
+        MessageService
+    ]
 })
 
 export class AppComponent implements AfterViewInit {
 
     title = 'asm-simulator';
-
-    private sample1 = '; Example 1:\n; Writes "Hello World" to the textual display\n\n\tJMP start\n\n' +
-        'hello:\tDB \"Hello World!\"\t; Output string\n\t\tDB 0\t\t\t\t; String terminator\n\n' +
-        'start:\n\tMOV SP, 255\t\t; Set SP\n\tMOV C, hello\t; Point register C to string\n\tMOV D, 0x2F0\t' +
-        '; Point register D to output\n\tCALL print\n' +
-        '\tHLT\t\t\t\t; Halt execution\n\nprint:\t\t\t\t; Print string\n\tPUSH A\n' +
-        '\tPUSH B\n\tMOV B, 0\n.loop:\n\tMOVB AL, [C]\t; Get character\n\tMOVB [D], AL\t; Write to output\n' +
-        '\tINCB CL\n\tINCB DL\n\tCMPB BL, [C]\t; Check if string terminator\n\tJNZ .loop\t\t' +
-        '; Jump back to loop if not\n\n\tPOP B\n\tPOP A\n\tRET';
-
-    private sample2 = '; Example 2:\n; Prints a 16x16 sprite into the visual display\n\n\tJMP ' +
-        'start\n\nsprite: \n\tDB "\\xFF\\xFF\\xFF\\xFF\\xFF\\xC4\\xC4\\xC4"\n\tDB ' +
-        '"\\xC4\\xC4\\xFF\\xFF\\xFF\\xFF\\xFF\\xFF"\n\tDB ' +
-        '"\\xFF\\xFF\\xFF\\xFF\\xC4\\xC4\\xC4\\xC4"\n\tDB ' +
-        '"\\xC4\\xC4\\xC4\\xC4\\xC4\\xFF\\xFF\\xFF"\n\tDB ' +
-        '"\\xFF\\xFF\\xFF\\xFF\\x8C\\x8C\\x8C\\xF4"\n\tDB ' +
-        '"\\xF4\\x8C\\xF4\\xFF\\xFF\\xFF\\xFF\\xFF"\n\tDB ' +
-        '"\\xFF\\xFF\\xFF\\x8C\\xF4\\x8C\\xF4\\xF4"\n\tDB ' +
-        '"\\xF4\\x8C\\xF4\\xF4\\xF4\\xFF\\xFF\\xFF"\n\tDB ' +
-        '"\\xFF\\xFF\\xFF\\x8C\\xF4\\x8C\\x8C\\xF4"\n\tDB ' +
-        '"\\xF4\\xF4\\x8C\\xF4\\xF4\\xF4\\xFF\\xFF"\n\tDB ' +
-        '"\\xFF\\xFF\\xFF\\x8C\\x8C\\xF4\\xF4\\xF4"\n\tDB ' +
-        '"\\xF4\\x8C\\x8C\\x8C\\x8C\\xFF\\xFF\\xFF"\n\tDB ' +
-        '"\\xFF\\xFF\\xFF\\xFF\\xFF\\xF4\\xF4\\xF4"\n\tDB ' +
-        '"\\xF4\\xF4\\xF4\\xF4\\xFF\\xFF\\xFF\\xFF"\n\tDB ' +
-        '"\\xFF\\xFF\\xFF\\xFF\\x8C\\x8C\\xC4\\x8C"\n\tDB ' +
-        '"\\x8C\\x8C\\xFF\\xFF\\xFF\\xFF\\xFF\\xFF"\n\tDB ' +
-        '"\\xFF\\xFF\\xFF\\x8C\\x8C\\x8C\\xC4\\x8C"\n\tDB ' +
-        '"\\x8C\\xC4\\x8C\\x8C\\x8C\\xFF\\xFF\\xFF"\n\tDB ' +
-        '"\\xFF\\xFF\\x8C\\x8C\\x8C\\x8C\\xC4\\xC4"\n\tDB ' +
-        '"\\xC4\\xC4\\x8C\\x8C\\x8C\\x8C\\xFF\\xFF"\n\tDB ' +
-        '"\\xFF\\xFF\\xF4\\xF4\\x8C\\xC4\\xF4\\xC4"\n\tDB ' +
-        '"\\xC4\\xF4\\xC4\\x8C\\xF4\\xF4\\xFF\\xFF"\n\tDB ' +
-        '"\\xFF\\xFF\\xF4\\xF4\\xF4\\xC4\\xC4\\xC4"\n\tDB ' +
-        '"\\xC4\\xC4\\xC4\\xF4\\xF4\\xF4\\xFF\\xFF"\n\tDB ' +
-        '"\\xFF\\xFF\\xF4\\xF4\\xC4\\xC4\\xC4\\xC4"\n\tDB ' +
-        '"\\xC4\\xC4\\xC4\\xC4\\xF4\\xF4\\xFF\\xFF"\n\tDB ' +
-        '"\\xFF\\xFF\\xFF\\xFF\\xC4\\xC4\\xC4\\xFF"\n\tDB ' +
-        '"\\xFF\\xC4\\xC4\\xC4\\xFF\\xFF\\xFF\\xFF"\n\tDB ' +
-        '"\\xFF\\xFF\\xFF\\x8C\\x8C\\x8C\\xFF\\xFF"\n\tDB ' +
-        '"\\xFF\\xFF\\x8C\\x8C\\x8C\\xFF\\xFF\\xFF"\n\tDB ' +
-        '"\\xFF\\xFF\\x8C\\x8C\\x8C\\x8C\\xFF\\xFF"\n\tDB ' +
-        '"\\xFF\\xFF\\x8C\\x8C\\x8C\\x8C\\xFF\\xFF"\n\nstart:\n\tMOV C, sprite\t; C points to the ' +
-        'sprite\n\tMOV D, 0x300\t; D points to the fb\n\n.loop:\n\tMOVB AL, [C]\t; Print ' +
-        'all the pixels\n\tMOVB [D], AL\n\tINC C\n\tINC D\n\tCMP D, 0x400\n\tJNZ ' +
-        '.loop\n\tHLT\n';
-
-    private sample3 = '; Example 3:\n; Draws a sprite in the visual display that can be\n; moved using ' +
-        'the keypad:\n; 2: UP, 4: LEFT; 6: RIGHT; 8: DOWN\n\n\tJMP start\n\tJMP ' +
-        'isr\n\nsprite:\tDB "\\x35\\xFF\\xFF\\x35"\t; Sprite line 0\n\t\tDB ' +
-        '"\\xFF\\x35\\x35\\xFF"\t; Sprite line 1\n\t\tDB "\\xFF\\x35\\x35\\xFF"\t; Sprite line ' +
-        '2\n\t\tDB "\\x35\\xFF\\xFF\\x35"\t; Sprite line 3\n\nclear:  DB "\\xFF\\xFF\\xFF\\xFF"\t; ' +
-        'Blank line 0\n\t\tDB "\\xFF\\xFF\\xFF\\xFF"\t; Blank line 1\n\t\tDB ' +
-        '"\\xFF\\xFF\\xFF\\xFF"\t; Blank line 2\n\t\tDB "\\xFF\\xFF\\xFF\\xFF"\t; Blank line ' +
-        '3\n\npos:\tDB 0\t\t; Current row\n\t\tDB 0\t\t; Current column\n\t\nstart:\n\tMOV ' +
-        'SP, 511\t\t; Set SP\n\tMOV C, sprite\t; Set to draw the sprite\n\tCALL draw\t\t; ' +
-        'Call drawing function\n\tMOV A, 1\t\t; Set bit 0 of IRQMASK\n\tOUT 0\t\t\t; Unmask ' +
-        'keypad irq\n\tSTI\t\t\t\t; Enable interrupts\n\tHLT\t\t\t\t; Halt ' +
-        'execution\n\nisr:\n\tPUSH A\n\tPUSH B\n\tIN 6\t\t\t; Load KPDDATA register to ' +
-        'A\n\tMOV B, [pos]\t; Load position variable\n\tCMP A, 2\t\t; If key pressed != 2 ' +
-        '-> .not2\n\tJNZ .not2\t\t; else\n\tDECB BH\t\t\t; row--\n\tJNC .save\t\t; if row < 0 ' +
-        '-> .end\n\tJMP .end\t\t; else -> .save position\n.not2:\n\tCMP A, 4\t\t; If key ' +
-        'pressed != 4 -> .not4\n\tJNZ .not4\t\t; else\n\tDECB BL\t\t\t; column--\n\tJNC ' +
-        '.save\t\t; if column < 0 -> .end\n\tJMP .end\t\t; else -> .save ' +
-        'position\n.not4:\n\tCMP A, 6\t\t; If key pressed != 6 -> .not4\n\tJNZ .not6\t\t; ' +
-        'else\n\tINCB BL\t\t\t; column++\n\tCMPB BL, 4\t\t; if column == 4 -> .end\n\tJNZ ' +
-        '.save\t\t; else -> .save position\n\tJMP .end\n.not6:\tCMP A, 8\t; If key pressed ' +
-        '!= 6 -> .end\n\tJNZ .end\t\t; else\n\tINCB BH\t\t\t; row++\n\tCMPB BH, 4\t\t; if row ' +
-        '== 4 -> .end\n\tJZ .end\t\t\n.save:\n\tMOV C, clear\t; Set to clear the ' +
-        'sprite\n\tCALL draw\t\t; Call drawing function\n\tMOV [pos], B\t; Store the new ' +
-        'position\n\tMOV C, sprite\t; Set to draw the sprite\n\tCALL draw\t\t; Call ' +
-        'drawing function\n.end:\n\tMOV A, 1\n\tOUT 2\t\t; Write to signal IRQEOI\n\tPOP B\n\tPOP ' +
-        'A\n\tIRET\t\t\t; Return from IRQ\n\ndraw:\t\t\t\t; Draw (C: pointer to img)\n\tPUSH ' +
-        'A\n\tPUSH B\n\tPUSH C\n\tPUSH D\n\tMOV D, 0x300\t; Point register D to ' +
-        'framebuffer\n\tMOV B, [pos]\t; Load current position\n\tMOVB AL, 64\t\t; Initial ' +
-        'pixel =\n\tMULB BH\t\t\t; row * 64 + column * 4\n\tADD D, A\t\n\tMOVB AL, ' +
-        '4\n\tMULB BL\n\tADD D, A\t\t; D points to initial pixel\n\tMOV A, C\t\t; Point A to ' +
-        'the image\n\tMOV C, 0\t\t; CH: total pixel counter\n.line:\t\t\t\t; CL: line pixel ' +
-        'counter\\n\n\tMOVB BL, [A]\t; Get pixel to print\n\tMOVB [D], BL\t; Print ' +
-        'pixel\n\tINC A\n\tINC D\n\tINCB CL\n\tINCB CH\n\tCMPB CL, 4\t\t; End of current ' +
-        'line?\n\tJNZ .line\t\t; NO: keep drawing\n\tMOVB CL, 0\t\t; YES: Next line\n\tADD ' +
-        'D, 12\t\t; Pixel + 12 === CRLF\n\tCMPB CH, 16\t\t; End of sprite?\n\tJNZ .line\t\t; ' +
-        'Jump back to .line if not\n\tPOP D\n\tPOP C\n\tPOP B\n\tPOP A\n\tRET';
-
-    private sample4 = '; Example 4:\n; Program a periodic interrupt that increments\n; a counter [0 to ' +
-        '99] and prints its value into\n; the textual display\n \n\tJMP start\n\tJMP ' +
-        'isr\n\ncounter:\t\t; the counter\n\tDW 0\n\nstart:\n\tMOV SP, 255\t\t; ' +
-        'Set SP\n\tMOV A, 2\t\t; Set bit 1 of IRQMASK\n\tOUT 0\t\t\t; Unmask timer ' +
-        'IRQ\n\tMOV A, 0x20\t\t; Set timer preload\n\tOUT 3\n\tSTI\n\tHLT\n\nisr:\n\tPUSH ' +
-        'A\n\tPUSH B\n\tPUSH C\n\tMOV A, [counter]\t; Increment the\n\tINC A\t\t\t\t; ' +
-        'counter\n\tCMP A, 100\t\t\t; [0 to 99]\n\tJNZ .print\n\tMOV A, 0\n\n.print:\n\tMOV ' +
-        '[counter], A\t; Print the\n\tMOV B, A\t\t\t; decimal value\n\tDIV 10\t\t\t\t; of ' +
-        'the counter\n\tMOV C, A\n\tMUL 10\n\tSUB B, A\n\tADDB CL, 0x30\n\tADDB BL, ' +
-        '0x30\n\tMOVB [0x2F0], CL\n\tMOVB [0x2F1], BL\n\tMOV A, 2\n\tOUT 2\t\t\t\t; Write to signal ' +
-        'IRQEOI\n\tPOP C\n\tPOP B\n\tPOP A\n\tIRET';
-
-    private sample5 = '; Example 5:\n; A user mode task accesses the keypad\n; registers using two ' +
-        'system calls. It polls\n; the keypad until a key has been pressed and\n; prints ' +
-        'the value on the textual display.\n\n\tJMP start\n\tJMP isr\t\t; Interrupt ' +
-        'vector\n\tJMP svc\t\t; System call vector\n\nkeypressed:\t\t; 1 = key ' +
-        'pressed\n\tDB 0\t\t; 0 = No key pressed\n\nvalue:\t\t\t; The number of ' +
-        'the\n\tDB 0\t\t; key pressed in ASCII\n\nstart:\n\tMOV SP, 0xFF\t; Set ' +
-        'Supervisor SP\n\tMOV A, 1\t\t; Set bit 0 of IRQMASK\n\tOUT 0\t\t\t; Unmask ' +
-        'keypad IRQ\n\tMOV A, 0x02EF\t; Set the end of the\n\tOUT 8\t\t\t; protection ' +
-        'to 0x02EF\n\tMOV A, 0x0109\t; Protection in seg. mode\n\tOUT 7\t\t\t; from ' +
-        '0x0100, S=1, U=0\n\tPUSH 0x0010\t\t; User Task SR: IRQMASK = 1\n\tPUSH ' +
-        '0x1FF\t\t; User Task SP = 0x1FF\n\tPUSH task\t\t; User Task IP = ' +
-        'task\n\tSRET\t\t\t; Jump to user mode\n\tHLT\t\t\t\t; ' +
-        'Parachute\n\nisr:\t\t\t\n\tPUSH A\t\t; Read the key pressed\n\tIN 6\t\t; and ' +
-        'store the ASCII\n\tADDB AL, 0x30\n\tMOVB [value], AL\n\tMOVB AL, 1\n\tMOVB ' +
-        '[keypressed], AL\n\tMOV A, 1\n\tOUT 2\t\t; Write to signal IRQEOI\n\tPOP ' +
-        'A\n\tIRET\n\nsvc:\t\t\t\t; Supervisor call\n\tCMP A, 0\t\t; A = syscall ' +
-        'number\n\tJNZ .not0\t\t; 0 -> readchar\n\tCLI\n\tMOV A, [keypressed]\t; Write ' +
-        'vars\n\tPUSH B\t\t\t\t; with IRQs\n\tMOV B, 0\t\t\t; disabled\n\tMOV ' +
-        '[keypressed], B\n\tPOP B\n\tSTI\n\tJMP .return\n.not0:\n\tCMP A, 1\t\t; 1 -> ' +
-        'putchar\n\tJNZ .return\n\tMOVB [0x2F0], BL\n.return:\n\tSRET\t\t\t; Return to ' +
-        'user space\n\n\tORG 0x100\t; Following instructions\n\t\t\t\t; will be ' +
-        'assembled at 0x100\n\ntask:\t\t\t; The user task\n\tMOV A, 0\n\tMOV B, ' +
-        '0\nloop:\n\tCALL readchar\t; Polls the keypad\n\tCMPB AH, 1\t\t; using ' +
-        'readchar\n\tJNZ loop\n\tMOVB BL, AL\t\t; If key was pressed use\n\tCALL ' +
-        'putchar\t; putchar to print it\n\tJMP loop \n\nreadchar:\t\t; User space ' +
-        'wrapper\n\tMOV A, 0\t; for readchar syscall\n\tSVC\t\t\t; Syscall ' +
-        '#0\n\tRET\t\t\t; A -> syscall number\n\nputchar:\t\t; User space ' +
-        'wrapper\n\tPUSH A\t\t; for putchar syscall\n\tMOV A, 1\t; Syscall ' +
-        '#1\n\tSVC\t\t\t; A -> syscall number\n\tPOP A\t\t; BL -> char to print\n\tRET';
 
     public codeText = '';
     private instance: any;
@@ -179,27 +85,346 @@ export class AppComponent implements AfterViewInit {
     public displayC = false;
     public displayD = false;
 
-    public showInstructions = true;
-
     public isRunning = false;
 
-    public speed: CPUSpeed = CPUSpeed._4HZ;
+    public items: MenuItem[];
+    public speedItems: MenuItem[];
 
-    @ViewChild('codeTextArea') codeTextArea: ElementRef;
-    @ViewChild(KeypadComponent) keypadComponent: KeypadComponent;
-    @ViewChild(VisualDisplayComponent) visualDisplayComponent: VisualDisplayComponent;
-    @ViewChild(TextualDisplayComponent) textualDisplayComponent: TextualDisplayComponent;
-    @ViewChild(ErrorBarComponent) errorBar: ErrorBarComponent;
+    public showCentralPane: boolean;
+
+    private resetConfiguration: IConfiguration = {
+
+        cpuSpeed: 0,
+        ioRegistersPanel: {
+            visible: true,
+            size: 25
+        },
+        memoryPanel: {
+            visible: true,
+            size: 25
+        },
+        cpuRegistersPanel: {
+            visible: true,
+            size: 25
+        },
+        ioDevicesPanel: {
+            visible: true,
+            size: 25
+        },
+        codePanel: {
+            visible: true,
+            size: 50
+        },
+        eventsLogPanel: {
+            visible: true,
+            size: 50
+        }
+    };
+
+    /* Current configuration */
+    public config: IConfiguration;
+
+    private localStorageName = 'asm-simulator-ws';
 
     private timerSubscription: Subscription;
 
+    @ViewChild('codeTextArea') codeTextArea: ElementRef;
+    @ViewChild('fileInput') fileInput: ElementRef;
+    @ViewChild('fileDownload') fileDownload: ElementRef;
+    @ViewChild(KeypadComponent) keypadComponent: KeypadComponent;
+    @ViewChild(VisualDisplayComponent) visualDisplayComponent: VisualDisplayComponent;
+    @ViewChild(TextualDisplayComponent) textualDisplayComponent: TextualDisplayComponent;
+
+    @HostListener('window:resize', ['$event'])
+    onResize() {
+
+        if (window.innerWidth >= 1400) {
+            this.showCentralPane = true;
+            this.config.memoryPanel.visible = false;
+        } else {
+            this.showCentralPane = false;
+            this.config.memoryPanel.visible = true;
+        }
+        this.saveConfig();
+
+    }
+
     constructor (private assemblerService: AssemblerService,
                  private memoryService: MemoryService,
-                 private errorBarService: ErrorBarService,
+                 private messageService: MessageService,
                  private cpuService: CPUService,
                  private irqCtrlService: IrqCtrlService,
                  private timerService: TimerService,
-                 private renderer: Renderer2) {
+                 private http: HttpClient,
+                 private renderer: Renderer2,
+                 private _ngZone: NgZone) {
+
+        if (localStorage.getItem(this.localStorageName)) {
+
+            this.config = JSON.parse(localStorage.getItem(this.localStorageName));
+
+        } else {
+
+            this.resetConfig();
+
+        }
+
+        if (window.innerWidth >= 1400) {
+            this.showCentralPane = true;
+            this.config.memoryPanel.visible = false;
+        } else {
+            this.showCentralPane = false;
+            this.config.memoryPanel.visible = true;
+        }
+
+        this.speedItems = [
+            {
+                label: '4 Hz',
+                icon: this.config.cpuSpeed === CPUSpeed._4Hz ? 'fa-check' : undefined,
+                command: (event) => {
+                    this.speedItems[this.config.cpuSpeed].icon = undefined;
+                    this.config.cpuSpeed = CPUSpeed._4Hz;
+                    event.item.icon = 'fa-check';
+                    this.saveConfig();
+                }
+            },
+            {
+                label: '16 Hz',
+                icon: this.config.cpuSpeed === CPUSpeed._16Hz ? 'fa-check' : undefined,
+                command: (event) => {
+                    this.speedItems[this.config.cpuSpeed].icon = undefined;
+                    this.config.cpuSpeed = CPUSpeed._16Hz;
+                    event.item.icon = 'fa-check';
+                    this.saveConfig();
+                }
+            },
+            {
+                label: '64 Hz',
+                icon: this.config.cpuSpeed === CPUSpeed._64Hz ? 'fa-check' : undefined,
+                command: (event) => {
+                    this.speedItems[this.config.cpuSpeed].icon = undefined;
+                    this.config.cpuSpeed = CPUSpeed._64Hz;
+                    event.item.icon = 'fa-check';
+                    this.saveConfig();
+                }
+            },
+            {
+                label: '256 Hz',
+                icon: this.config.cpuSpeed === CPUSpeed._256Hz ? 'fa-check' : undefined,
+                command: (event) => {
+                    this.speedItems[this.config.cpuSpeed].icon = undefined;
+                    this.config.cpuSpeed = CPUSpeed._256Hz;
+                    event.item.icon = 'fa-check';
+                    this.saveConfig();
+                }
+            },
+            {
+                label: '1 kHz',
+                icon: this.config.cpuSpeed === CPUSpeed._1kHz ? 'fa-check' : undefined,
+                command: (event) => {
+                    this.speedItems[this.config.cpuSpeed].icon = undefined;
+                    this.config.cpuSpeed = CPUSpeed._1kHz;
+                    event.item.icon = 'fa-check';
+                    this.saveConfig();
+                }
+            },
+            {
+                label: '4 kHz',
+                icon: this.config.cpuSpeed === CPUSpeed._4kHz ? 'fa-check' : undefined,
+                command: (event) => {
+                    this.speedItems[this.config.cpuSpeed].icon = undefined;
+                    this.config.cpuSpeed = CPUSpeed._4kHz;
+                    event.item.icon = 'fa-check';
+                    this.saveConfig();
+                }
+            },
+        ];
+
+        this.items = [
+            {
+                label: 'File',
+                items: [
+                    {
+                        label: 'Upload',
+                        icon: 'fa-upload',
+                        command: () => this.fileInput.nativeElement.click()
+                    },
+                    {
+                        label: 'Download',
+                        icon: 'fa-download',
+                        command: () => {
+
+                            const blob = new Blob([this.codeText], { type: 'text/plain;charset=utf-8;' });
+                            const url = URL.createObjectURL(blob);
+                            this.renderer.setAttribute(this.fileDownload.nativeElement, 'href', url);
+                            this.fileDownload.nativeElement.click();
+
+                        }
+                    },
+                    {
+                        label: 'Samples',
+                        items: [
+                            {
+                                label: 'Hello World',
+                                command: () => this.setCodeSample(1)
+                            },
+                            {
+                                label: 'Draw Sprite',
+                                command: () => this.setCodeSample(2)
+                            },
+                            {
+                                label: 'Basic Interrupt Handling',
+                                command: () => this.setCodeSample(3)
+                            },
+                            {
+                                label: 'System Calls',
+                                command: () => this.setCodeSample(4)
+                            },
+                            {
+                                label: 'Exceptions',
+                                command: () => this.setCodeSample(5)
+                            },
+                            {
+                                label: 'Sched & Dispatch',
+                                command: () => this.setCodeSample(6)
+                            }
+                        ]
+                    }
+                ]
+            },
+            {
+                label: 'View',
+                items: [
+                    {
+                        label: 'I/O Registers',
+                        icon: this.config.ioRegistersPanel.visible ? 'fa-check' : undefined,
+                        command: (event) => {
+                            if (this.config.ioRegistersPanel.visible === true) {
+                                this.config.ioRegistersPanel.visible = false;
+                                event.item.icon = undefined;
+                            } else {
+                                this.config.ioRegistersPanel.visible = true;
+                                event.item.icon = 'fa-check';
+                            }
+                            this.saveConfig();
+                        }
+                    },
+                    {
+                        label: 'Events Log',
+                        icon: this.config.eventsLogPanel.visible ? 'fa-check' : undefined,
+                        command: (event) => {
+                            if (this.config.eventsLogPanel.visible === true) {
+                                this.config.eventsLogPanel.visible = false;
+                                event.item.icon = undefined;
+                            } else {
+                                this.config.eventsLogPanel.visible = true;
+                                event.item.icon = 'fa-check';
+                            }
+                            this.saveConfig();
+                        }
+                    }
+                ]
+            },
+            {
+                label: 'Configuration',
+                icon: 'fa-wrench',
+                items: [
+                    {
+                        label: 'Speed',
+                        items: this.speedItems
+                    }
+                ]
+            },
+            {
+                label: 'Assemble',
+                icon: 'fa-arrow-right',
+                command: () => this.assemble()
+            },
+            {
+                label: 'Run',
+                icon: 'fa-play',
+                styleClass: 'menubar-button-run',
+                command: (event) => {
+                    if (this.isRunning === true) {
+                        this.stop();
+                    } else {
+                        event.item.icon = 'fa-stop';
+                        event.item.label = 'Stop';
+
+                        this.run();
+                    }
+                }
+            },
+            {
+                label: 'Step',
+                icon: 'fa-forward',
+                command: () => this.executeStep()
+            },
+            {
+                label: 'Reset',
+                icon: 'fa-power-off',
+                command: () => this.reset()
+            }
+        ];
+
+    }
+
+    private pushErrorMessage(detail: string) {
+        this.messageService.clear();
+        this.messageService.add({severity: 'error', detail: detail});
+    }
+
+    public onFileChange(event: any) {
+
+        console.log(event);
+        const file = event.target.files[0];
+
+        const reader = new FileReader();
+
+        reader.onload = () => this.instance.setValue(reader.result);
+        reader.readAsText(file);
+
+    }
+
+    private resetConfig() {
+
+        this.config = JSON.parse(JSON.stringify(this.resetConfiguration));
+        localStorage.removeItem(this.localStorageName);
+
+    }
+
+    private saveConfig() {
+        localStorage.setItem(this.localStorageName, JSON.stringify(this.config));
+    }
+
+    private updatePanelSizes(splitNumber: number, sizes: Array<number>) {
+
+        if (splitNumber === 0) {
+            // We are on the left pane, and there is only one gutter
+            this.config.codePanel.size = sizes[0];
+            this.config.eventsLogPanel.size = sizes[1];
+        } else {
+            // We are on the right pane
+            this.config.ioDevicesPanel.size = sizes[0];
+            this.config.cpuRegistersPanel.size = sizes[1];
+            if (this.config.memoryPanel.visible === true &&
+                this.config.ioRegistersPanel.visible === true) {
+                this.config.memoryPanel.size = sizes[2];
+                this.config.ioRegistersPanel.size = sizes[3];
+            } else if (this.config.memoryPanel.visible === true) {
+                this.config.memoryPanel.size = sizes[2];
+            } else if (this.config.ioRegistersPanel.visible === true) {
+                this.config.ioRegistersPanel.size = sizes[2];
+            }
+        }
+        this.saveConfig();
+
+    }
+
+    public onDragEnd(splitNumber: number,
+                     e: { gutterNum: number, sizes: Array<number> }) {
+
+        this._ngZone.run(() => { this.updatePanelSizes(splitNumber, e.sizes); });
 
     }
 
@@ -261,6 +486,7 @@ export class AppComponent implements AfterViewInit {
         this.instance = CodeMirror.fromTextArea(element, {
             lineNumbers: true,
             scrollEditorOnly: true,
+            viewportMargin: Infinity,
             mode: 'asm-mode',
             gutters: ['CodeMirror-linenumbers', 'breakpoints']
         });
@@ -294,11 +520,11 @@ export class AppComponent implements AfterViewInit {
             result = this.assemblerService.go(this.codeText);
         } catch (e) {
             if (e.line) {
-                this.errorBarService.setErrorMessage(`${e.line}: ${e.error}`);
+                this.pushErrorMessage(`${e.line}: ${e.error}`);
             } else if (e.error) {
-                this.errorBarService.setErrorMessage(e.error);
+                this.pushErrorMessage(e.error);
             } else {
-                this.errorBarService.setErrorMessage(e.toString());
+                this.pushErrorMessage(e.toString());
             }
 
             return;
@@ -381,7 +607,7 @@ export class AppComponent implements AfterViewInit {
 
         } catch (e) {
 
-            this.errorBarService.setErrorMessage(e.message);
+            this.pushErrorMessage(e.message);
 
         }
 
@@ -394,32 +620,32 @@ export class AppComponent implements AfterViewInit {
         let steps = 1;
         let period;
 
-        switch (this.speed) {
+        switch (this.config.cpuSpeed) {
 
-            case CPUSpeed._4HZ: {
+            case CPUSpeed._4Hz: {
                 period = 250;
                 break;
             }
-            case CPUSpeed._16HZ: {
+            case CPUSpeed._16Hz: {
                 period = 125;
                 break;
             }
-            case CPUSpeed._64HZ: {
+            case CPUSpeed._64Hz: {
                 period = 32;
                 steps = 2;
                 break;
             }
-            case CPUSpeed._256HZ: {
+            case CPUSpeed._256Hz: {
                 period = 32;
                 steps = 8;
                 break;
             }
-            case CPUSpeed._1KHZ: {
+            case CPUSpeed._1kHz: {
                 period = 32;
                 steps = 32;
                 break;
             }
-            case CPUSpeed._4KHZ: {
+            case CPUSpeed._4kHz: {
                 period = 32;
                 steps = 128;
                 break;
@@ -443,10 +669,8 @@ export class AppComponent implements AfterViewInit {
 
                             if (info.gutterMarkers) {
 
-                                this.isRunning = false;
-                                if (this.timerSubscription && this.timerSubscription.closed === false) {
-                                    this.timerSubscription.unsubscribe();
-                                }
+                                this.stop();
+
                                 this.markLine(line);
                                 this.scrollToLine(line);
                                 break;
@@ -458,9 +682,8 @@ export class AppComponent implements AfterViewInit {
 
                 } catch (e) {
 
-                    this.errorBarService.setErrorMessage(e.toString());
-                    this.isRunning = false;
-                    this.timerSubscription.unsubscribe();
+                    this.pushErrorMessage(e.toString());
+                    this.stop();
 
                 }
 
@@ -470,9 +693,13 @@ export class AppComponent implements AfterViewInit {
 
     public stop() {
 
+        this.isRunning = false;
+
+        this.items[4].icon = 'fa-play';
+        this.items[4].label = 'Run';
+
         if (this.timerSubscription && this.timerSubscription.closed === false) {
 
-            this.isRunning = false;
             this.timerSubscription.unsubscribe();
 
         }
@@ -481,11 +708,8 @@ export class AppComponent implements AfterViewInit {
 
     public reset() {
 
-        if (this.timerSubscription && this.timerSubscription.closed === false) {
-
-            this.isRunning = false;
-            this.timerSubscription.unsubscribe();
-
+        if (this.isRunning === true) {
+            this.stop();
         }
 
         this.mapping = undefined;
@@ -497,7 +721,7 @@ export class AppComponent implements AfterViewInit {
         this.keypadComponent.reset();
         this.visualDisplayComponent.reset();
         this.textualDisplayComponent.reset();
-        this.errorBar.reset();
+        this.messageService.clear();
 
     }
 
@@ -505,23 +729,25 @@ export class AppComponent implements AfterViewInit {
 
         this.reset();
 
-        switch (sampleNum) {
-            case 1:
-                this.instance.setValue(this.sample1);
+        this.http.get(`assets/samples/sample${sampleNum}.asm`, {responseType: 'text'})
+            .subscribe((text: string) => this.instance.setValue(text));
+
+    }
+
+    public toggleDisplayRegister(registerIndex: CPURegisterIndex) {
+
+        switch (registerIndex) {
+            case CPURegisterIndex.A:
+                this.displayA = !this.displayA;
                 break;
-            case 2:
-                this.instance.setValue(this.sample2);
+            case CPURegisterIndex.B:
+                this.displayB = !this.displayB;
                 break;
-            case 3:
-                this.instance.setValue(this.sample3);
+            case CPURegisterIndex.C:
+                this.displayC = !this.displayC;
                 break;
-            case 4:
-                this.instance.setValue(this.sample4);
-                break;
-            case 5:
-                this.instance.setValue(this.sample5);
-                break;
-            default:
+            case CPURegisterIndex.D:
+                this.displayD = !this.displayD;
                 break;
         }
 

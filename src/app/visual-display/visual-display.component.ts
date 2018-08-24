@@ -1,4 +1,4 @@
-import { Component, OnInit, ElementRef, ViewChild, AfterViewInit } from '@angular/core';
+import { Component, ElementRef, ViewChild, AfterViewInit } from '@angular/core';
 
 import { Subject } from 'rxjs/Subject';
 import { Observable } from 'rxjs/Observable';
@@ -116,7 +116,7 @@ export class VisualDisplayOperation implements SystemEvent {
     selector: 'app-visual-display',
     templateUrl: './visual-display.component.html'
 })
-export class VisualDisplayComponent implements OnInit, AfterViewInit {
+export class VisualDisplayComponent implements AfterViewInit {
 
     @ViewChild('display') display: ElementRef;
 
@@ -135,6 +135,9 @@ export class VisualDisplayComponent implements OnInit, AfterViewInit {
             this.initialValues[i] = 0xFF;
         }
 
+        this.memoryService.addMemoryRegion('VisualDisplayRegion', 0x300, 0x3FF,
+            this.initialValues, (op) => this.processMemoryOperation(op));
+
         this.visualDisplayOperationSource$ = this.visualDisplayOperationSource.asObservable();
 
         this.visualDisplayOperationSource$.subscribe(
@@ -147,13 +150,6 @@ export class VisualDisplayComponent implements OnInit, AfterViewInit {
 
         this.eventsLogService.log(operation);
         this.visualDisplayOperationSource.next(operation);
-
-    }
-
-    ngOnInit() {
-
-        this.memoryService.addMemoryRegion('VisualDisplayRegion', 0x300, 0x3FF,
-            this.initialValues, (op) => this.processMemoryOperation(op));
 
     }
 
