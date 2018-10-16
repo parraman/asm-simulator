@@ -1,8 +1,7 @@
-import { CPUStackPointerRegister, CPUStatusRegister, CPURegister,
-    CPURegisterIndex  } from './cpuregs';
+import { CPUStatusRegister } from './cpuregs';
 
 import { Utils } from './utils';
-import { EventsLogService, SystemEvent } from './events-log.service';
+import { SystemEvent } from './events-log.service';
 
 export enum ALUErrorType {
 
@@ -137,83 +136,123 @@ export class ALUOperation implements SystemEvent {
         switch (this.operationType) {
             case ALUOperationType.ADD:
                 params = <ALUOperationParamsAddition>this.data;
-                ret = `ALU: 16-bits addition (0x${Utils.pad(params.summand1, 16, 4)} + 0x${Utils.pad(params.summand2, 16, 4)}) = 0x${Utils.pad(params.result, 16, 4)}, C = ${params.carryFlag}, Z = ${params.zeroFlag}`;
+                ret = `ALU: 16-bits addition (0x${Utils.pad(params.summand1, 16, 4)} + ` +
+                      `0x${Utils.pad(params.summand2, 16, 4)}) = ` +
+                      `0x${Utils.pad(params.result, 16, 4)}, C = ${params.carryFlag}, Z = ${params.zeroFlag}`;
                 break;
             case ALUOperationType.ADDB:
                 params = <ALUOperationParamsAddition>this.data;
-                ret = `ALU: 8-bits addition (0x${Utils.pad(params.summand1, 16, 2)} + 0x${Utils.pad(params.summand2, 16, 2)}) = 0x${Utils.pad(params.result, 16, 2)}, C = ${params.carryFlag}, Z = ${params.zeroFlag}`;
+                ret = `ALU: 8-bits addition (0x${Utils.pad(params.summand1, 16, 2)} + ` +
+                      `0x${Utils.pad(params.summand2, 16, 2)}) = ` +
+                      `0x${Utils.pad(params.result, 16, 2)}, C = ${params.carryFlag}, Z = ${params.zeroFlag}`;
                 break;
             case ALUOperationType.SUB:
                 params = <ALUOperationParamsSubstraction>this.data;
-                ret = `ALU: 16-bits substraction (0x${Utils.pad(params.minuend, 16, 4)} - 0x${Utils.pad(params.subtrahend, 16, 4)}) = 0x${Utils.pad(params.result, 16, 4)}, C = ${params.carryFlag}, Z = ${params.zeroFlag}`;
+                ret = `ALU: 16-bits substraction (0x${Utils.pad(params.minuend, 16, 4)} - ` +
+                      `0x${Utils.pad(params.subtrahend, 16, 4)}) = ` +
+                      `0x${Utils.pad(params.result, 16, 4)}, C = ${params.carryFlag}, Z = ${params.zeroFlag}`;
                 break;
             case ALUOperationType.SUBB:
                 params = <ALUOperationParamsSubstraction>this.data;
-                ret = `ALU: 8-bits substraction (0x${Utils.pad(params.minuend, 16, 2)} - 0x${Utils.pad(params.subtrahend, 16, 2)}) = 0x${Utils.pad(params.result, 16, 4)}, C = ${params.carryFlag}, Z = ${params.zeroFlag}`;
+                ret = `ALU: 8-bits substraction (0x${Utils.pad(params.minuend, 16, 2)} - ` +
+                      `0x${Utils.pad(params.subtrahend, 16, 2)}) = ` +
+                      `0x${Utils.pad(params.result, 16, 4)}, C = ${params.carryFlag}, Z = ${params.zeroFlag}`;
                 break;
             case ALUOperationType.MUL:
                 params = <ALUOperationParamsMultiplication>this.data;
-                ret = `ALU: 16-bits multiplication (0x${Utils.pad(params.multiplicand, 16, 4)} * 0x${Utils.pad(params.multiplier, 16, 4)}) = 0x${Utils.pad(params.result, 16, 4)}, C = ${params.carryFlag}, Z = ${params.zeroFlag}`;
+                ret = `ALU: 16-bits multiplication (0x${Utils.pad(params.multiplicand, 16, 4)} * ` +
+                      `0x${Utils.pad(params.multiplier, 16, 4)}) = ` +
+                      `0x${Utils.pad(params.result, 16, 4)}, C = ${params.carryFlag}, Z = ${params.zeroFlag}`;
                 break;
             case ALUOperationType.MULB:
                 params = <ALUOperationParamsMultiplication>this.data;
-                ret = `ALU: 8-bits multiplication (0x${Utils.pad(params.multiplicand, 16, 2)} * 0x${Utils.pad(params.multiplier, 16, 2)}) = 0x${Utils.pad(params.result, 16, 2)}, C = ${params.carryFlag}, Z = ${params.zeroFlag}`;
+                ret = `ALU: 8-bits multiplication (0x${Utils.pad(params.multiplicand, 16, 2)} * ` +
+                      `0x${Utils.pad(params.multiplier, 16, 2)}) = ` +
+                      `0x${Utils.pad(params.result, 16, 2)}, C = ${params.carryFlag}, Z = ${params.zeroFlag}`;
                 break;
             case ALUOperationType.DIV:
                 params = <ALUOperationParamsDivision>this.data;
-                ret = `ALU: 16-bits integer division (0x${Utils.pad(params.dividend, 16, 4)} * 0x${Utils.pad(params.divisor, 16, 4)}) = 0x${Utils.pad(params.result, 16, 4)}, C = ${params.carryFlag}, Z = ${params.zeroFlag}`;
+                ret = `ALU: 16-bits integer division (0x${Utils.pad(params.dividend, 16, 4)} * ` +
+                      `0x${Utils.pad(params.divisor, 16, 4)}) = ` +
+                      `0x${Utils.pad(params.result, 16, 4)}, C = ${params.carryFlag}, Z = ${params.zeroFlag}`;
                 break;
             case ALUOperationType.DIVB:
                 params = <ALUOperationParamsDivision>this.data;
-                ret = `ALU: 8-bits integer division (0x${Utils.pad(params.dividend, 16, 2)} * 0x${Utils.pad(params.divisor, 16, 2)}) = 0x${Utils.pad(params.result, 16, 2)}, C = ${params.carryFlag}, Z = ${params.zeroFlag}`;
+                ret = `ALU: 8-bits integer division (0x${Utils.pad(params.dividend, 16, 2)} * ` +
+                      `0x${Utils.pad(params.divisor, 16, 2)}) = ` +
+                      `0x${Utils.pad(params.result, 16, 2)}, C = ${params.carryFlag}, Z = ${params.zeroFlag}`;
                 break;
             case ALUOperationType.AND:
                 params = <ALUOperationParamsBitwiseOp>this.data;
-                ret = `ALU: 16-bits bitwise AND (0x${Utils.pad(params.operand1, 16, 4)} & 0x${Utils.pad(params.operand2, 16, 4)}) = 0x${Utils.pad(params.result, 16, 4)}, C = ${params.carryFlag}, Z = ${params.zeroFlag}`;
+                ret = `ALU: 16-bits bitwise AND (0x${Utils.pad(params.operand1, 16, 4)} & ` +
+                      `0x${Utils.pad(params.operand2, 16, 4)}) = ` +
+                      `0x${Utils.pad(params.result, 16, 4)}, C = ${params.carryFlag}, Z = ${params.zeroFlag}`;
                 break;
             case ALUOperationType.ANDB:
                 params = <ALUOperationParamsBitwiseOp>this.data;
-                ret = `ALU: 8-bits bitwise AND (0x${Utils.pad(params.operand1, 16, 2)} & 0x${Utils.pad(params.operand2, 16, 2)}) = 0x${Utils.pad(params.result, 16, 2)}, C = ${params.carryFlag}, Z = ${params.zeroFlag}`;
+                ret = `ALU: 8-bits bitwise AND (0x${Utils.pad(params.operand1, 16, 2)} & ` +
+                      `0x${Utils.pad(params.operand2, 16, 2)}) = ` +
+                      `0x${Utils.pad(params.result, 16, 2)}, C = ${params.carryFlag}, Z = ${params.zeroFlag}`;
                 break;
             case ALUOperationType.OR:
                 params = <ALUOperationParamsBitwiseOp>this.data;
-                ret = `ALU: 16-bits bitwise OR (0x${Utils.pad(params.operand1, 16, 4)} | 0x${Utils.pad(params.operand2, 16, 4)}) = 0x${Utils.pad(params.result, 16, 4)}, C = ${params.carryFlag}, Z = ${params.zeroFlag}`;
+                ret = `ALU: 16-bits bitwise OR (0x${Utils.pad(params.operand1, 16, 4)} | ` +
+                      `0x${Utils.pad(params.operand2, 16, 4)}) = ` +
+                      `0x${Utils.pad(params.result, 16, 4)}, C = ${params.carryFlag}, Z = ${params.zeroFlag}`;
                 break;
             case ALUOperationType.ORB:
                 params = <ALUOperationParamsBitwiseOp>this.data;
-                ret = `ALU: 8-bits bitwise OR (0x${Utils.pad(params.operand1, 16, 2)} | 0x${Utils.pad(params.operand2, 16, 2)}) = 0x${Utils.pad(params.result, 16, 2)}, C = ${params.carryFlag}, Z = ${params.zeroFlag}`;
+                ret = `ALU: 8-bits bitwise OR (0x${Utils.pad(params.operand1, 16, 2)} | ` +
+                      `0x${Utils.pad(params.operand2, 16, 2)}) = ` +
+                      `0x${Utils.pad(params.result, 16, 2)}, C = ${params.carryFlag}, Z = ${params.zeroFlag}`;
                 break;
             case ALUOperationType.XOR:
                 params = <ALUOperationParamsBitwiseOp>this.data;
-                ret = `ALU: 16-bits bitwise XOR (0x${Utils.pad(params.operand1, 16, 4)} ^ 0x${Utils.pad(params.operand2, 16, 4)}) = 0x${Utils.pad(params.result, 16, 4)}, C = ${params.carryFlag}, Z = ${params.zeroFlag}`;
+                ret = `ALU: 16-bits bitwise XOR (0x${Utils.pad(params.operand1, 16, 4)} ^ ` +
+                      `0x${Utils.pad(params.operand2, 16, 4)}) = ` +
+                      `0x${Utils.pad(params.result, 16, 4)}, C = ${params.carryFlag}, Z = ${params.zeroFlag}`;
                 break;
             case ALUOperationType.XORB:
                 params = <ALUOperationParamsBitwiseOp>this.data;
-                ret = `ALU: 8-bits bitwise XOR (0x${Utils.pad(params.operand1, 16, 2)} ^ 0x${Utils.pad(params.operand2, 16, 2)}) = 0x${Utils.pad(params.result, 16, 2)}, C = ${params.carryFlag}, Z = ${params.zeroFlag}`;
+                ret = `ALU: 8-bits bitwise XOR (0x${Utils.pad(params.operand1, 16, 2)} ^ ` +
+                      `0x${Utils.pad(params.operand2, 16, 2)}) = ` +
+                      `0x${Utils.pad(params.result, 16, 2)}, C = ${params.carryFlag}, Z = ${params.zeroFlag}`;
                 break;
             case ALUOperationType.NOT:
                 params = <ALUOperationParamsBitwiseNegation>this.data;
-                ret = `ALU: 16-bits bitwise NOT (~0x${Utils.pad(params.operand, 16, 4)}) = 0x${Utils.pad(params.result, 16, 4)}, C = ${params.carryFlag}, Z = ${params.zeroFlag}`;
+                ret = `ALU: 16-bits bitwise NOT (~0x${Utils.pad(params.operand, 16, 4)}) = ` +
+                      `0x${Utils.pad(params.result, 16, 4)}, C = ` +
+                      `${params.carryFlag}, Z = ${params.zeroFlag}`;
                 break;
             case ALUOperationType.NOTB:
                 params = <ALUOperationParamsBitwiseNegation>this.data;
-                ret = `ALU: 8-bits bitwise NOT (~0x${Utils.pad(params.operand, 16, 2)}) = 0x${Utils.pad(params.result, 16, 2)}, C = ${params.carryFlag}, Z = ${params.zeroFlag}`;
+                ret = `ALU: 8-bits bitwise NOT (~0x${Utils.pad(params.operand, 16, 2)}) = ` +
+                      `0x${Utils.pad(params.result, 16, 2)}, C = ` +
+                      `${params.carryFlag}, Z = ${params.zeroFlag}`;
                 break;
             case ALUOperationType.SHL:
                 params = <ALUOperationParamsBitshiftOp>this.data;
-                ret = `ALU: 16-bits bitshift left (0x${Utils.pad(params.operand, 16, 4)} << 0x${Utils.pad(params.places, 16, 4)}) = 0x${Utils.pad(params.result, 16, 4)}, C = ${params.carryFlag}, Z = ${params.zeroFlag}`;
+                ret = `ALU: 16-bits bitshift left (0x${Utils.pad(params.operand, 16, 4)} << ` +
+                      `0x${Utils.pad(params.places, 16, 4)}) = ` +
+                      `0x${Utils.pad(params.result, 16, 4)}, C = ${params.carryFlag}, Z = ${params.zeroFlag}`;
                 break;
             case ALUOperationType.SHLB:
                 params = <ALUOperationParamsBitshiftOp>this.data;
-                ret = `ALU: 8-bits bitshift left (0x${Utils.pad(params.operand, 16, 2)} << 0x${Utils.pad(params.places, 16, 2)}) = 0x${Utils.pad(params.result, 16, 2)}, C = ${params.carryFlag}, Z = ${params.zeroFlag}`;
+                ret = `ALU: 8-bits bitshift left (0x${Utils.pad(params.operand, 16, 2)} << ` +
+                      `0x${Utils.pad(params.places, 16, 2)}) = ` +
+                      `0x${Utils.pad(params.result, 16, 2)}, C = ${params.carryFlag}, Z = ${params.zeroFlag}`;
                 break;
             case ALUOperationType.SHR:
                 params = <ALUOperationParamsBitshiftOp>this.data;
-                ret = `ALU: 16-bits bitshift right (0x${Utils.pad(params.operand, 16, 4)} >> 0x${Utils.pad(params.places, 16, 4)}) = 0x${Utils.pad(params.result, 16, 4)}, C = ${params.carryFlag}, Z = ${params.zeroFlag}`;
+                ret = `ALU: 16-bits bitshift right (0x${Utils.pad(params.operand, 16, 4)} >> ` +
+                      `0x${Utils.pad(params.places, 16, 4)}) = ` +
+                      `0x${Utils.pad(params.result, 16, 4)}, C = ${params.carryFlag}, Z = ${params.zeroFlag}`;
                 break;
             case ALUOperationType.SHRB:
                 params = <ALUOperationParamsBitshiftOp>this.data;
-                ret = `ALU: 8-bits bitshift right (0x${Utils.pad(params.operand, 16, 2)} >> 0x${Utils.pad(params.places, 16, 2)}) = 0x${Utils.pad(params.result, 16, 2)}, C = ${params.carryFlag}, Z = ${params.zeroFlag}`;
+                ret = `ALU: 8-bits bitshift right (0x${Utils.pad(params.operand, 16, 2)} >> ` +
+                      `0x${Utils.pad(params.places, 16, 2)}) = ` +
+                      `0x${Utils.pad(params.result, 16, 2)}, C = ${params.carryFlag}, Z = ${params.zeroFlag}`;
                 break;
             default:
                 break;
