@@ -15,7 +15,7 @@ import { EventsLogService, SystemEvent } from './events-log.service';
 
 import {
     CPURegisterIndex, CPURegister, CPUStatusRegister, CPURegisterOperation,
-    CPUGeneralPurposeRegister, CPUStackPointerRegister, SRBit, CPURegisterOperationType,
+    CPUGeneralPurposeRegister, SRBit, CPURegisterOperationType,
     CPURegisterRegularOpParams, CPURegisterBitOpParams
 } from './cpuregs';
 
@@ -308,9 +308,9 @@ export class CPUService {
         this.registersBank.set(CPURegisterIndex.DH, registerD);
         this.registersBank.set(CPURegisterIndex.DL, registerD);
 
-        this.userSP = new CPUStackPointerRegister('USP', CPURegisterIndex.USP, 0,
+        this.userSP = new CPURegister('USP', CPURegisterIndex.USP, 0,
             (op) => this.publishRegisterOperation(op), 'User Stack Pointer Register');
-        this.supervisorSP = new CPUStackPointerRegister('SSP', CPURegisterIndex.SSP, 0,
+        this.supervisorSP = new CPURegister('SSP', CPURegisterIndex.SSP, 0,
             (op) => this.publishRegisterOperation(op), 'Supervisor Stack Pointer Register');
 
         this.registersBank.set(CPURegisterIndex.SP, this.supervisorSP);
@@ -424,8 +424,8 @@ export class CPUService {
 
     }
 
-    public get SP(): CPUStackPointerRegister {
-        return <CPUStackPointerRegister>this.registersBank.get(CPURegisterIndex.SP);
+    public get SP(): CPURegister {
+        return <CPURegister>this.registersBank.get(CPURegisterIndex.SP);
     }
 
     public get IP(): CPURegister {
@@ -441,7 +441,7 @@ export class CPUService {
         const currentSP = this.SP.value;
         this.memoryService.storeByte(currentSP, value,
             (this.SR.supervisor === 1 ? MemoryAccessActor.CPU_SUPERVISOR : MemoryAccessActor.CPU_USER));
-        this.SP.pushByte();
+        this.SP.value = currentSP - 1;
 
     }
 
@@ -450,7 +450,7 @@ export class CPUService {
         const currentSP = this.SP.value;
         this.memoryService.storeWord(currentSP - 1, value,
             (this.SR.supervisor === 1 ? MemoryAccessActor.CPU_SUPERVISOR : MemoryAccessActor.CPU_USER));
-        this.SP.pushWord();
+        this.SP.value = currentSP - 2;
 
     }
 
@@ -458,7 +458,7 @@ export class CPUService {
 
         const currentSP = this.SP.value;
         const value = this.memoryService.loadByte(currentSP + 1);
-        this.SP.popByte();
+        this.SP.value = currentSP + 1;
 
         return value;
 
@@ -468,7 +468,7 @@ export class CPUService {
 
         const currentSP = this.SP.value;
         const value = this.memoryService.loadWord(currentSP + 1);
-        this.SP.popWord();
+        this.SP.value = currentSP + 2;
 
         return value;
 

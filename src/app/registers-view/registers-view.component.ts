@@ -8,7 +8,7 @@ import {
     CPURegisterIndex, CPURegisterOperation, CPURegisterOperationType,
     CPURegisterRegularOpParams, CPURegisterBitOpParams
 } from '../cpuregs';
-import {register} from "ts-node";
+
 
 class CPURegisterView {
 
@@ -200,8 +200,6 @@ export class RegistersViewComponent implements OnInit, OnDestroy {
         switch (cpuRegisterOperation.operationType) {
 
             case CPURegisterOperationType.WRITE:
-            case CPURegisterOperationType.PUSH:
-            case CPURegisterOperationType.POP:
                 this.operationWriteRegister(
                     (<CPURegisterRegularOpParams>cpuRegisterOperation.data).index,
                     (<CPURegisterRegularOpParams>cpuRegisterOperation.data).value);

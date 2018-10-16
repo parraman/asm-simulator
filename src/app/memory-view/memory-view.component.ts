@@ -371,64 +371,6 @@ export class MemoryViewComponent implements OnDestroy, OnChanges {
 
     }
 
-    private operationPush(index: CPURegisterIndex, value: number) {
-
-        let cells;
-
-        const registerPointer = this.registerPointers.get(index);
-        const previousRegisterPointer = registerPointer.value;
-
-        registerPointer.value = value;
-
-        switch (index) {
-
-            case CPURegisterIndex.SSP:
-                cells = this.sspCells;
-                break;
-            case CPURegisterIndex.USP:
-                cells = this.uspCells;
-                break;
-
-        }
-
-        for (let i = 0; previousRegisterPointer - i !== value; i++) {
-            cells.push(previousRegisterPointer - i);
-            this.updateCellStyle(previousRegisterPointer - i);
-        }
-
-        this.updateCellStyle(value);
-
-    }
-
-    private operationPop(index: CPURegisterIndex, value: number) {
-
-        let cells;
-
-        const registerPointer = this.registerPointers.get(index);
-        const previousRegisterPointer = registerPointer.value;
-
-        registerPointer.value = value;
-
-        switch (index) {
-
-            case CPURegisterIndex.SSP:
-                cells = this.sspCells;
-                break;
-            case CPURegisterIndex.USP:
-                cells = this.uspCells;
-                break;
-
-        }
-
-        for (let i = 1; previousRegisterPointer + i <= value; i++) {
-            cells.splice(cells.indexOf(previousRegisterPointer + i), 1);
-            this.updateCellStyle(previousRegisterPointer + i);
-        }
-
-        this.updateCellStyle(previousRegisterPointer);
-
-    }
-
     private operationWriteRegister(index: CPURegisterIndex, value: number) {
 
         let display;
@@ -453,6 +395,53 @@ export class MemoryViewComponent implements OnDestroy, OnChanges {
         const registerPointer = this.registerPointers.get(index);
 
         const previousRegisterPointer = registerPointer.value;
+
+        if (index === CPURegisterIndex.SSP ||
+            index === CPURegisterIndex.USP) {
+
+            registerPointer.value = value;
+
+            let cells;
+
+            switch (index) {
+
+                case CPURegisterIndex.SSP:
+                    cells = this.sspCells;
+                    break;
+                case CPURegisterIndex.USP:
+                    cells = this.uspCells;
+                    break;
+
+            }
+
+            if (value > previousRegisterPointer) {
+
+                /* The pointer has advanced (e.g. POP), so we have to
+                 * clear all the cells from the original pointer to the new
+                 * value */
+
+                for (let i = 1; previousRegisterPointer + i <= value; i++) {
+                    cells.splice(cells.indexOf(previousRegisterPointer + i), 1);
+                    this.updateCellStyle(previousRegisterPointer + i);
+                }
+
+                this.updateCellStyle(previousRegisterPointer);
+
+            } else if (value < previousRegisterPointer) {
+
+                /* The pointer has receeded (e.g. PUSH), so we have to include
+                 * all the cells from the original value to the new one */
+
+                for (let i = 0; previousRegisterPointer - i !== value; i++) {
+                    cells.push(previousRegisterPointer - i);
+                    this.updateCellStyle(previousRegisterPointer - i);
+                }
+
+                this.updateCellStyle(value);
+
+            }
+
+        }
 
         switch (index) {
             case CPURegisterIndex.AH:
@@ -576,16 +565,6 @@ export class MemoryViewComponent implements OnDestroy, OnChanges {
                     (<CPURegisterBitOpParams>cpuRegisterOperation.data).index,
                     (<CPURegisterBitOpParams>cpuRegisterOperation.data).bitNumber,
                     (<CPURegisterBitOpParams>cpuRegisterOperation.data).value);
-                break;
-            case CPURegisterOperationType.PUSH:
-                this.operationPush(
-                    (<CPURegisterRegularOpParams>cpuRegisterOperation.data).index,
-                    (<CPURegisterRegularOpParams>cpuRegisterOperation.data).value);
-                break;
-            case CPURegisterOperationType.POP:
-                this.operationPop(
-                    (<CPURegisterRegularOpParams>cpuRegisterOperation.data).index,
-                    (<CPURegisterRegularOpParams>cpuRegisterOperation.data).value);
                 break;
             default:
                 break;

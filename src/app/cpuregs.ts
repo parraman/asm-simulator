@@ -72,9 +72,7 @@ export enum CPURegisterOperationType {
     READ = 1,
     WRITE = 2,
     READ_BIT = 3,
-    WRITE_BIT = 4,
-    PUSH = 5, /* Stack pointer specific operation: push to stack */
-    POP = 6   /* Stack pointer specific operation: pop from stack */
+    WRITE_BIT = 4
 
 }
 
@@ -93,13 +91,6 @@ export interface CPURegisterBitOpParams {
 
 }
 
-export interface CPURegisterStackOpParams {
-
-    index: number;
-    size: number;
-    value: number;
-
-}
 
 type CPURegisterOperationParams = CPURegisterRegularOpParams | CPURegisterBitOpParams;
 
@@ -117,7 +108,7 @@ export class CPURegisterOperation implements SystemEvent {
 
     toString(): string {
 
-        let ret, params, pad, stack;
+        let ret, params, pad;
 
         switch (this.operationType) {
             case CPURegisterOperationType.READ:
@@ -153,16 +144,6 @@ export class CPURegisterOperation implements SystemEvent {
                     ret = `REG: ${op} bit ${params.bitNumber} of register ` +
                         `0x${Utils.pad(params.index, 16, 2)}: ${CPURegisterIndex[params.index]}`;
                 }
-                break;
-            case CPURegisterOperationType.PUSH:
-                params = <CPURegisterStackOpParams>this.data;
-                stack = (params.index === CPURegisterIndex.SSP) ? 'supervisor' : 'user';
-                ret = `REG: Push ${params.size} bytes to ${stack} stack (${CPURegisterIndex[params.index]})`;
-                break;
-            case CPURegisterOperationType.POP:
-                params = <CPURegisterStackOpParams>this.data;
-                stack = (params.index === CPURegisterIndex.SSP) ? 'supervisor' : 'user';
-                ret = `REG: Pop ${params.size} bytes from ${stack} stack (${CPURegisterIndex[params.index]})`;
                 break;
         }
 
@@ -266,40 +247,6 @@ export class CPURegister {
 
     }
 
-    protected publishPush(index: number, size: number, newValue: number) {
-
-        if (this.publishRegisterOperation) {
-
-            const parameters: CPURegisterStackOpParams = {
-                index: index,
-                size: size,
-                value: newValue
-            };
-
-            this.publishRegisterOperation(new CPURegisterOperation(CPURegisterOperationType.PUSH,
-                parameters));
-
-        }
-
-    }
-
-    protected publishPop(index: number, size: number, newValue: number) {
-
-        if (this.publishRegisterOperation) {
-
-            const parameters: CPURegisterStackOpParams = {
-                index: index,
-                size: size,
-                value: newValue
-            };
-
-            this.publishRegisterOperation(new CPURegisterOperation(CPURegisterOperationType.POP,
-                parameters));
-
-        }
-
-    }
-
     get value(): number {
 
         this.publishReadValue(this.index, this._value);
@@ -371,47 +318,6 @@ export class CPUGeneralPurposeRegister extends CPURegister {
 
     }
 }
-
-export class CPUStackPointerRegister extends CPURegister {
-
-    constructor (name: string, index: number, resetValue: number,
-                 publishRegisterOperation?: PublishCPURegisterOperation,
-                 description?: string) {
-
-        super(name, index, resetValue, publishRegisterOperation, description);
-
-    }
-
-    public pushWord() {
-
-        this._value = this._value - 2;
-        this.publishPush(this.index, 2, this._value);
-
-    }
-
-    public popWord() {
-
-        this._value = this._value + 2;
-        this.publishPop(this.index, 2, this._value);
-
-    }
-
-    public pushByte() {
-
-        this._value = this._value - 1;
-        this.publishPush(this.index, 1, this._value);
-
-    }
-
-    public popByte() {
-
-        this._value = this._value + 1;
-        this.publishPop(this.index, 1, this._value);
-
-    }
-
-}
-
 
 export class CPUStatusRegister extends CPURegister {
 
