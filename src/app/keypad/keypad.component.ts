@@ -3,8 +3,7 @@ import { IrqCtrlService } from '../irqctrl.service';
 import { IORegMapService, IORegisterOperation, IORegisterType,
          IORegisterOperationType} from '../ioregmap.service';
 
-import { Subject } from 'rxjs/Subject';
-import { Observable } from 'rxjs/Observable';
+import { Subject, Observable } from 'rxjs';
 
 import { Utils } from '../utils';
 import { EventsLogService, SystemEvent } from '../events-log.service';

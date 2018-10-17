@@ -5,10 +5,8 @@ import {
     IORegisterOperationType, IORegisterOperationParamsReadWrite
 } from './ioregmap.service';
 
-import { Subject } from 'rxjs/Subject';
-import { Observable } from 'rxjs/Observable';
+import { Subject, Observable, Subscription } from 'rxjs';
 import { ClockService} from './clock.service';
-import { Subscription } from 'rxjs/Subscription';
 
 import { Utils } from './utils';
 import { EventsLogService, SystemEvent } from './events-log.service';

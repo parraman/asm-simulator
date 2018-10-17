@@ -1,6 +1,6 @@
 import {Injectable} from '@angular/core';
 
-import { isNumeric } from 'rxjs/util/isNumeric';
+import { isNumeric } from 'rxjs/internal/util/isNumeric';
 import { OperandType, instructionSet } from './instrset';
 import { CPURegisterIndex, getRegisterSize } from './cpuregs';
 

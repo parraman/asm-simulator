@@ -1,8 +1,6 @@
 import { Injectable } from '@angular/core';
 
-import { Subject } from 'rxjs/Subject';
-import { Observable } from 'rxjs/Observable';
-import { Subscription } from 'rxjs/Subscription';
+import { Subject, Observable, Subscription } from 'rxjs';
 
 import { OpCode, OperandType, Instruction, instructionSet, InstructionSpec } from './instrset';
 import { MemoryService, MemoryAccessActor } from './memory.service';

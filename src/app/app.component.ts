@@ -12,9 +12,7 @@ import { CPURegisterIndex } from './cpuregs';
 
 import { MenuItem } from 'primeng/api';
 
-import { Subscription } from 'rxjs/Subscription';
-import { Observable } from 'rxjs/Observable';
-import 'rxjs/add/observable/timer';
+import { Subscription, Observable, timer } from 'rxjs';
 
 import { IrqCtrlService } from './irqctrl.service';
 import { TimerService } from './timer.service';
@@ -180,61 +178,61 @@ export class AppComponent implements AfterViewInit {
         this.speedItems = [
             {
                 label: '4 Hz',
-                icon: this.config.cpuSpeed === CPUSpeed._4Hz ? 'fa-check' : undefined,
+                icon: this.config.cpuSpeed === CPUSpeed._4Hz ? 'pi pi-fw pi-check' : undefined,
                 command: (event) => {
                     this.speedItems[this.config.cpuSpeed].icon = undefined;
                     this.config.cpuSpeed = CPUSpeed._4Hz;
-                    event.item.icon = 'fa-check';
+                    event.item.icon = 'pi pi-fw pi-check';
                     this.saveConfig();
                 }
             },
             {
                 label: '16 Hz',
-                icon: this.config.cpuSpeed === CPUSpeed._16Hz ? 'fa-check' : undefined,
+                icon: this.config.cpuSpeed === CPUSpeed._16Hz ? 'pi pi-fw pi-check' : undefined,
                 command: (event) => {
                     this.speedItems[this.config.cpuSpeed].icon = undefined;
                     this.config.cpuSpeed = CPUSpeed._16Hz;
-                    event.item.icon = 'fa-check';
+                    event.item.icon = 'pi pi-fw pi-check';
                     this.saveConfig();
                 }
             },
             {
                 label: '64 Hz',
-                icon: this.config.cpuSpeed === CPUSpeed._64Hz ? 'fa-check' : undefined,
+                icon: this.config.cpuSpeed === CPUSpeed._64Hz ? 'pi pi-fw pi-check' : undefined,
                 command: (event) => {
                     this.speedItems[this.config.cpuSpeed].icon = undefined;
                     this.config.cpuSpeed = CPUSpeed._64Hz;
-                    event.item.icon = 'fa-check';
+                    event.item.icon = 'pi pi-fw pi-check';
                     this.saveConfig();
                 }
             },
             {
                 label: '256 Hz',
-                icon: this.config.cpuSpeed === CPUSpeed._256Hz ? 'fa-check' : undefined,
+                icon: this.config.cpuSpeed === CPUSpeed._256Hz ? 'pi pi-fw pi-check' : undefined,
                 command: (event) => {
                     this.speedItems[this.config.cpuSpeed].icon = undefined;
                     this.config.cpuSpeed = CPUSpeed._256Hz;
-                    event.item.icon = 'fa-check';
+                    event.item.icon = 'pi pi-fw pi-check';
                     this.saveConfig();
                 }
             },
             {
                 label: '1 kHz',
-                icon: this.config.cpuSpeed === CPUSpeed._1kHz ? 'fa-check' : undefined,
+                icon: this.config.cpuSpeed === CPUSpeed._1kHz ? 'pi pi-fw pi-check' : undefined,
                 command: (event) => {
                     this.speedItems[this.config.cpuSpeed].icon = undefined;
                     this.config.cpuSpeed = CPUSpeed._1kHz;
-                    event.item.icon = 'fa-check';
+                    event.item.icon = 'pi pi-fw pi-check';
                     this.saveConfig();
                 }
             },
             {
                 label: '4 kHz',
-                icon: this.config.cpuSpeed === CPUSpeed._4kHz ? 'fa-check' : undefined,
+                icon: this.config.cpuSpeed === CPUSpeed._4kHz ? 'pi pi-fw pi-check' : undefined,
                 command: (event) => {
                     this.speedItems[this.config.cpuSpeed].icon = undefined;
                     this.config.cpuSpeed = CPUSpeed._4kHz;
-                    event.item.icon = 'fa-check';
+                    event.item.icon = 'pi pi-fw pi-check';
                     this.saveConfig();
                 }
             },
@@ -246,12 +244,12 @@ export class AppComponent implements AfterViewInit {
                 items: [
                     {
                         label: 'Upload',
-                        icon: 'fa-upload',
+                        icon: 'pi pi-fw pi-upload',
                         command: () => this.fileInput.nativeElement.click()
                     },
                     {
                         label: 'Download',
-                        icon: 'fa-download',
+                        icon: 'pi pi-fw pi-download',
                         command: () => {
 
                             const blob = new Blob([this.codeText], { type: 'text/plain;charset=utf-8;' });
@@ -297,28 +295,28 @@ export class AppComponent implements AfterViewInit {
                 items: [
                     {
                         label: 'I/O Registers',
-                        icon: this.config.ioRegistersPanel.visible ? 'fa-check' : undefined,
+                        icon: this.config.ioRegistersPanel.visible ? 'pi pi-fw pi-check' : undefined,
                         command: (event) => {
                             if (this.config.ioRegistersPanel.visible === true) {
                                 this.config.ioRegistersPanel.visible = false;
                                 event.item.icon = undefined;
                             } else {
                                 this.config.ioRegistersPanel.visible = true;
-                                event.item.icon = 'fa-check';
+                                event.item.icon = 'pi pi-fw pi-check';
                             }
                             this.saveConfig();
                         }
                     },
                     {
                         label: 'Events Log',
-                        icon: this.config.eventsLogPanel.visible ? 'fa-check' : undefined,
+                        icon: this.config.eventsLogPanel.visible ? 'pi pi-fw pi-check' : undefined,
                         command: (event) => {
                             if (this.config.eventsLogPanel.visible === true) {
                                 this.config.eventsLogPanel.visible = false;
                                 event.item.icon = undefined;
                             } else {
                                 this.config.eventsLogPanel.visible = true;
-                                event.item.icon = 'fa-check';
+                                event.item.icon = 'pi pi-fw pi-check';
                             }
                             this.saveConfig();
                         }
@@ -327,7 +325,7 @@ export class AppComponent implements AfterViewInit {
             },
             {
                 label: 'Configuration',
-                icon: 'fa-wrench',
+                icon: 'pi pi-fw pi-wrench',
                 items: [
                     {
                         label: 'Speed',
@@ -337,18 +335,18 @@ export class AppComponent implements AfterViewInit {
             },
             {
                 label: 'Assemble',
-                icon: 'fa-arrow-right',
+                icon: 'pi pi-fw pi-arrow-right',
                 command: () => this.assemble()
             },
             {
                 label: 'Run',
-                icon: 'fa-play',
+                icon: 'pi pi-fw pi-play',
                 styleClass: 'menubar-button-run',
                 command: (event) => {
                     if (this.isRunning === true) {
                         this.stop();
                     } else {
-                        event.item.icon = 'fa-stop';
+                        event.item.icon = 'pi pi-fw pi-stop';
                         event.item.label = 'Stop';
 
                         this.run();
@@ -357,12 +355,12 @@ export class AppComponent implements AfterViewInit {
             },
             {
                 label: 'Step',
-                icon: 'fa-forward',
+                icon: 'pi pi-fw pi-forward',
                 command: () => this.executeStep()
             },
             {
                 label: 'Reset',
-                icon: 'fa-power-off',
+                icon: 'pi pi-fw pi-power-off',
                 command: () => this.reset()
             }
         ];
@@ -376,7 +374,6 @@ export class AppComponent implements AfterViewInit {
 
     public onFileChange(event: any) {
 
-        console.log(event);
         const file = event.target.files[0];
 
         const reader = new FileReader();
@@ -653,7 +650,7 @@ export class AppComponent implements AfterViewInit {
 
         }
 
-        this.timerSubscription = Observable.timer(1, period).subscribe(
+        this.timerSubscription = timer(1, period).subscribe(
             () => {
 
                 try {
@@ -695,7 +692,7 @@ export class AppComponent implements AfterViewInit {
 
         this.isRunning = false;
 
-        this.items[4].icon = 'fa-play';
+        this.items[4].icon = 'pi pi-fw pi-play';
         this.items[4].label = 'Run';
 
         if (this.timerSubscription && this.timerSubscription.closed === false) {

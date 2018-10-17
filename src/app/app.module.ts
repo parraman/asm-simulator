@@ -13,7 +13,7 @@ import { MultiSelectModule } from 'primeng/multiselect';
 import { MessagesModule } from 'primeng/messages';
 import { MessageModule } from 'primeng/message';
 
-import { AngularSplitModule } from 'angular-split';
+import { AngularSplitModule } from './angular-split/modules/angularSplit.module';
 
 import { AppComponent } from './app.component';
 import { MemoryViewComponent } from './memory-view/memory-view.component';

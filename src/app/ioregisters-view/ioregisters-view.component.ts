@@ -5,7 +5,7 @@ import { IORegisterOperation, IORegMapService, IORegisterOperationType,
          IORegisterOperationParamsReadWrite } from '../ioregmap.service';
 import { Utils } from '../utils';
 
-import { Subscription } from 'rxjs/Subscription';
+import { Subscription } from 'rxjs';
 
 
 class IORegisterView {

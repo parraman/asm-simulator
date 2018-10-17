@@ -59,4 +59,5 @@ CodeMirror.defineOption('scrollEditorOnly', false, function(cm) {
 
 
 platformBrowserDynamic().bootstrapModule(AppModule)
-  .catch(err => console.log(err));
+  .catch(err => console.error(err));
+

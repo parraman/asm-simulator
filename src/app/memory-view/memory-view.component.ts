@@ -11,7 +11,7 @@ import {
     MemoryAccessActor, MemoryOperationParamsChangeProtectionUnit
 } from '../memory.service';
 
-import { Subscription } from 'rxjs/Subscription';
+import { Subscription } from 'rxjs';
 
 import { MessageService } from 'primeng/components/common/messageservice';
 import { Utils } from '../utils';
