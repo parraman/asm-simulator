@@ -20,8 +20,8 @@ print:				; Print string
 .loop:
 	MOVB AL, [C]	; Get character
 	MOVB [D], AL	; Write to output
-	INCB CL
-	INCB DL
+	INC C
+	INC D
 	CMPB BL, [C]	; Check if string terminator
 	JNZ .loop		; Jump back to loop if not
 
