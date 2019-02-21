@@ -484,9 +484,24 @@ export class CPUService {
             this.registersBank.set(CPURegisterIndex.SP, this.supervisorSP);
         }
 
-        this.pushWord(currentSR);
-        this.pushWord(currentSP);
-        this.pushWord(currentIP);
+        try {
+            this.pushWord(currentSR);
+        } catch (e) {
+            throw new Exception(ExceptionType.STACK_ACCESS_ERROR,
+                e.message, this.IP.value, this.SP.value, this.SR.value);
+        }
+        try {
+            this.pushWord(currentSP);
+        } catch (e) {
+            throw new Exception(ExceptionType.STACK_ACCESS_ERROR,
+                e.message, this.IP.value, this.SP.value, this.SR.value);
+        }
+        try {
+            this.pushWord(currentIP);
+        } catch (e) {
+            throw new Exception(ExceptionType.STACK_ACCESS_ERROR,
+                e.message, this.IP.value, this.SP.value, this.SR.value);
+        }
 
         this.IP.value = IRQ_VECTOR_ADDRESS;
 
@@ -522,7 +537,16 @@ export class CPUService {
 
             this.publishControlUnitOperationEnd(operation);
 
-            this.toInterruptHandler();
+            try {
+
+                this.toInterruptHandler();
+
+            } catch (e) {
+                this.SR.fault = 1;
+                this.isFault = true;
+                this.publishControlUnitOperation(new ControlUnitOperation(ControlUnitOperationType.CPU_FAULT));
+            }
+
 
         }
 
