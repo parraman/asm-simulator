@@ -1077,6 +1077,16 @@ p-togglebutton.ng-dirty.ng-invalid .ui-button {
   border-radius: 0;
 }
 
+.ui-messages .ui-messages-close {
+  color: #212121;
+}
+
+.ui-messages.ui-messages-error {
+  background-color: #f8b7bd;
+  border: 0 none;
+  color: #212121;
+}
+
 .ui-multiselect-items-wrapper {
   padding-top: 0 !important;
 }
@@ -1269,4 +1279,7 @@ p-togglebutton.ng-dirty.ng-invalid .ui-button {
 }
 .pi-arrow-right:before {
   content: "\f061";
+}
+.pi-times:before {
+  content: "\f00d";
 }
