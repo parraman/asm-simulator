@@ -10,10 +10,18 @@ import { CPURegisterIndex, getRegisterSize } from './cpuregs';
  * capability of using escape characters (e.g. \t \x12 \n) within the
  * definition of a string.
  */
-const REGEX = /^[\t ]*(?:([.A-Za-z]\w*)[:])?(?:[\t ]*([A-Za-z]{2,5})(?:[\t ]+(\[(\w+((\+|-)\d+)?)\]|\"(?:[^\\"]|\\.)+?\"|\'.+?\'|[.A-Za-z0-9]\w*)(?:[\t ]*[,][\t ]*(\[([\t ]*\w+[\t ]*((\+|-)[\t ]*\d+)?[\t ]*)\]|\"(?:[^\\"]|\\.)+?\"|\'.+?\'|[.A-Za-z0-9]\w*))?)?)?/;
+//const REGEX = /^[\t ]*(?:([.A-Za-z]\w*)[:])?(?:[\t ]*([A-Za-z]{2,5})(?:[\t ]+(\[(\w+((\+|-)\d+)?)\]|\"(?:[^\\"]|\\.)+?\"|\'.+?\'|[.A-Za-z0-9]\w*)(?:[\t ]*[,][\t ]*(\[([\t ]*\w+[\t ]*((\+|-)[\t ]*\d+)?[\t ]*)\]|\"(?:[^\\"]|\\.)+?\"|\'.+?\'|[.A-Za-z0-9]\w*))?)?)?/;
+const REGEX = /^[\t ]*(?:([.A-Za-z]\w+)[:])?(?:(?:([.A-Za-z]\w+)[\t ]+(EQU)[\t ]+(\[([\t ]*\w+[\t ]*((\+|-)[\t ]*\d+)?[\t ]*)\]|\"(?:[^\\"]|\\.)+?\"|\'.+?\'|[.A-Za-z0-9]\w*))|(?:[\t ]*([A-Za-z]{2,5})(?:[\t ]+(\[(\w+((\+|-)\d+)?)\]|\"(?:[^\\"]|\\.)+?\"|\'.+?\'|[.A-Za-z0-9]\w*)(?:[\t ]*[,][\t ]*(\[([\t ]*\w+[\t ]*((\+|-)[\t ]*\d+)?[\t ]*)\]|\"(?:[^\\"]|\\.)+?\"|\'.+?\'|[.A-Za-z0-9]\w*))?)?))?/; 
 
-const OP1_GROUP = 3;
-const OP2_GROUP = 7;
+const LABEL_GROUP = 1;
+
+const EQU_LABEL_GROUP = 2;
+const EQU_KEY_GROUP = 3;
+const EQU_VALUE_GROUP = 4;
+
+const INSTR_GROUP = 8;
+const OP1_GROUP = 9;
+const OP2_GROUP = 13;
 
 // MATCHES: "(+|-)DECIMAL"
 const REGEX_DECIMAL = /^[-+]?[0-9]+$/;
@@ -36,6 +44,7 @@ export class AssemblerService {
     private code: Array<number>;
     private mapping: Map<number, number>;
     private labels: Map<string, number>;
+    private equs: Map<string, string>;
 
     // Allowed formats: 200, 200d, 0xA4, 0o48, 101b
     private static parseNumber(input: string): number {
@@ -75,8 +84,6 @@ export class AssemblerService {
     // Allowed registers: A, B, C, D, SP
     private static parseRegister(input: string): number | undefined {
 
-        input = input.toUpperCase();
-
         if (input === 'A') {
             return CPURegisterIndex.A;
         } else if (input === 'B') {
@@ -110,8 +117,6 @@ export class AssemblerService {
     }
 
     private static parseOffsetAddressing(input: string): number | undefined {
-
-        input = input.toUpperCase();
 
         let m = 0;
         let base = 0;
@@ -190,7 +195,7 @@ export class AssemblerService {
     }
 
     // Allowed: Register, Label or Number
-    private static parseNumericItem(input: string) {
+    private parseNumericItem(input: string) {
 
         const register = AssemblerService.parseRegister(input);
 
@@ -201,7 +206,9 @@ export class AssemblerService {
         const label = AssemblerService.parseLabel(input);
 
         if (label !== undefined) {
+
             return {type: OperandType.NUMBER, value: label};
+
         }
 
         const value = AssemblerService.parseNumber(input);
@@ -253,7 +260,7 @@ export class AssemblerService {
 
     }
 
-    private static getValue(input: string) {
+    private getValue(input: string) {
 
         switch (input.slice(0, 1)) {
 
@@ -293,29 +300,51 @@ export class AssemblerService {
 
                 return {type: OperandType.BYTE, value: character.charCodeAt(0)};
 
-            default: // REGISTER, NUMBER or LABEL
+            default: // REGISTER, NUMBER, LABEL or EQU
 
-                return AssemblerService.parseNumericItem(input);
+                return this.parseNumericItem(input);
         }
 
     }
 
+    private addEQU(equ: string, input: string) {
+
+        if (this.equs.has(equ)) {
+            throw Error(`Duplicated equ: ${equ}`);
+        }
+
+        if (this.labels.has(equ)) {
+            throw Error(`A label has been defined with the same name: ${equ}`);
+        }
+
+        if (equ === 'A' || equ === 'B' || equ === 'C' || equ === 'D' ||
+            equ === 'AH' || equ === 'AL' || equ === 'BH' || equ === 'BL' ||
+            equ === 'CH' || equ === 'CL' || equ === 'DH' || equ === 'DL' ||
+            equ === 'SP' || equ === 'SR' || equ === 'EQU') {
+            throw Error(`EQU contains keyword: ${equ}`);
+        }
+
+        this.equs.set(equ, input);
+    }
+
     private addLabel(label: string) {
 
-        const upperLabel = label.toUpperCase();
-
-        if (this.labels.has(upperLabel)) {
+        if (this.labels.has(label)) {
             throw Error(`Duplicated label: ${label}`);
         }
 
-        if (upperLabel === 'A' || upperLabel === 'B' || upperLabel === 'C' || upperLabel === 'D' ||
-            upperLabel === 'AH' || upperLabel === 'AL' || upperLabel === 'BH' || upperLabel === 'BL' ||
-            upperLabel === 'CH' || upperLabel === 'CL' || upperLabel === 'DH' || upperLabel === 'DL' ||
-            upperLabel === 'SP' || upperLabel === 'SR') {
-            throw Error(`Label contains keyword: ${upperLabel}`);
+        if (this.equs.has(label)) {
+            throw Error(`An EQU has been defined with the same name: ${label}`);
         }
 
-        this.labels.set(upperLabel, this.code.length);
+        if (label === 'A' || label === 'B' || label === 'C' || label === 'D' ||
+            label === 'AH' || label === 'AL' || label === 'BH' || label === 'BL' ||
+            label === 'CH' || label === 'CL' || label === 'DH' || label === 'DL' ||
+            label === 'SP' || label === 'SR' || label === 'EQU') {
+            throw Error(`Label contains keyword: ${label}`);
+        }
+
+        this.labels.set(label, this.code.length);
     }
 
     private storeWordIntoCode(value: number, index: number) {
@@ -367,6 +396,7 @@ export class AssemblerService {
         this.code = [];
         this.mapping = new Map<number, number>();
         this.labels = new Map<string, number>();
+        this.equs = new Map<string, string>();
 
         const lines = input.split('\n');
 
@@ -374,7 +404,7 @@ export class AssemblerService {
 
             const match = REGEX.exec(lines[i]);
 
-            if (match[1] === undefined && match[2] === undefined) {
+            if (match[LABEL_GROUP] === undefined && match[INSTR_GROUP] === undefined && match[EQU_KEY_GROUP] === undefined) {
 
                 // Check if line starts with a comment otherwise the line contains an error and can not be parsed
                 const line = lines[i].trim();
@@ -384,13 +414,15 @@ export class AssemblerService {
                 continue;
             }
 
-            if (match[1] !== undefined) {
-                this.addLabel(match[1]);
+            if (match[LABEL_GROUP] !== undefined) {
+                this.addLabel(match[LABEL_GROUP]);
             }
 
-            if (match[2] !== undefined) {
+            if (match[EQU_KEY_GROUP] !== undefined) {
+                this.addEQU(match[EQU_LABEL_GROUP], match[EQU_VALUE_GROUP]);
+            } else if (match[INSTR_GROUP] !== undefined) {
 
-                const instr = match[2].toUpperCase();
+                const instr = match[INSTR_GROUP];
                 let p1, p2, instructionSpec;
 
                 // Start parsing instructions (except DB, for it is not a real instruction)
@@ -398,7 +430,11 @@ export class AssemblerService {
                 if (instr === 'DB') {
 
                     try {
-                        p1 = AssemblerService.getValue(match[OP1_GROUP]);
+                        let op1 = match[OP1_GROUP];
+                        if (this.equs.has(op1.trim())) {
+                            op1 = this.equs.get(op1.trim()); 
+                        }
+                        p1 = this.getValue(op1);
                     } catch (e) {
                         throw {error: e.toString(), line: i + 1};
                     }
@@ -418,7 +454,11 @@ export class AssemblerService {
                 } else if (instr === 'DW') {
 
                     try {
-                        p1 = AssemblerService.getValue(match[OP1_GROUP]);
+                        let op1 = match[OP1_GROUP];
+                        if (this.equs.has(op1.trim())) {
+                            op1 = this.equs.get(op1.trim()); 
+                        }
+                        p1 = this.getValue(op1);
                     } catch (e) {
                         throw {error: e.toString(), line: i + 1};
                     }
@@ -433,8 +473,14 @@ export class AssemblerService {
                     continue;
                 } else if (instr === 'ORG') {
 
+
+
                     try {
-                        p1 = AssemblerService.getValue(match[OP1_GROUP]);
+                        let op1 = match[OP1_GROUP];
+                        if (this.equs.has(op1.trim())) {
+                            op1 = this.equs.get(op1.trim()); 
+                        }
+                        p1 = this.getValue(op1);
                     } catch (e) {
                         throw {error: e.toString(), line: i + 1};
                     }
@@ -460,7 +506,11 @@ export class AssemblerService {
                 if (match[OP1_GROUP] !== undefined) {
 
                     try {
-                        p1 = AssemblerService.getValue(match[OP1_GROUP]);
+                        let op1 = match[OP1_GROUP];
+                        if (this.equs.has(op1.trim())) {
+                            op1 = this.equs.get(op1.trim()); 
+                        }
+                        p1 = this.getValue(op1);
                     } catch (e) {
                         throw {error: e.toString(), line: i + 1};
                     }
@@ -468,7 +518,11 @@ export class AssemblerService {
                     if (match[OP2_GROUP] !== undefined) {
 
                         try {
-                            p2 = AssemblerService.getValue(match[OP2_GROUP]);
+                            let op2 = match[OP2_GROUP];
+                            if (this.equs.has(op2.trim())) {
+                                op2 = this.equs.get(op2.trim()); 
+                            }
+                            p2 = this.getValue(op2);
                         } catch (e) {
                             throw {error: e.toString(), line: i + 1};
                         }
@@ -511,9 +565,9 @@ export class AssemblerService {
         // Replace labels
         for (let i = 0, l = this.code.length; i < l; i++) {
             if (isNumeric(this.code[i]) === false) {
-                const upperLabel = this.code[i].toString().toUpperCase();
-                if (this.labels.has(upperLabel)) {
-                    this.storeWordIntoCode(this.labels.get(upperLabel), i);
+                const label = this.code[i].toString();
+                if (this.labels.has(label)) {
+                    this.storeWordIntoCode(this.labels.get(label), i);
                 } else {
                     throw {error: `Undefined label: ${this.code[i]}`};
                 }
