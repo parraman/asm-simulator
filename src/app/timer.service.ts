@@ -146,6 +146,13 @@ export class TimerService {
 
         switch (address) {
             case TMRPRELOAD_REGISTER_ADDRESS:
+
+                // Writing a ZERO into the TIMER_PRELOAD will reset the timer
+                if (value === 0) {
+                    this.reset();
+                    break;
+                }
+
                 this.timerPreloadRegister = value;
                 this.timerCounterRegister = value;
 
