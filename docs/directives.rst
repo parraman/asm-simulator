@@ -72,8 +72,8 @@ instructions are to be encoded.
 
 .. _directive-equ:
 
-EQU: 8-bits bitwise AND 
-^^^^^^^^^^^^^^^^^^^^^^^^
+EQU: Define symbolic name 
+^^^^^^^^^^^^^^^^^^^^^^^^^
 
 The EQU directive gives a symbolic name or tag to an expression. This tag can
 be later used in subsequent lines of assembly code and will be substituted by
