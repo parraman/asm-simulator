@@ -33,4 +33,5 @@ The simulator has the following features:
 
     assembler
     instruction-set
+    directives
 

@@ -174,6 +174,9 @@ register. The integer contained by the register will be added to the value
 referenced by Operand 2. The result will be stored in the register referenced
 by Operand 1. 
 
+The operation will modify the values of the carry (C) and zero
+(Z) flags of the Status Register.
+
 +-----------+-------------------+-------------------+---------------------+
 | Opcode    | Operand 1         | Operand 2         | Example             |
 +===========+===================+===================+=====================+
@@ -191,11 +194,13 @@ by Operand 1.
 ADDB: 8-bits addition
 ^^^^^^^^^^^^^^^^^^^^^
 
-Performs an addition of two 8-bits integers. Every form of the instruction
-will have two operands. Operand 1 will always be a reference to an 8-bits
-register. The integer contained by the register will be added to the value
-referenced by Operand 2. The result will be stored in the register referenced
-by Operand 1.
+Performs an addition of two 8-bits integers. Every form of the instruction will
+have two operands. Operand 1 will always be a reference to an 8-bits register.
+The integer contained by the register will be added to the value referenced by
+Operand 2. The result will be stored in the register referenced by Operand 1.
+
+The operation will modify the values of the carry (C) and zero (Z) flags of the
+Status Register.
 
 +-----------+------------------+------------------+----------------------+
 | Opcode    | Operand 1        | Operand 2        | Example              |
@@ -986,6 +991,8 @@ operands.  Operand 1 will always be a reference to a 16-bits register. Operand
 2 will indicate the number of bit positions that the value shall be shifted.
 The result will be stored in the register referenced by Operand 1. 
 
+The operation will modify the values of the carry (C) and zero (Z) flags of the Status Register.
+
 +------------+-------------------+-------------------+---------------------+
 | Opcode     | Operand 1         | Operand 2         | Example             |
 +============+===================+===================+=====================+
@@ -1008,6 +1015,8 @@ of the value of an 8-bits register. Every form of the instruction will have two
 operands.  Operand 1 will always be a reference to an 8-bits register. Operand
 2 will indicate the number of bit positions that the value shall be shifted.
 The result will be stored in the register referenced by Operand 1. 
+
+The operation will modify the values of the carry (C) and zero (Z) flags of the Status Register.
 
 +------------+------------------+------------------+---------------------+
 | Opcode     | Operand 1        | Operand 2        | Example             |
@@ -1032,6 +1041,8 @@ operands.  Operand 1 will always be a reference to a 16-bits register. Operand
 2 will indicate the number of bit positions that the value shall be shifted.
 The result will be stored in the register referenced by Operand 1. 
 
+The operation will modify the values of the carry (C) and zero (Z) flags of the Status Register.
+
 +------------+-------------------+-------------------+---------------------+
 | Opcode     | Operand 1         | Operand 2         | Example             |
 +============+===================+===================+=====================+
@@ -1054,6 +1065,8 @@ of the value of an 8-bits register. Every form of the instruction will have two
 operands.  Operand 1 will always be a reference to an 8-bits register. Operand
 2 will indicate the number of bit positions that the value shall be shifted.
 The result will be stored in the register referenced by Operand 1. 
+
+The operation will modify the values of the carry (C) and zero (Z) flags of the Status Register.
 
 +------------+------------------+------------------+---------------------+
 | Opcode     | Operand 1        | Operand 2        | Example             |
@@ -1111,6 +1124,8 @@ register. The integer contained by the register will be substracted from the
 value referenced by Operand 2. The result will be stored in the register
 referenced by Operand 1. 
 
+The operation will modify the values of the carry (C) and zero (Z) flags of the Status Register.
+
 +-----------+-------------------+-------------------+---------------------+
 | Opcode    | Operand 1         | Operand 2         | Example             |
 +===========+===================+===================+=====================+
@@ -1133,6 +1148,8 @@ will have two operands. Operand 1 will always be a reference to an 8-bits
 register. The integer contained by the register will be substracted from the
 value referenced by Operand 2. The result will be stored in the register
 referenced by Operand 1. 
+
+The operation will modify the values of the carry (C) and zero (Z) flags of the Status Register.
 
 +-----------+------------------+------------------+----------------------+
 | Opcode    | Operand 1        | Operand 2        | Example              |
