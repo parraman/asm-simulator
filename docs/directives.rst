@@ -22,7 +22,7 @@ characters. In the case of a single character, the initial value stored will
 correspond to the ASCII code of the character encoded in single quotes (``''``). In the
 case of an array, the values corresponding to the ASCII codes of those encoded
 between double quotes (``""```) will be encoded. If you want to encode a numeric value
-explicitly within the array, you must do it using the escape combination ``\x``.
+explicitly within the array, you must do it using the escape code ``\x``.
 
 +-----------------------------------+------------------------------------------------------------------+
 | Directive                         | Result                                                           |
@@ -48,7 +48,7 @@ space. This operand can only be of numeric type.
 
 +---------------------+-----------------------------------------------+
 | Directive           | Result                                        |
-+============================+========================================+
++=====================+===============================================+
 | ``DW var1, 2048``   | Reserseves two bytes with values {0x80, 0x00} |
 +---------------------+-----------------------------------------------+
 | ``DW var2, 0x1FFF`` | Reserseves two bytes with values {0x1F, 0xFF} |
