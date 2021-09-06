@@ -10,7 +10,7 @@ import { CPURegisterIndex, getRegisterSize } from './cpuregs';
  * capability of using escape characters (e.g. \t \x12 \n) within the
  * definition of a string.
  */
-const REGEX = /^[\t ]*(?:([.A-Za-z]\w*)[:])?(?:[\t ]*([A-Za-z]{2,5})(?:[\t ]+(\[(\w+((\+|-)\d+)?)\]|\"(?:[^\\"]|\\.)+?\"|\'.+?\'|[.A-Za-z0-9]\w*)(?:[\t ]*[,][\t ]*(\[(\w+((\+|-)\d+)?)\]|\"(?:[^\\"]|\\.)+?\"|\'.+?\'|[.A-Za-z0-9]\w*))?)?)?/;
+const REGEX = /^[\t ]*(?:([.A-Za-z]\w*)[:])?(?:[\t ]*([A-Za-z]{2,5})(?:[\t ]+(\[(\w+((\+|-)\d+)?)\]|\"(?:[^\\"]|\\.)+?\"|\'.+?\'|[.A-Za-z0-9]\w*)(?:[\t ]*[,][\t ]*(\[([\t ]*\w+[\t ]*((\+|-)[\t ]*\d+)?[\t ]*)\]|\"(?:[^\\"]|\\.)+?\"|\'.+?\'|[.A-Za-z0-9]\w*))?)?)?/;
 
 const OP1_GROUP = 3;
 const OP2_GROUP = 7;
@@ -140,15 +140,17 @@ export class AssemblerService {
             return base;
         }
 
-        if (input[offset_start] === '-') {
+        let offsetString = input.slice(offset_start).trim();
+
+        if (offsetString[0] === '-') {
             m = -1;
-        } else if (input[offset_start] === '+') {
+        } else if (offsetString[0] === '+') {
             m = 1;
         } else {
             return undefined;
         }
 
-        let offset = m * parseInt(input.slice(offset_start + 1), 10);
+        let offset = m * parseInt(offsetString.slice(1).trim(), 10);
 
         if (offset < -128 || offset > 127) {
             throw Error('offset must be a value between -128...+127');
@@ -165,19 +167,19 @@ export class AssemblerService {
     private static parseAddressItem(input: string) {
 
         // First we check if it is a register addressing
-        const register = AssemblerService.parseOffsetAddressing(input);
+        const register = AssemblerService.parseOffsetAddressing(input.trim());
 
         if (register !== undefined) {
             return {type: OperandType.REGADDRESS, value: register};
         }
 
-        const label = AssemblerService.parseLabel(input);
+        const label = AssemblerService.parseLabel(input.trim());
 
         if (label !== undefined) {
             return {type: OperandType.ADDRESS, value: label};
         }
 
-        const value = AssemblerService.parseNumber(input);
+        const value = AssemblerService.parseNumber(input.trim());
 
         if (isNaN(value)) {
             throw Error(`Not a number nor a valid register addressing: ${value}`);
