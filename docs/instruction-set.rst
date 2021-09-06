@@ -475,7 +475,7 @@ stored in the same register. The operation will modify the values of the
 
 .. _instruction-incb:
 
-INCB: decrement 8-bits register 
+INCB: increment 8-bits register 
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 Increments the value of an 8-bits register by 1 unit. The result will be stored
