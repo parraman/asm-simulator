@@ -461,6 +461,7 @@ export class AppComponent implements AfterViewInit {
         start.push({regex: /DB\b/, token: 'keyword'});
         start.push({regex: /DW\b/, token: 'keyword'});
         start.push({regex: /ORG\b/, token: 'keyword'});
+        start.push({regex: /EQU\b/, token: 'keyword'});
 
         for (const item of instructionSet.getMnemonics()) {
 
