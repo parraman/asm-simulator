@@ -3,6 +3,8 @@
 
 	JMP boot
 
+vslDisplay EQU 0x300
+
 sprite: 
 	DB "\xFF\xFF\xFF\xFF\xFF\xC4\xC4\xC4"
 	DB "\xC4\xC4\xFF\xFF\xFF\xFF\xFF\xFF"
@@ -38,8 +40,8 @@ sprite:
 	DB "\xFF\xFF\x8C\x8C\x8C\x8C\xFF\xFF"
 
 boot:
-	MOV C, sprite	; C points to the sprite
-	MOV D, 0x300	; D points to the fb
+	MOV C, sprite		; C points to the sprite
+	MOV D, vslDisplay	; D points to the fb
 
 .loop:
 	MOVB AL, [C]	; Print all the pixels

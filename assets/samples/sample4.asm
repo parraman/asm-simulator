@@ -9,6 +9,10 @@
 	JMP isr		; Interrupt vector
 	JMP svc		; System call vector
 
+sStackTop   EQU 0x0FF   ; Initial Supervisor SP
+uStackTop   EQU 0x1FF   ; Initial User Task SP
+txtDisplay  EQU 0x2E0
+
 keypressed:		; 1 = key pressed
 	DB 0		; 0 = No key pressed
 
@@ -16,18 +20,18 @@ value:			; The number of the
 	DB 0		; key pressed in ASCII
 
 boot:
-	MOV SP, 0xFF	; Set Supervisor SP
-	MOV A, 1		; Set bit 0 of IRQMASK
-	OUT 0			; Unmask keypad IRQ
-	MOV A, 0x01FF	; Set the end of the
-	OUT 8			; protection to 0x01FF
-	MOV A, 0x0109	; Protection in seg. mode
-	OUT 7			; from 0x0100, S=1, U=0
-	PUSH 0x0010		; User Task SR: IRQMASK = 1
-	PUSH 0x1FF		; User Task SP = 0x1FF
-	PUSH task		; User Task IP = task
-	SRET			; Jump to user mode
-	HLT				; Parachute
+	MOV SP, sStackTop	; Set Supervisor SP
+	MOV A, 1			; Set bit 0 of IRQMASK
+	OUT 0				; Unmask keypad IRQ
+	MOV A, 0x01FF		; Set the end of the
+	OUT 8				; protection to 0x01FF
+	MOV A, 0x0109		; Protection in seg. mode
+	OUT 7				; from 0x0100, S=1, U=0
+	PUSH 0x0010			; User Task SR: IRQMASK = 1
+	PUSH uStackTop		; User Task SP = 0x1FF
+	PUSH task			; User Task IP = task
+	SRET				; Jump to user mode
+	HLT					; Parachute
 
 isr:			
 	PUSH A		; Read the key pressed
@@ -54,7 +58,7 @@ svc:				; Supervisor call
 .not0:
 	CMP A, 1		; 1 -> putchar
 	JNZ .return
-	MOVB [0x2E0], BL
+	MOVB [txtDisplay], BL
 .return:
 	SRET			; Return to user space
 
