@@ -287,7 +287,7 @@ export class AppComponent implements AfterViewInit {
                                 command: () => this.setCodeSample(6)
                             }
                         ]
-                    }
+                    },
                     {
                         label: 'Documentation',
                         icon: 'pi pi-fw pi-question-circle',
