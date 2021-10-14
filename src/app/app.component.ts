@@ -288,6 +288,11 @@ export class AppComponent implements AfterViewInit {
                             }
                         ]
                     }
+                    {
+                        label: 'Documentation',
+                        icon: 'pi pi-fw pi-question-circle',
+                        command: () => window.open("https://asm-simulator.readthedocs.io/en/latest/index.html")
+                    },
                 ]
             },
             {

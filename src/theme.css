@@ -1283,3 +1283,6 @@ p-togglebutton.ng-dirty.ng-invalid .ui-button {
 .pi-times:before {
   content: "\f00d";
 }
+.pi-question-circle:before {
+  content: "\f059";
+}
