@@ -16,19 +16,22 @@
 	JMP svc		; System call vector
     JMP exc		; Exception vector
 
+sStackTop   EQU 0x1FF   ; Initial Supervisor SP
+uStackTop   EQU 0x2DF   ; Initial User Task SP
+
 boot:
-	MOV SP, 0x01FF	; Set Supervisor SP
-	MOV A, 1		; Set bit 0 of IRQMASK
-	OUT 0			; Unmask keypad IRQ
-	MOV A, 0x02DF	; Set the end of the
-	OUT 8			; protection to 0x02DF
-	MOV A, 0x0209	; Protection in seg. mode
-	OUT 7			; from 0x0100, S=1, U=0
-	PUSH 0x0010		; User Task SR: IRQMASK = 1
-	PUSH 0x02DF		; User Task SP = 0x02DF
-	PUSH task		; User Task IP = task
-	SRET			; Jump to user mode
-	HLT				; Parachute
+	MOV SP, sStackTop	; Set Supervisor SP
+	MOV A, 1			; Set bit 0 of IRQMASK
+	OUT 0				; Unmask keypad IRQ
+	MOV A, 0x02DF		; Set the end of the
+	OUT 8				; protection to 0x02DF
+	MOV A, 0x0209		; Protection in seg. mode
+	OUT 7				; from 0x0100, S=1, U=0
+	PUSH 0x0010			; User Task SR: IRQMASK = 1
+	PUSH uStackTop		; User Task SP = 0x02DF
+	PUSH task			; User Task IP = task
+	SRET				; Jump to user mode
+	HLT					; Parachute
 
 keypressed:		; 1 = key pressed
 	DB 0		; 0 = No key pressed

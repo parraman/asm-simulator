@@ -10,6 +10,9 @@
 	JMP isr
 	JMP svc
 
+bootStackTop EQU 0x19F  ; Kernel booting SP
+
+
 ; This is the array of PCBs. It is a static array.
 ; The equivalent C code for the PCB structure would be
 ; something like this:
@@ -46,13 +49,13 @@ current_task:	; Pointer to the PCB of the current
 	DW 0		; task
 
 boot:
-	MOV SP, 0x19F	; Set kernel booting SP = 0x19F
-	CALL task_init	; Initialize the tasks
-	MOV A, 1		; Set bit 0 of IRQMASK
-	OUT 0			; Unmask keypad IRQ
-	CALL schedule	; Call the first scheduling
+	MOV SP, bootStackTop	; Set kernel booting SP = 0x19F
+	CALL task_init			; Initialize the tasks
+	MOV A, 1				; Set bit 0 of IRQMASK
+	OUT 0					; Unmask keypad IRQ
+	CALL schedule			; Call the first scheduling
 	CALL initial_dispatch	; Initial dispatch
-	HLT				; We are not supposed to come back
+	HLT						; We are not supposed to come back
 
 ; task_init(): This method initializes the tasks so
 ; that, in their first context switch, their will
