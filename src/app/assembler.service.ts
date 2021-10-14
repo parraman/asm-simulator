@@ -266,7 +266,10 @@ export class AssemblerService {
 
             case '[': // [number] or [register]
 
-                const address = input.slice(1, input.length - 1);
+                let address = input.slice(1, input.length - 1);
+                if (this.equs.has(address.trim())) {
+                    address = this.equs.get(address.trim()); 
+                }
                 return AssemblerService.parseAddressItem(address);
 
             case '"': // "String"
