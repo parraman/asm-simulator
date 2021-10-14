@@ -3,13 +3,16 @@
 
 	JMP boot
 
+stackTop    EQU 0xFF    ; Initial SP
+txtDisplay  EQU 0x2E0
+
 hello:	DB "Hello World!"	; Output string
 		DB 0				; String terminator
 
 boot:
-	MOV SP, 255		; Set SP
-	MOV C, hello	; Point register C to string
-	MOV D, 0x2E0	; Point register D to output
+	MOV SP, stackTop	; Set SP
+	MOV C, hello		; Point register C to string
+	MOV D, txtDisplay	; Point register D to output
 	CALL print
 	HLT				; Halt execution
 
