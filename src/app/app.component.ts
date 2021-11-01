@@ -519,6 +519,8 @@ export class AppComponent implements AfterViewInit {
 
         let result;
 
+        this.messageService.clear();
+
         try {
             result = this.assemblerService.go(this.codeText);
         } catch (e) {
