@@ -2460,7 +2460,7 @@ export class CPUService {
     @Instruction(OpCode.DIVB_REG8, 'DIVB', OperandType.REGISTER_8BITS)
     private instrDIVB_REG8(toRegister: number): boolean {
 
-        if (CPUService.is16bitsGPRorSP(toRegister) === false) {
+        if (CPUService.is8bitsGPR(toRegister) === false) {
             throw new Exception(ExceptionType.ILLEGAL_INSTRUCTION,
                 `Invalid first operand: register index ${toRegister} out of bounds`,
                 this.IP.value, this.SP.value, this.SR.value);
