@@ -1145,9 +1145,9 @@ SUBB: 8-bits substraction
 
 Performs a substraction of two 8-bits integers. Every form of the instruction
 will have two operands. Operand 1 will always be a reference to an 8-bits
-register. The integer contained by the register will be substracted from the
-value referenced by Operand 2. The result will be stored in the register
-referenced by Operand 1. 
+register. The integer in the Operand 2 will be substracted from the value in
+the register specified in the Operand 1. The result will be stored in the
+register referenced by the Operand 1. 
 
 The operation will modify the values of the carry (C) and zero (Z) flags of the Status Register.
 
