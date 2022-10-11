@@ -24,17 +24,17 @@ case of an array, the values corresponding to the ASCII codes of those encoded
 between double quotes (``""```) will be encoded. If you want to encode a numeric value
 explicitly within the array, you must do it using the escape code ``\x``.
 
-+-----------------------------------+------------------------------------------------------------------+
-| Directive                         | Result                                                           |
-+===================================+==================================================================+
-| ``DB var1, 0x01``                 | Reserseves one byte with an initial value of 0x01                |
-+-----------------------------------+------------------------------------------------------------------+
-| ``DB char1, '1'``                 | Reserseves one byte with an initial value of 0x31                |
-+-----------------------------------+------------------------------------------------------------------+
-| ``DB string, "Hello"``            | Reserseves five bytes with values {0x48, 0x65, 0x6C, 0x6C, 0x6F} |
-+-----------------------------------+------------------------------------------------------------------+
-| ``DB string, "\x01\x02\x03\x04"`` | Reserseves four bytes with values {0x01, 0x02, 0x03, 0x04}       |
-+-----------------------------------+------------------------------------------------------------------+
++-----------------------------------+----------------------------------------------------------------+
+| Directive                         | Result                                                         |
++===================================+================================================================+
+| ``DB var1, 0x01``                 | Reserves one byte with an initial value of 0x01                |
++-----------------------------------+----------------------------------------------------------------+
+| ``DB char1, '1'``                 | Reserves one byte with an initial value of 0x31                |
++-----------------------------------+----------------------------------------------------------------+
+| ``DB string, "Hello"``            | Reserves five bytes with values {0x48, 0x65, 0x6C, 0x6C, 0x6F} |
++-----------------------------------+----------------------------------------------------------------+
+| ``DB string, "\x01\x02\x03\x04"`` | Reserves four bytes with values {0x01, 0x02, 0x03, 0x04}       |
++-----------------------------------+----------------------------------------------------------------+
 
 .. _directive-dw:
 
@@ -46,13 +46,13 @@ receive directive receives two operands. Operand 1 sets the name or identifier
 assigned to the space. Operand 2 sets the initialization value of the reserved
 space. This operand can only be of numeric type.
 
-+---------------------+-----------------------------------------------+
-| Directive           | Result                                        |
-+=====================+===============================================+
-| ``DW var1, 2048``   | Reserseves two bytes with values {0x80, 0x00} |
-+---------------------+-----------------------------------------------+
-| ``DW var2, 0x1FFF`` | Reserseves two bytes with values {0x1F, 0xFF} |
-+---------------------+-----------------------------------------------+
++---------------------+---------------------------------------------+
+| Directive           | Result                                      |
++=====================+=============================================+
+| ``DW var1, 2048``   | Reserves two bytes with values {0x80, 0x00} |
++---------------------+---------------------------------------------+
+| ``DW var2, 0x1FFF`` | Reserves two bytes with values {0x1F, 0xFF} |
++---------------------+---------------------------------------------+
 
 .. _directive-org:
 
