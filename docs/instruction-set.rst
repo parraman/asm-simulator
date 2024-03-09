@@ -490,7 +490,7 @@ and **zero** (Z) flags of the Status Register.
 +-----------+-------------------+-----------+-------------+
 | Opcode    | Operand 1         | Operand 2 | Example     |
 +===========+===================+===========+=============+
-| 34 (0x22) | *REGISTER_16BITS* | *NONE*    | ``INCB DL`` |
+| 34 (0x22) | *REGISTER_8BITS* | *NONE*    | ``INCB DL`` |
 +-----------+-------------------+-----------+-------------+
 
 .. _instruction-iret:
