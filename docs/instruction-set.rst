@@ -630,7 +630,7 @@ See :ref:`instruction-jnc`.
 JNBE: jump if not below or equal
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-See :ref:`instruction-jnbe`.
+See :ref:`instruction-ja`.
 
 .. _instruction-jnc:
 
