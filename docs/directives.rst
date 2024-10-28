@@ -27,13 +27,13 @@ explicitly within the array, you must do it using the escape code ``\x``.
 +-----------------------------------+----------------------------------------------------------------+
 | Directive                         | Result                                                         |
 +===================================+================================================================+
-| ``DB var1, 0x01``                 | Reserves one byte with an initial value of 0x01                |
+| ``var1: DB 0x01``                 | Reserves one byte with an initial value of 0x01                |
 +-----------------------------------+----------------------------------------------------------------+
-| ``DB char1, '1'``                 | Reserves one byte with an initial value of 0x31                |
+| ``char1: DB '1'``                 | Reserves one byte with an initial value of 0x31                |
 +-----------------------------------+----------------------------------------------------------------+
-| ``DB string, "Hello"``            | Reserves five bytes with values {0x48, 0x65, 0x6C, 0x6C, 0x6F} |
+| ``string: DB "Hello"``            | Reserves five bytes with values {0x48, 0x65, 0x6C, 0x6C, 0x6F} |
 +-----------------------------------+----------------------------------------------------------------+
-| ``DB string, "\x01\x02\x03\x04"`` | Reserves four bytes with values {0x01, 0x02, 0x03, 0x04}       |
+| ``string: DB "\x01\x02\x03\x04"`` | Reserves four bytes with values {0x01, 0x02, 0x03, 0x04}       |
 +-----------------------------------+----------------------------------------------------------------+
 
 .. _directive-dw:
@@ -49,9 +49,9 @@ space. This operand can only be of numeric type.
 +---------------------+---------------------------------------------+
 | Directive           | Result                                      |
 +=====================+=============================================+
-| ``DW var1, 2048``   | Reserves two bytes with values {0x80, 0x00} |
+| ``var1: DW 2048``   | Reserves two bytes with values {0x80, 0x00} |
 +---------------------+---------------------------------------------+
-| ``DW var2, 0x1FFF`` | Reserves two bytes with values {0x1F, 0xFF} |
+| ``var2: DW 0x1FFF`` | Reserves two bytes with values {0x1F, 0xFF} |
 +---------------------+---------------------------------------------+
 
 .. _directive-org:
